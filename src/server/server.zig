@@ -1,86 +1,109 @@
 const std = @import("std");
+const ptc = @import("protocol.zig");
 const net = std.net;
-const Connection = std.net.Server.Connection;
 const mem = std.mem;
 const print = std.debug.print;
-const ptc = @import("protocol.zig");
+//////////////////////////////////////////////////
+/// Move to protocol.zig
+//////////////////////////////////////////////////
+const Protocol = struct {
+    type: []const u8,
+    action: []const u8,
+    id: []const u8,
+    body: []const u8,
+};
 
-const SILENT = false;
+fn protocol_build(req: []const u8, proto: *Protocol) !void {
+    var pts = mem.split(u8, req, "::");
+    if (pts.next()) |typ| {
+        proto.type = typ;
+    }
+    if (pts.next()) |act| {
+        proto.action = act;
+    }
+    if (pts.next()) |id| {
+        proto.id = id;
+    }
+    if (pts.next()) |bdy| {
+        proto.body = bdy;
+    }
+}
+//////////////////////////////////////////////////
 
-fn create_localhost_server(port: u16) !net.Server {
-    const localhost = try net.Address.resolveIp("127.0.0.1", port);
-    print("Listening on `127.0.0.1:{d}`\n", .{port});
-    return localhost.listen(.{});
+fn localhost_server(port: u16) !net.Server {
+    const lh = try net.Address.resolveIp("127.0.0.1", port);
+    return lh.listen(.{});
 }
 
-fn from_connection(conn: Connection, p: *ptc.Protocol) !void {
+fn listen_for_messages(owner: net.Stream, peer: net.Stream, ind: u8) !void {
+    while (true) {
+        var buff: [256]u8 = undefined;
+        _ = try owner.read(&buff);
+        const trimm = mem.sliceTo(&buff, 170);
+        if (ind == 1) {
+            _ = try peer.write("peer 1: ");
+        } else if (ind == 2) {
+            _ = try peer.write("peer 2: ");
+        }
+        _ = try peer.write(trimm);
+    }
+}
+
+fn message_broadcast(
+    peer_pool: *std.ArrayList(net.Server.Connection),
+    msg: []const u8,
+) !void {
+    for (peer_pool.items[0..]) |peer| {
+        _ = try peer.stream.write(msg);
+        print("Sent `OK` to {any}\n", .{peer.address});
+    }
+}
+
+fn read_incomming(
+    peer_pool: *std.ArrayList(net.Server.Connection),
+    conn: net.Server.Connection,
+) !void {
     const stream = conn.stream;
     var buf: [256]u8 = undefined;
     _ = try stream.read(&buf);
-    const req = mem.sliceTo(&buf, 170);
-    if (!SILENT) {
-        print("Incomming request `{s}`\n", .{req});
-    }
-    try p.from_str(req);
-}
+    const recv = mem.sliceTo(&buf, 170);
 
-fn establish_conn(peer_pool: *std.ArrayList(Connection), conn: Connection) !void {
-    const conn_stream = conn.stream;
-    _ = try peer_pool.append(conn);
-    var idbuf: [256]u8 = undefined;
-    const id = try std.fmt.bufPrint(&idbuf, "{d}", .{peer_pool.items.len});
-    const resp = ptc.Protocol{
-        .type = "RES",
-        .action = "comm",
-        .id = id,
-        .body = "",
-    };
-    if (!SILENT) {
-        try resp.dump();
+    // Handle communication request
+    var protocol = try ptc.Protocol.init("", "", "", "");
+    _ = try protocol.from_str(recv);
+    try protocol.dump();
+
+    if (mem.eql(u8, protocol.type, "REQ") and mem.eql(u8, protocol.action, "comm")) {
+        try peer_pool.append(conn);
+        const allocator = std.heap.page_allocator;
+        const pres = std.fmt.allocPrint(allocator, "RES::comm::{d}::", .{peer_pool.items.len}) catch "format failed";
+        var res_prot = try ptc.Protocol.init("", "", "", "");
+        try res_prot.from_str(pres);
+        try res_prot.dump();
+        _ = try stream.write(pres);
+    } else if (mem.eql(u8, protocol.type, "REQ") and mem.eql(u8, protocol.action, "msg")) {
+        try message_broadcast(peer_pool, protocol.body);
     }
-    const tmp = try resp.protocol_to_str();
-    _ = try conn_stream.write(tmp);
 }
 
 pub fn start() !void {
-    print("Server started\n", .{});
-    // server creation
-    var server = try create_localhost_server(6969);
+    // create a localhost server
+    var server = try localhost_server(6969);
     defer server.deinit();
+    print("Server running on `{s}`\n", .{"127.0.0.1:6969"});
+
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    // List of all connected clients (their message reading streams)
+    var messages = std.ArrayList(u8).init(allocator);
+    defer messages.deinit();
+
     var peer_pool = std.ArrayList(net.Server.Connection).init(allocator);
     defer peer_pool.deinit();
 
-    // handle incomming client requests (connections)
-    // TODO: A better infinite loop handling using delta time
+    // read incomming requests
     while (true) {
         const conn = try server.accept();
-        // Construct protocol from connection
-        var prot = try ptc.Protocol.init("", "", "", "");
-        _ = try from_connection(conn, &prot);
-        try prot.dump();
-        if (mem.eql(u8, prot.type, "REQ")) {
-            if (mem.eql(u8, prot.action, "comm")) {
-                try establish_conn(&peer_pool, conn);
-            } else if (mem.eql(u8, prot.action, "msg")) {
-                const sender_id = try std.fmt.parseInt(usize, prot.id, 10);
-                _ = try peer_pool.items[sender_id].stream.write("OK");
-            }
-        }
-        // Determine what to do
-        //     - REQ::cmp  -> establish_comm(peer_pool, prot)
-        //     - REQ::msg  -> forward_message(prot)
-        //     - REQ::exit -> kill peer(prot)
-        // try handle_connection(&peer_pool, conn);
+        try read_incomming(&peer_pool, conn);
     }
-
-    // Close all peers
-    for (peer_pool.items[0..]) |peer| {
-        peer.stream.close();
-    }
-
-    print("Server closed\n", .{});
 }

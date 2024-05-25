@@ -26,6 +26,7 @@ pub const Protocol = struct {
         print("    action: `{s}`\n", .{self.action});
         print("    id: `{s}`\n", .{self.id});
         print("    body: `{s}`\n", .{self.body});
+        print("    body-len: `{d}`\n", .{self.body.len});
         print("}}\n", .{});
         print("------------------------------------\n", .{});
     }

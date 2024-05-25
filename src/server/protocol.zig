@@ -30,7 +30,7 @@ pub const Protocol = struct {
         print("}}\n", .{});
         print("------------------------------------\n", .{});
     }
-    pub fn protocol_to_str(self: @This()) ![]const u8 {
+    pub fn as_str(self: @This()) ![]const u8 {
         var buf: [256]u8 = undefined;
         var fba = std.heap.FixedBufferAllocator.init(&buf);
         var string = std.ArrayList(u8).init(fba.allocator());

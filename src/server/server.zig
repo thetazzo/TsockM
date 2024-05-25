@@ -53,9 +53,15 @@ fn message_broadcast(
     peer_pool: *std.ArrayList(net.Server.Connection),
     msg: []const u8,
 ) !void {
+    var i: usize = 0;
     for (peer_pool.items[0..]) |peer| {
-        _ = try peer.stream.write(msg);
-        print("Sent `OK` to {any}\n", .{peer.address});
+        var buf: [256]u8 = undefined;
+        const id = try std.fmt.bufPrint(&buf, "{}", .{i});
+        i += 1;
+        const msgp = try ptc.Protocol.init("RES", "msg", id, msg);
+        const pstr = try msgp.as_str();
+        _ = try peer.stream.write(pstr);
+        try msgp.dump();
     }
 }
 

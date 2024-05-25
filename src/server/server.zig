@@ -3,32 +3,11 @@ const ptc = @import("protocol.zig");
 const net = std.net;
 const mem = std.mem;
 const print = std.debug.print;
-//////////////////////////////////////////////////
-/// Move to protocol.zig
-//////////////////////////////////////////////////
-const Protocol = struct {
-    type: []const u8,
-    action: []const u8,
-    id: []const u8,
-    body: []const u8,
-};
 
-fn protocol_build(req: []const u8, proto: *Protocol) !void {
-    var pts = mem.split(u8, req, "::");
-    if (pts.next()) |typ| {
-        proto.type = typ;
-    }
-    if (pts.next()) |act| {
-        proto.action = act;
-    }
-    if (pts.next()) |id| {
-        proto.id = id;
-    }
-    if (pts.next()) |bdy| {
-        proto.body = bdy;
-    }
-}
-//////////////////////////////////////////////////
+const Peer = struct {
+    conn: net.Server.Connection,
+    id: []const u8,
+};
 
 fn localhost_server(port: u16) !net.Server {
     const lh = try net.Address.resolveIp("127.0.0.1", port);
@@ -50,23 +29,20 @@ fn listen_for_messages(owner: net.Stream, peer: net.Stream, ind: u8) !void {
 }
 
 fn message_broadcast(
-    peer_pool: *std.ArrayList(net.Server.Connection),
+    peer_pool: *std.ArrayList(Peer),
+    sender_id: []const u8,
     msg: []const u8,
 ) !void {
-    var i: usize = 0;
     for (peer_pool.items[0..]) |peer| {
-        var buf: [256]u8 = undefined;
-        const id = try std.fmt.bufPrint(&buf, "{}", .{i});
-        i += 1;
-        const msgp = try ptc.Protocol.init("RES", "msg", id, msg);
+        const msgp = try ptc.Protocol.init("RES", "msg", sender_id, msg);
         const pstr = try msgp.as_str();
-        _ = try peer.stream.write(pstr);
+        _ = try peer.conn.stream.write(pstr);
         try msgp.dump();
     }
 }
 
 fn read_incomming(
-    peer_pool: *std.ArrayList(net.Server.Connection),
+    peer_pool: *std.ArrayList(Peer),
     conn: net.Server.Connection,
 ) !void {
     const stream = conn.stream;
@@ -80,15 +56,20 @@ fn read_incomming(
     try protocol.dump();
 
     if (mem.eql(u8, protocol.type, "REQ") and mem.eql(u8, protocol.action, "comm")) {
-        try peer_pool.append(conn);
         const allocator = std.heap.page_allocator;
-        const pres = std.fmt.allocPrint(allocator, "RES::comm::{d}::", .{peer_pool.items.len}) catch "format failed";
+        const peer_id = std.fmt.allocPrint(allocator, "{d}", .{peer_pool.items.len + 1}) catch "format failed";
+        const peer = Peer{
+            .id = peer_id,
+            .conn = conn,
+        };
+        try peer_pool.append(peer);
+        const pres = std.fmt.allocPrint(allocator, "RES::comm::{s}::", .{peer.id}) catch "format failed";
         var res_prot = try ptc.Protocol.init("", "", "", "");
         try res_prot.from_str(pres);
         try res_prot.dump();
         _ = try stream.write(pres);
     } else if (mem.eql(u8, protocol.type, "REQ") and mem.eql(u8, protocol.action, "msg")) {
-        try message_broadcast(peer_pool, protocol.body);
+        try message_broadcast(peer_pool, protocol.id, protocol.body);
     }
 }
 
@@ -104,7 +85,7 @@ pub fn start() !void {
     var messages = std.ArrayList(u8).init(allocator);
     defer messages.deinit();
 
-    var peer_pool = std.ArrayList(net.Server.Connection).init(allocator);
+    var peer_pool = std.ArrayList(Peer).init(allocator);
     defer peer_pool.deinit();
 
     // read incomming requests

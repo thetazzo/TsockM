@@ -29,10 +29,9 @@ fn request_connection(addr: net.Address) !net.Stream {
 
 fn listen_for_comms(stream: net.Stream) !void {
     while (true) {
-        var msg_muf: [256]u8 = undefined;
+        var msg_muf: [1054]u8 = undefined;
         _ = try stream.read(&msg_muf);
-        const recv = mem.sliceTo(&msg_muf, 170);
-        print("Recv[]: {s}\n", .{recv});
+        print("Recv[]: {s}\n", .{msg_muf});
     }
 }
 
@@ -47,12 +46,9 @@ fn read_cmd(addr: net.Address, sid: usize) !void {
                 var splits = mem.split(u8, user_input, "msg:");
                 _ = splits.next().?; // the `msg:` part
                 const val = mem.trimLeft(u8, splits.next().?, " \n");
-                print("New stream establised\n", .{});
-                print("Sending message: `{s}`\n", .{val});
                 const allocator = std.heap.page_allocator;
                 const str = std.fmt.allocPrint(allocator, "REQ::msg::{d}::{s}", .{ sid, val }) catch "format failed";
                 _ = try msg_stream.write(str);
-                print("Waiting for response...\n", .{});
                 msg_stream.close();
             } else {
                 print("Unknonw command: `{s}`\n", .{user_input});

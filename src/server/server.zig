@@ -65,6 +65,9 @@ pub fn start() !void {
         if (mem.eql(u8, prot.type, "REQ")) {
             if (mem.eql(u8, prot.action, "comm")) {
                 try establish_conn(&peer_pool, conn);
+            } else if (mem.eql(u8, prot.action, "msg")) {
+                const sender_id = try std.fmt.parseInt(usize, prot.id, 10);
+                _ = try peer_pool.items[sender_id].stream.write("OK");
             }
         }
         // Determine what to do

@@ -7,7 +7,7 @@ pub const Protocol = struct {
     action: []const u8 = "",
     id: []const u8 = "",
     body: []const u8 = "",
-    pub fn init(typ: []const u8, action: []const u8, id: []const u8, bdy: []const u8) !Protocol {
+    pub fn init(typ: []const u8, action: []const u8, id: []const u8, bdy: []const u8) Protocol {
         return Protocol{
             .type = typ,
             .action = action,
@@ -15,11 +15,11 @@ pub const Protocol = struct {
             .body = bdy,
         };
     }
-    pub fn setType(self: *@This(), val: []const u8) !*Protocol {
+    pub fn setType(self: *@This(), val: []const u8) *Protocol {
         self.type = val;
         return self;
     }
-    pub fn dump(self: @This()) !void {
+    pub fn dump(self: @This()) void {
         print("------------------------------------\n", .{});
         print("Protocol {{\n", .{});
         print("    type: `{s}`\n", .{self.type});
@@ -29,7 +29,7 @@ pub const Protocol = struct {
         print("}}\n", .{});
         print("------------------------------------\n", .{});
     }
-    pub fn protocol_to_str(self: @This()) ![]const u8 {
+    pub fn as_str(self: @This()) ![]const u8 {
         var buf: [256]u8 = undefined;
         var fba = std.heap.FixedBufferAllocator.init(&buf);
         var string = std.ArrayList(u8).init(fba.allocator());
@@ -44,22 +44,24 @@ pub const Protocol = struct {
         try string.appendSlice(self.body);
         return string.items;
     }
-    pub fn from_str(self: *@This(), str: []const u8) !void {
-        var spl = mem.split(u8, str, "::");
-
-        // [type]::[action]::[id]::[body]
-
-        if (spl.next()) |typ| {
-            self.type = typ;
-        }
-        if (spl.next()) |act| {
-            self.action = act;
-        }
-        if (spl.next()) |id| {
-            self.id = id;
-        }
-        if (spl.next()) |bdy| {
-            self.body = bdy;
-        }
-    }
 };
+pub fn protocol_from_str(str: []const u8) Protocol {
+    var spl = mem.split(u8, str, "::");
+    // [type]::[action]::[id]::[body]
+
+    var proto = Protocol.init("", "", "", "");
+
+    if (spl.next()) |typ| {
+        proto.type = typ;
+    }
+    if (spl.next()) |act| {
+        proto.action = act;
+    }
+    if (spl.next()) |id| {
+        proto.id = id;
+    }
+    if (spl.next()) |bdy| {
+        proto.body = bdy;
+    }
+    return proto;
+}

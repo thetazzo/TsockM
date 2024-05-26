@@ -4,6 +4,8 @@ const net = std.net;
 const mem = std.mem;
 const print = std.debug.print;
 
+var SILENT = false;
+
 const Peer = struct {
     conn: net.Server.Connection,
     id: []const u8,
@@ -33,11 +35,15 @@ fn message_broadcast(
     sender_id: []const u8,
     msg: []const u8,
 ) !void {
+    var pind: usize = 1;
+    const psid = try std.fmt.parseInt(usize, sender_id, 10);
     for (peer_pool.items[0..]) |peer| {
-        const msgp = try ptc.Protocol.init("RES", "msg", sender_id, msg);
-        const pstr = try msgp.as_str();
-        _ = try peer.conn.stream.write(pstr);
-        try msgp.dump();
+        if (pind != psid) {
+            const msgp = ptc.Protocol.init("RES", "msg", sender_id, msg); // message response protocol
+            msgp.dump();
+            _ = try peer.conn.stream.write(try msgp.as_str());
+        }
+        pind += 1;
     }
 }
 
@@ -51,9 +57,10 @@ fn read_incomming(
     const recv = mem.sliceTo(&buf, 170);
 
     // Handle communication request
-    var protocol = try ptc.Protocol.init("", "", "", "");
-    _ = try protocol.from_str(recv);
-    try protocol.dump();
+    var protocol = ptc.protocol_from_str(recv); // parse protocol from recieved bytes
+    if (!SILENT) {
+        protocol.dump();
+    }
 
     if (mem.eql(u8, protocol.type, "REQ") and mem.eql(u8, protocol.action, "comm")) {
         const allocator = std.heap.page_allocator;
@@ -63,10 +70,12 @@ fn read_incomming(
             .conn = conn,
         };
         try peer_pool.append(peer);
+        // TODO: construct protocol structure not string
         const pres = std.fmt.allocPrint(allocator, "RES::comm::{s}::", .{peer.id}) catch "format failed";
-        var res_prot = try ptc.Protocol.init("", "", "", "");
-        try res_prot.from_str(pres);
-        try res_prot.dump();
+        var res_prot = ptc.protocol_from_str(pres); // parse protocol from string
+        if (!SILENT) {
+            res_prot.dump();
+        }
         _ = try stream.write(pres);
     } else if (mem.eql(u8, protocol.type, "REQ") and mem.eql(u8, protocol.action, "msg")) {
         try message_broadcast(peer_pool, protocol.id, protocol.body);

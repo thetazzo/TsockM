@@ -70,13 +70,11 @@ fn read_incomming(
             .conn = conn,
         };
         try peer_pool.append(peer);
-        // TODO: construct protocol structure not string
-        const pres = std.fmt.allocPrint(allocator, "RES::comm::{s}::", .{peer.id}) catch "format failed";
-        var res_prot = ptc.protocol_from_str(pres); // parse protocol from string
+        const resp = ptc.Protocol.init("RES", "comm", peer.id, "");
         if (!SILENT) {
-            res_prot.dump();
+            resp.dump();
         }
-        _ = try stream.write(pres);
+        _ = try stream.write(try resp.as_str());
     } else if (mem.eql(u8, protocol.type, "REQ") and mem.eql(u8, protocol.action, "msg")) {
         try message_broadcast(peer_pool, protocol.id, protocol.body);
     }

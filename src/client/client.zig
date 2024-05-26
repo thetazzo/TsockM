@@ -81,9 +81,9 @@ fn read_cmd(addr: net.Address, sid: []const u8) !void {
                 msg_stream.close();
             } else if (mem.startsWith(u8, user_input, "help")) {
                 print("COMMANDS:\n", .{});
-                print("    * msg: <message> .... boradcast the message to all users\n", .{});
+                print("    * :msg <message> .... boradcast the message to all users\n", .{});
             } else {
-                print("Unknonw command: `{s}`\n", .{user_input});
+                print("Unknown command: `{s}`\n", .{user_input});
             }
         } else {
             print("Unreachable, maybe?\n", .{});

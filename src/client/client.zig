@@ -61,13 +61,13 @@ fn read_cmd(addr: net.Address, sid: []const u8) !void {
         const stdin = std.io.getStdIn().reader();
         if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
             // Handle different commands
-            if (mem.startsWith(u8, user_input, "msg:")) {
+            if (mem.startsWith(u8, user_input, ":msg")) {
                 // Messaging command
                 // request a tcp socket for sending a message
                 const msg_stream = try net.tcpConnectToAddress(addr);
 
                 // parse message from cmd
-                var splits = mem.split(u8, user_input, "msg:");
+                var splits = mem.split(u8, user_input, ":msg");
                 _ = splits.next().?; // the `msg:` part
                 const val = mem.trimLeft(u8, splits.next().?, " \n");
 
@@ -79,7 +79,7 @@ fn read_cmd(addr: net.Address, sid: []const u8) !void {
 
                 // close messaging socket
                 msg_stream.close();
-            } else if (mem.startsWith(u8, user_input, "help")) {
+            } else if (mem.startsWith(u8, user_input, ":help")) {
                 print("COMMANDS:\n", .{});
                 print("    * :msg <message> .... boradcast the message to all users\n", .{});
             } else {

@@ -1,5 +1,6 @@
 const std = @import("std");
-const ptc = @import("protocol.zig");
+const ptc = @import("ptc");
+const cmn = @import("cmn");
 const net = std.net;
 const mem = std.mem;
 const print = std.debug.print;
@@ -47,13 +48,6 @@ fn message_broadcast(
     }
 }
 
-// convert an integer to string
-fn usize_to_str(d: usize) []const u8 {
-    const allocator = std.heap.page_allocator;
-    const peer_id = std.fmt.allocPrint(allocator, "{d}", .{d}) catch "format failed";
-    return peer_id;
-}
-
 fn read_incomming(
     peer_pool: *std.ArrayList(Peer),
     conn: net.Server.Connection,
@@ -70,7 +64,7 @@ fn read_incomming(
     }
 
     if (mem.eql(u8, protocol.type, "REQ") and mem.eql(u8, protocol.action, "comm")) {
-        const peer_id = usize_to_str(peer_pool.items.len + 1);
+        const peer_id = cmn.usize_to_str(peer_pool.items.len + 1);
         const peer = Peer{
             .id = peer_id,
             .conn = conn,

@@ -1,5 +1,5 @@
 const std = @import("std");
-const ptc = @import("protocol.zig");
+const ptc = @import("ptc");
 const mem = std.mem;
 const net = std.net;
 const print = std.debug.print;

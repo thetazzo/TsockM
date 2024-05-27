@@ -104,6 +104,7 @@ fn read_incomming(
     conn: net.Server.Connection,
 ) !void {
     const stream = conn.stream;
+
     var buf: [256]u8 = undefined;
     _ = try stream.read(&buf);
     const recv = mem.sliceTo(&buf, 170);
@@ -147,6 +148,7 @@ pub fn start() !void {
     // create a localhost server
     var server = try localhost_server(6969);
     errdefer server.deinit();
+    defer server.deinit();
 
     print("Server running on `{s}`\n", .{"127.0.0.1:6969"});
 

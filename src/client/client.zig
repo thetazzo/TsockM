@@ -122,6 +122,8 @@ pub fn start() !void {
 
     const t1 = try std.Thread.spawn(.{}, listen_for_comms, .{client});
     defer t1.join();
+    errdefer t1.join();
     const t2 = try std.Thread.spawn(.{}, read_cmd, .{ addr, client });
     defer t2.join();
+    errdefer t2.join();
 }

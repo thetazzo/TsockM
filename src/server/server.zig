@@ -79,15 +79,15 @@ fn read_incomming(
         } else if (protocol.is_action(ptc.ProtAct.MSG)) {
             try message_broadcast(peer_pool, protocol.id, protocol.body);
         } else if (protocol.is_action(ptc.ProtAct.NONE)) {
-            std.log.err("TODO: `ProtAct.NONE` handling not implemented", .{});
-            _ = try stream.write("WHAT THE HELL?");
+            const errp = ptc.Protocol.init(ptc.ProtType.ERR, protocol.action, "400", "bad request");
+            _ = try stream.write(try errp.as_str());
         }
     } else if (protocol.is_response()) {
-        std.log.err("TODO: RES handling not implemented", .{});
-        std.posix.exit(1);
+        const errp = ptc.Protocol.init(ptc.ProtType.ERR, protocol.action, "405", "method not allowed:\n  NOTE: Server can only process REQUESTS for now");
+        _ = try stream.write(try errp.as_str());
     } else if (protocol.type == ptc.ProtType.NONE) {
-        std.log.warn("TODO: `ProtType.NONE` handling not implemented", .{});
-        _ = try stream.write("WHAT THE FUCK?");
+        const errp = ptc.Protocol.init(ptc.ProtType.ERR, protocol.action, "400", "bad request");
+        _ = try stream.write(try errp.as_str());
     } else {
         std.log.err("unreachable code", .{});
         std.posix.exit(1);

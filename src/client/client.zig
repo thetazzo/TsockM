@@ -56,19 +56,22 @@ fn request_connection(addr: net.Address) !Client {
 fn listen_for_comms(client: *Client) !void {
     while (true) {
         var msg_muf: [1054]u8 = undefined;
-        _ = client.stream.read(&msg_muf) catch |err| {
-            print("err: {any}\n", .{err});
+        const q = client.stream.read(&msg_muf) catch 1;
+
+        if (q == 1) {
+            std.log.warn("Terminated listener\n", .{});
             return;
-        };
+        }
+
         if (msg_muf[0] == 170) {
             continue;
         }
 
+        print("{s}\n", .{msg_muf});
         const resp = ptc.protocol_from_str(&msg_muf);
         if (!SILENT) {
             resp.dump("listen_for_comms");
         }
-        print("muf: {s} len: {d}\n", .{ msg_muf, msg_muf[0] });
         if (resp.is_response()) {
             if (resp.is_action(ptc.Act.COMM_END)) {
                 if (mem.eql(u8, resp.id, "200")) {
@@ -77,7 +80,7 @@ fn listen_for_comms(client: *Client) !void {
                 }
             }
         } else if (resp.type == ptc.Typ.ERR) {
-            client.stream.close();
+            //client.stream.close();
             resp.dump("listen_for_comms");
         }
     }
@@ -85,6 +88,7 @@ fn listen_for_comms(client: *Client) !void {
 }
 
 fn read_cmd(addr: net.Address, client: *Client) !void {
+    print("{any}\n", .{addr});
     while (true) {
         // read for command
         var buf: [256]u8 = undefined;
@@ -95,7 +99,6 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
                 // Messaging command
                 // request a tcp socket for sending a message
                 const msg_stream = try net.tcpConnectToAddress(addr);
-                defer msg_stream.close();
 
                 // parse message from cmd
                 var splits = mem.split(u8, user_input, ":msg");
@@ -107,17 +110,12 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
 
                 // send message protocol to server
                 try msgp.transmit(":msg", msg_stream);
+                msg_stream.close();
             } else if (mem.startsWith(u8, user_input, ":exit")) {
-                //const msg_stream = try net.tcpConnectToAddress(addr);
-                //defer msg_stream.close();
+                const msg_stream = try net.tcpConnectToAddress(addr);
+                defer msg_stream.close();
                 const endp = ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.COMM_END, client.id, "");
-                try endp.transmit(":exit", client.stream);
-                //var tmpb: [256]u8 = undefined;
-                //_ = try msg_stream.read(&tmpb);
-                //const tmpbs = mem.sliceTo(&tmpb, 170);
-                //print("{s}\n", .{tmpbs});
-                //client.stream.close();
-                //client.alive = false;
+                try endp.transmit(":exit", msg_stream);
                 break;
             } else if (mem.startsWith(u8, user_input, ":help")) {
                 print_usage();

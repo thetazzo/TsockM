@@ -67,8 +67,7 @@ fn peer_kill(
     if (peer_ref) |pf| {
         const endp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM_END, "200", "OK");
         try endp.transmit("peer_kill", peer_pool.items[pf.i].stream);
-        //peer_pool.items[pf.i].conn.stream.close();
-        //_ = peer_pool.orderedRemove(pf.i);
+        _ = peer_pool.orderedRemove(pf.i);
         print("Remaining peers {d}\n", .{peer_pool.items.len});
     }
 }
@@ -104,7 +103,6 @@ fn read_incomming(
     conn: net.Server.Connection,
 ) !void {
     const stream = conn.stream;
-    defer stream.close();
 
     var buf: [256]u8 = undefined;
     _ = try stream.read(&buf);
@@ -147,7 +145,6 @@ fn server_core(
 ) !void {
     while (true) {
         const conn = try server.accept();
-        errdefer conn.stream.close();
         try read_incomming(peer_pool, conn);
     }
     print("Thread `server_core` finished\n", .{});
@@ -194,10 +191,8 @@ pub fn start() !void {
     var peer_pool = std.ArrayList(Peer).init(allocator);
     defer peer_pool.deinit();
 
-    {
-        var t1 = try std.Thread.spawn(.{}, server_core, .{ &server, &peer_pool });
-        defer t1.join();
-        //var t2 = try std.Thread.spawn(.{}, read_cmd, .{&peer_pool});
-        //defer t2.join();
+    while (true) {
+        const conn = try server.accept();
+        try read_incomming(&peer_pool, conn);
     }
 }

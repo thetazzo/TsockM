@@ -63,13 +63,10 @@ fn peer_kill(
     const peer_ref = find_peer_ref(peer_pool, id);
     if (peer_ref) |pf| {
         const endp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM_END, "200", "OK");
-        if (!SILENT) {
-            print("Peer `{s}` at `{d}` killed\n", .{ pf.peer.id, pf.i });
-            endp.dump();
-        }
-        _ = try peer_pool.items[pf.i].conn.stream.write(try endp.as_str());
+        try endp.transmit("peer_kill", peer_pool.items[pf.i].conn.stream);
         peer_pool.items[pf.i].conn.stream.close();
         _ = peer_pool.orderedRemove(pf.i);
+        print("Remaining peers {d}\n", .{peer_pool.items.len});
     }
 }
 
@@ -80,34 +77,21 @@ fn localhost_server(port: u16) !net.Server {
     });
 }
 
-fn listen_for_messages(owner: net.Stream, peer: net.Stream, ind: u8) !void {
-    while (true) {
-        var buff: [256]u8 = undefined;
-        _ = try owner.read(&buff);
-        const trimm = mem.sliceTo(&buff, 170);
-        if (ind == 1) {
-            _ = try peer.write("peer 1: ");
-        } else if (ind == 2) {
-            _ = try peer.write("peer 2: ");
-        }
-        _ = try peer.write(trimm);
-    }
-}
-
 fn message_broadcast(
     peer_pool: *std.ArrayList(Peer),
     sender_id: []const u8,
     msg: []const u8,
 ) !void {
-    var pind: usize = 1;
-    const psid = try std.fmt.parseInt(usize, sender_id, 10);
-    for (peer_pool.items[0..]) |peer| {
-        if (pind != psid and peer.alive) {
-            const msgp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.MSG, sender_id, msg);
-            msgp.dump();
-            _ = try peer.conn.stream.write(try msgp.as_str());
+    var pind: usize = 0;
+    const peer_ref = find_peer_ref(peer_pool, sender_id);
+    if (peer_ref) |pf| {
+        for (peer_pool.items[0..]) |peer| {
+            if (pf.i != pind and peer.alive) {
+                const msgp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.MSG, sender_id, msg);
+                try msgp.transmit("message_boradcast", peer.conn.stream);
+            }
+            pind += 1;
         }
-        pind += 1;
     }
 }
 
@@ -116,6 +100,7 @@ fn read_incomming(
     conn: net.Server.Connection,
 ) !void {
     const stream = conn.stream;
+    defer stream.close();
 
     var buf: [256]u8 = undefined;
     _ = try stream.read(&buf);
@@ -124,7 +109,7 @@ fn read_incomming(
     // Handle communication request
     var protocol = ptc.protocol_from_str(recv); // parse protocol from recieved bytes
     if (!SILENT) {
-        protocol.dump();
+        protocol.dump("REQUEST");
     }
 
     if (protocol.is_request()) {
@@ -132,28 +117,60 @@ fn read_incomming(
             const peer = peer_construct(conn, protocol.id);
             try peer_pool.append(peer);
             const resp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM, peer.id, "");
-            if (!SILENT) {
-                resp.dump();
-            }
-            _ = try stream.write(try resp.as_str());
+            try resp.transmit("RESP::COMM", stream);
         } else if (protocol.is_action(ptc.Act.COMM_END)) {
-            print("kill peer `{s}`\n", .{protocol.id});
             try peer_kill(peer_pool, protocol.id);
         } else if (protocol.is_action(ptc.Act.MSG)) {
             try message_broadcast(peer_pool, protocol.id, protocol.body);
         } else if (protocol.is_action(ptc.Act.NONE)) {
             const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "400", "bad request");
-            _ = try stream.write(try errp.as_str());
+            try errp.transmit("RESP::Act.NONE", stream);
         }
     } else if (protocol.is_response()) {
         const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "405", "method not allowed:\n  NOTE: Server can only process REQUESTS for now");
-        _ = try stream.write(try errp.as_str());
+        try errp.transmit("RESP::protocol.is_response", stream);
     } else if (protocol.type == ptc.Typ.NONE) {
         const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "400", "bad request");
-        _ = try stream.write(try errp.as_str());
+        try errp.transmit("RESP::Typ.NONE", stream);
     } else {
         std.log.err("unreachable code", .{});
     }
+}
+
+fn server_core(
+    server: *net.Server,
+    peer_pool: *std.ArrayList(Peer),
+) !void {
+    while (true) {
+        const conn = try server.accept();
+        errdefer conn.stream.close();
+        try read_incomming(peer_pool, conn);
+    }
+    print("Thread `server_core` finished\n", .{});
+}
+
+fn read_cmd(peer_pool: *std.ArrayList(Peer)) !void {
+    _ = peer_pool;
+    while (true) {
+        // read for command
+        var buf: [256]u8 = undefined;
+        const stdin = std.io.getStdIn().reader();
+        if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
+            // Handle different commands
+            if (mem.startsWith(u8, user_input, ":exit")) {
+                print("Exiting!\n", .{});
+                break;
+            } else if (mem.startsWith(u8, user_input, ":help")) {
+                //print_usage();
+            } else {
+                print("Unknown command: `{s}`\n", .{user_input});
+                //print_usage();
+            }
+        } else {
+            print("Unreachable, maybe?\n", .{});
+        }
+    }
+    print("Thread `run_cmd` finished\n", .{});
 }
 
 pub fn start() !void {
@@ -173,9 +190,10 @@ pub fn start() !void {
     var peer_pool = std.ArrayList(Peer).init(allocator);
     defer peer_pool.deinit();
 
-    // read incomming requests
-    while (true) {
-        const conn = try server.accept();
-        try read_incomming(&peer_pool, conn);
+    {
+        var t1 = try std.Thread.spawn(.{}, server_core, .{ &server, &peer_pool });
+        defer t1.join();
+        var t2 = try std.Thread.spawn(.{}, read_cmd, .{&peer_pool});
+        defer t2.join();
     }
 }

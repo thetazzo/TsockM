@@ -29,8 +29,8 @@ pub const Protocol = struct {
             .body = bdy,
         };
     }
-    pub fn dump(self: @This()) void {
-        print("------------------------------------\n", .{});
+    pub fn dump(self: @This(), loc: []const u8) void {
+        print("---------------- {s} ----------------\n", .{loc});
         print("Protocol {{\n", .{});
         print("    type: `{s}`\n", .{@tagName(self.type)});
         print("    action: `{s}`\n", .{@tagName(self.action)});
@@ -62,6 +62,12 @@ pub const Protocol = struct {
     }
     pub fn is_action(self: @This(), act: Act) bool {
         return self.action == act;
+    }
+    pub fn transmit(self: @This(), loc: []const u8, stream: std.net.Stream) !void {
+        if (true) {
+            self.dump(loc);
+        }
+        _ = try stream.write(try self.as_str());
     }
 };
 pub fn protocol_from_str(str: []const u8) Protocol {

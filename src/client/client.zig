@@ -39,7 +39,7 @@ fn request_connection(addr: net.Address) !Client {
     // construct protocol from response string
     const resp = ptc.protocol_from_str(resp_str);
     if (!SILENT) {
-        resp.dump();
+        resp.dump("request_connection");
     }
 
     // construct the clint
@@ -55,13 +55,19 @@ fn request_connection(addr: net.Address) !Client {
 fn listen_for_comms(client: *Client) !void {
     while (true) {
         var msg_muf: [1054]u8 = undefined;
-        _ = try client.server_stream.read(&msg_muf);
+        _ = client.server_stream.read(&msg_muf) catch |err| {
+            print("e: {any}\n", .{err});
+            return;
+        };
+        if (msg_muf[0] == 170) {
+            continue;
+        }
 
         const resp = ptc.protocol_from_str(&msg_muf);
         if (!SILENT) {
-            resp.dump();
+            resp.dump("listen_for_comms");
         }
-        print("{s}\n", .{msg_muf});
+        print("muf: {s} len: {d}\n", .{ msg_muf, msg_muf[0] });
         if (resp.is_response()) {
             if (resp.is_action(ptc.Act.COMM_END)) {
                 if (mem.eql(u8, resp.id, "200")) {
@@ -70,7 +76,7 @@ fn listen_for_comms(client: *Client) !void {
             }
         } else if (resp.type == ptc.Typ.ERR) {
             client.server_stream.close();
-            resp.dump();
+            resp.dump("listen_for_comms");
             break;
         }
     }
@@ -95,15 +101,15 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
                 const val = mem.trimLeft(u8, splits.next().?, " \n");
 
                 // construct message protocol
-                const msgp = try ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.MSG, client.id, val).as_str();
+                const msgp = ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.MSG, client.id, val);
 
                 // send message protocol to server
-                _ = try msg_stream.write(msgp);
+                try msgp.transmit(":msg", msg_stream);
             } else if (mem.startsWith(u8, user_input, ":exit")) {
                 const msg_stream = try net.tcpConnectToAddress(addr);
                 defer msg_stream.close();
-                const endp = try ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.COMM_END, client.id, "").as_str();
-                _ = try msg_stream.write(endp);
+                const endp = ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.COMM_END, client.id, "");
+                try endp.transmit(":exit", msg_stream);
                 client.server_stream.close();
                 break;
             } else if (mem.startsWith(u8, user_input, ":help")) {

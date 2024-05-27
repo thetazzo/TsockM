@@ -28,7 +28,7 @@ fn print_usage() void {
 fn request_connection(addr: net.Address) !Client {
     const stream = try net.tcpConnectToAddress(addr);
     // request connection
-    const reqp = try ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.COMM, "-", "").as_str();
+    const reqp = try ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.COMM, "bebey", "").as_str();
     _ = try stream.write(reqp); // send request
 
     // collect response
@@ -43,7 +43,7 @@ fn request_connection(addr: net.Address) !Client {
     }
 
     // construct the clint
-    const c = Client{
+    var c = Client{
         .id = resp.id,
         .server_stream = stream,
     };
@@ -52,10 +52,11 @@ fn request_connection(addr: net.Address) !Client {
     return c;
 }
 
-fn listen_for_comms(client: Client) !void {
+fn listen_for_comms(client: *Client) !void {
     while (true) {
         var msg_muf: [1054]u8 = undefined;
         _ = try client.server_stream.read(&msg_muf);
+
         const resp = ptc.protocol_from_str(&msg_muf);
         if (!SILENT) {
             resp.dump();
@@ -67,11 +68,15 @@ fn listen_for_comms(client: Client) !void {
                     break;
                 }
             }
+        } else if (resp.type == ptc.Typ.ERR) {
+            client.server_stream.close();
+            resp.dump();
+            break;
         }
     }
 }
 
-fn read_cmd(addr: net.Address, client: Client) !void {
+fn read_cmd(addr: net.Address, client: *Client) !void {
     while (true) {
         // read for command
         var buf: [256]u8 = undefined;
@@ -117,13 +122,15 @@ pub fn start() !void {
     print("Client starated\n", .{});
     const addr = try net.Address.resolveIp("127.0.0.1", 6969);
     // communication request
-    const client = try request_connection(addr);
+    var client = try request_connection(addr);
     defer print("Client stopped\n", .{});
 
-    const t1 = try std.Thread.spawn(.{}, listen_for_comms, .{client});
-    defer t1.join();
-    errdefer t1.join();
-    const t2 = try std.Thread.spawn(.{}, read_cmd, .{ addr, client });
-    defer t2.join();
-    errdefer t2.join();
+    {
+        const t1 = try std.Thread.spawn(.{}, listen_for_comms, .{&client});
+        defer t1.join();
+        errdefer t1.join();
+        const t2 = try std.Thread.spawn(.{}, read_cmd, .{ addr, &client });
+        defer t2.join();
+        errdefer t2.join();
+    }
 }

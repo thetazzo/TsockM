@@ -11,14 +11,16 @@ const PEER_ID = []const u8;
 
 const Peer = struct {
     conn: net.Server.Connection,
+    stream: net.Stream,
     id: PEER_ID,
     alive: bool,
-    pub fn Init(conn: net.Server.Connection, id: PEER_ID) Peer {
+    pub fn Init(conn: net.Server.Connection, stream: net.Stream, id: PEER_ID) Peer {
         // TODO: check for peer.id collisions
         return Peer{
             .conn = conn,
             .id = id,
             .alive = true,
+            .stream = stream,
         };
     }
 };
@@ -40,6 +42,7 @@ fn find_peer_ref(
 
 fn peer_construct(
     conn: net.Server.Connection,
+    stream: net.Stream,
     username: []const u8,
 ) Peer {
     var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
@@ -53,7 +56,7 @@ fn peer_construct(
     //const allocator = std.heap.page_allocator;
     //const id = std.fmt.allocPrint(allocator, "{s}", .{out}) catch "format failed";
     _ = username;
-    return Peer.Init(conn, peer_id);
+    return Peer.Init(conn, stream, peer_id);
 }
 
 fn peer_kill(
@@ -63,9 +66,9 @@ fn peer_kill(
     const peer_ref = find_peer_ref(peer_pool, id);
     if (peer_ref) |pf| {
         const endp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM_END, "200", "OK");
-        try endp.transmit("peer_kill", peer_pool.items[pf.i].conn.stream);
-        peer_pool.items[pf.i].conn.stream.close();
-        _ = peer_pool.orderedRemove(pf.i);
+        try endp.transmit("peer_kill", peer_pool.items[pf.i].stream);
+        //peer_pool.items[pf.i].conn.stream.close();
+        //_ = peer_pool.orderedRemove(pf.i);
         print("Remaining peers {d}\n", .{peer_pool.items.len});
     }
 }
@@ -73,7 +76,8 @@ fn peer_kill(
 fn localhost_server(port: u16) !net.Server {
     const lh = try net.Address.resolveIp("127.0.0.1", port);
     return lh.listen(.{
-        .reuse_address = true,
+        // TODO this flag needs to be set for bettter server performance
+        //.reuse_address = true,
     });
 }
 
@@ -114,7 +118,7 @@ fn read_incomming(
 
     if (protocol.is_request()) {
         if (protocol.is_action(ptc.Act.COMM)) {
-            const peer = peer_construct(conn, protocol.id);
+            const peer = peer_construct(conn, stream, protocol.id);
             try peer_pool.append(peer);
             const resp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM, peer.id, "");
             try resp.transmit("RESP::COMM", stream);
@@ -193,7 +197,7 @@ pub fn start() !void {
     {
         var t1 = try std.Thread.spawn(.{}, server_core, .{ &server, &peer_pool });
         defer t1.join();
-        var t2 = try std.Thread.spawn(.{}, read_cmd, .{&peer_pool});
-        defer t2.join();
+        //var t2 = try std.Thread.spawn(.{}, read_cmd, .{&peer_pool});
+        //defer t2.join();
     }
 }

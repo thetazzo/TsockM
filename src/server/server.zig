@@ -78,10 +78,16 @@ fn read_incomming(
             _ = try stream.write(try resp.as_str());
         } else if (protocol.is_action(ptc.ProtAct.MSG)) {
             try message_broadcast(peer_pool, protocol.id, protocol.body);
+        } else if (protocol.is_action(ptc.ProtAct.NONE)) {
+            std.log.err("TODO: `ProtAct.NONE` handling not implemented", .{});
+            _ = try stream.write("WHAT THE HELL?");
         }
     } else if (protocol.is_response()) {
         std.log.err("TODO: RES handling not implemented", .{});
         std.posix.exit(1);
+    } else if (protocol.type == ptc.ProtType.NONE) {
+        std.log.warn("TODO: `ProtType.NONE` handling not implemented", .{});
+        _ = try stream.write("WHAT THE FUCK?");
     } else {
         std.log.err("unreachable code", .{});
         std.posix.exit(1);

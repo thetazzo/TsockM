@@ -7,11 +7,61 @@ const print = std.debug.print;
 
 var SILENT = false;
 
+const PEER_ID = []const u8;
+
 const Peer = struct {
     conn: net.Server.Connection,
-    id: []const u8,
+    id: PEER_ID,
     alive: bool,
+    pub fn Init(conn: net.Server.Connection, id: PEER_ID) Peer {
+        // TODO: check for peer.id collisions
+        return Peer{
+            .conn = conn,
+            .id = id,
+            .alive = true,
+        };
+    }
 };
+
+fn find_peer_ref(
+    peer_pool: *std.ArrayList(Peer),
+    id: []const u8,
+) ?struct { peer: Peer, i: usize } {
+    // O(n)
+    var i: usize = 0;
+    for (peer_pool.items[0..]) |peer| {
+        if (mem.eql(u8, peer.id, id)) {
+            return .{ .peer = peer, .i = i };
+        }
+        i += 1;
+    }
+    return null;
+}
+
+fn peer_construct(
+    conn: net.Server.Connection,
+) Peer {
+    var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
+    const peer_id = cmn.usize_to_str(rand.random().int(u8));
+    return Peer.Init(conn, peer_id);
+}
+
+fn peer_kill(
+    peer_pool: *std.ArrayList(Peer),
+    id: PEER_ID,
+) !void {
+    const peer_ref = find_peer_ref(peer_pool, id);
+    if (peer_ref) |pf| {
+        const endp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM_END, "200", "OK");
+        if (!SILENT) {
+            print("Peer `{s}` at `{d}` killed\n", .{ pf.peer.id, pf.i });
+            endp.dump();
+        }
+        _ = try peer_pool.items[pf.i].conn.stream.write(try endp.as_str());
+        peer_pool.items[pf.i].conn.stream.close();
+        _ = peer_pool.orderedRemove(pf.i);
+    }
+}
 
 fn localhost_server(port: u16) !net.Server {
     const lh = try net.Address.resolveIp("127.0.0.1", port);
@@ -66,14 +116,7 @@ fn read_incomming(
 
     if (protocol.is_request()) {
         if (protocol.is_action(ptc.Act.COMM)) {
-            var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
-
-            const peer_id = cmn.usize_to_str(rand.random().int(u8));
-            const peer = Peer{
-                .id = peer_id,
-                .conn = conn,
-                .alive = true,
-            };
+            const peer = peer_construct(conn);
             try peer_pool.append(peer);
             const resp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM, peer.id, "");
             if (!SILENT) {
@@ -82,13 +125,7 @@ fn read_incomming(
             _ = try stream.write(try resp.as_str());
         } else if (protocol.is_action(ptc.Act.COMM_END)) {
             print("kill peer `{s}`\n", .{protocol.id});
-            const peer_id = try std.fmt.parseInt(usize, protocol.id, 10) - 1;
-            peer_pool.items[peer_id].alive = false;
-            const endp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM_END, "200", "OK");
-            if (!SILENT) {
-                endp.dump();
-            }
-            _ = try peer_pool.items[peer_id].conn.stream.write(try endp.as_str());
+            try peer_kill(peer_pool, protocol.id);
         } else if (protocol.is_action(ptc.Act.MSG)) {
             try message_broadcast(peer_pool, protocol.id, protocol.body);
         } else if (protocol.is_action(ptc.Act.NONE)) {
@@ -109,7 +146,7 @@ fn read_incomming(
 pub fn start() !void {
     // create a localhost server
     var server = try localhost_server(6969);
-    defer server.deinit();
+    errdefer server.deinit();
 
     print("Server running on `{s}`\n", .{"127.0.0.1:6969"});
 

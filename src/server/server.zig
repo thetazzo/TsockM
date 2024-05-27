@@ -10,6 +10,7 @@ var SILENT = false;
 const Peer = struct {
     conn: net.Server.Connection,
     id: []const u8,
+    alive: bool,
 };
 
 fn localhost_server(port: u16) !net.Server {
@@ -39,7 +40,7 @@ fn message_broadcast(
     var pind: usize = 1;
     const psid = try std.fmt.parseInt(usize, sender_id, 10);
     for (peer_pool.items[0..]) |peer| {
-        if (pind != psid) {
+        if (pind != psid and peer.alive) {
             const msgp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.MSG, sender_id, msg);
             msgp.dump();
             _ = try peer.conn.stream.write(try msgp.as_str());
@@ -76,6 +77,15 @@ fn read_incomming(
                 resp.dump();
             }
             _ = try stream.write(try resp.as_str());
+        } else if (protocol.is_action(ptc.Act.COMM_END)) {
+            print("kill peer `{s}`\n", .{protocol.id});
+            const peer_id = try std.fmt.parseInt(usize, protocol.id, 10) - 1;
+            peer_pool.items[peer_id].alive = false;
+            const endp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM_END, "200", "OK");
+            if (!SILENT) {
+                endp.dump();
+            }
+            _ = try peer_pool.items[peer_id].conn.stream.write(try endp.as_str());
         } else if (protocol.is_action(ptc.Act.MSG)) {
             try message_broadcast(peer_pool, protocol.id, protocol.body);
         } else if (protocol.is_action(ptc.Act.NONE)) {
@@ -90,7 +100,6 @@ fn read_incomming(
         _ = try stream.write(try errp.as_str());
     } else {
         std.log.err("unreachable code", .{});
-        std.posix.exit(1);
     }
 }
 

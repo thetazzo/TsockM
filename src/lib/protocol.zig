@@ -5,6 +5,7 @@ const print = std.debug.print;
 pub const ProtType = enum {
     REQ,
     RES,
+    ERR,
     NONE,
 };
 

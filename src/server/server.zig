@@ -40,7 +40,7 @@ fn message_broadcast(
     const psid = try std.fmt.parseInt(usize, sender_id, 10);
     for (peer_pool.items[0..]) |peer| {
         if (pind != psid) {
-            const msgp = ptc.Protocol.init("RES", "msg", sender_id, msg); // message response protocol
+            const msgp = ptc.Protocol.init(ptc.ProtocolType.RES, "msg", sender_id, msg);
             msgp.dump();
             _ = try peer.conn.stream.write(try msgp.as_str());
         }
@@ -63,20 +63,28 @@ fn read_incomming(
         protocol.dump();
     }
 
-    if (mem.eql(u8, protocol.type, "REQ") and mem.eql(u8, protocol.action, "comm")) {
-        const peer_id = cmn.usize_to_str(peer_pool.items.len + 1);
-        const peer = Peer{
-            .id = peer_id,
-            .conn = conn,
-        };
-        try peer_pool.append(peer);
-        const resp = ptc.Protocol.init("RES", "comm", peer.id, "");
-        if (!SILENT) {
-            resp.dump();
+    if (protocol.is_request()) {
+        if (protocol.is_action("comm")) {
+            const peer_id = cmn.usize_to_str(peer_pool.items.len + 1);
+            const peer = Peer{
+                .id = peer_id,
+                .conn = conn,
+            };
+            try peer_pool.append(peer);
+            const resp = ptc.Protocol.init(ptc.ProtocolType.RES, "comm", peer.id, "");
+            if (!SILENT) {
+                resp.dump();
+            }
+            _ = try stream.write(try resp.as_str());
+        } else if (protocol.is_action("msg")) {
+            try message_broadcast(peer_pool, protocol.id, protocol.body);
         }
-        _ = try stream.write(try resp.as_str());
-    } else if (mem.eql(u8, protocol.type, "REQ") and mem.eql(u8, protocol.action, "msg")) {
-        try message_broadcast(peer_pool, protocol.id, protocol.body);
+    } else if (protocol.is_response()) {
+        std.log.err("TODO: RES handling not implemented", .{});
+        std.posix.exit(1);
+    } else {
+        std.log.err("unreachable code", .{});
+        std.posix.exit(1);
     }
 }
 
@@ -84,6 +92,7 @@ pub fn start() !void {
     // create a localhost server
     var server = try localhost_server(6969);
     defer server.deinit();
+
     print("Server running on `{s}`\n", .{"127.0.0.1:6969"});
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

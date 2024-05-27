@@ -11,6 +11,7 @@ pub const Typ = enum {
 
 pub const Act = enum {
     COMM,
+    COMM_END,
     MSG,
     NONE,
 };

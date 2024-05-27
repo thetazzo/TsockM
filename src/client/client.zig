@@ -19,6 +19,12 @@ const Client = struct {
     }
 };
 
+fn print_usage() void {
+    print("COMMANDS:\n", .{});
+    print("    * :msg <message> .... boradcast the message to all users\n", .{});
+    print("    * :exit ............. terminate the program\n", .{});
+}
+
 fn request_connection(addr: net.Address) !Client {
     const stream = try net.tcpConnectToAddress(addr);
     // request connection
@@ -46,15 +52,26 @@ fn request_connection(addr: net.Address) !Client {
     return c;
 }
 
-fn listen_for_comms(stream: net.Stream) !void {
+fn listen_for_comms(client: Client) !void {
     while (true) {
         var msg_muf: [1054]u8 = undefined;
-        _ = try stream.read(&msg_muf);
+        _ = try client.server_stream.read(&msg_muf);
+        const resp = ptc.protocol_from_str(&msg_muf);
+        if (!SILENT) {
+            resp.dump();
+        }
         print("{s}\n", .{msg_muf});
+        if (resp.is_response()) {
+            if (resp.is_action(ptc.Act.COMM_END)) {
+                if (mem.eql(u8, resp.id, "200")) {
+                    break;
+                }
+            }
+        }
     }
 }
 
-fn read_cmd(addr: net.Address, sid: []const u8) !void {
+fn read_cmd(addr: net.Address, client: Client) !void {
     while (true) {
         // read for command
         var buf: [256]u8 = undefined;
@@ -65,25 +82,30 @@ fn read_cmd(addr: net.Address, sid: []const u8) !void {
                 // Messaging command
                 // request a tcp socket for sending a message
                 const msg_stream = try net.tcpConnectToAddress(addr);
+                defer msg_stream.close();
 
                 // parse message from cmd
                 var splits = mem.split(u8, user_input, ":msg");
-                _ = splits.next().?; // the `msg:` part
+                _ = splits.next().?; // the `:msg` part
                 const val = mem.trimLeft(u8, splits.next().?, " \n");
 
                 // construct message protocol
-                const msgp = try ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.MSG, sid, val).as_str();
+                const msgp = try ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.MSG, client.id, val).as_str();
 
                 // send message protocol to server
                 _ = try msg_stream.write(msgp);
-
-                // close messaging socket
-                msg_stream.close();
+            } else if (mem.startsWith(u8, user_input, ":exit")) {
+                const msg_stream = try net.tcpConnectToAddress(addr);
+                defer msg_stream.close();
+                const endp = try ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.COMM_END, client.id, "").as_str();
+                _ = try msg_stream.write(endp);
+                client.server_stream.close();
+                break;
             } else if (mem.startsWith(u8, user_input, ":help")) {
-                print("COMMANDS:\n", .{});
-                print("    * :msg <message> .... boradcast the message to all users\n", .{});
+                print_usage();
             } else {
                 print("Unknown command: `{s}`\n", .{user_input});
+                print_usage();
             }
         } else {
             print("Unreachable, maybe?\n", .{});
@@ -96,11 +118,12 @@ pub fn start() !void {
     const addr = try net.Address.resolveIp("127.0.0.1", 6969);
     // communication request
     const client = try request_connection(addr);
+    defer print("Client stopped\n", .{});
 
-    const t1 = try std.Thread.spawn(.{}, listen_for_comms, .{client.server_stream});
-    const t2 = try std.Thread.spawn(.{}, read_cmd, .{ addr, client.id });
-    t1.join();
-    t2.join();
-
-    print("Client stopped\n", .{});
+    const t1 = try std.Thread.spawn(.{}, listen_for_comms, .{client});
+    defer t1.join();
+    errdefer t1.join();
+    const t2 = try std.Thread.spawn(.{}, read_cmd, .{ addr, client });
+    defer t2.join();
+    errdefer t2.join();
 }

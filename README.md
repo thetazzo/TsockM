@@ -19,6 +19,7 @@
     * `ERR`: error protocol
 * `[action]` defines the action the protocol is performing
     * `COMM`: establishing a communication socket
+    * `COMM_END`: terminate the communication socket
     * `MSG`: message handling 
 * `[id]` defines some unsigned integer value
     * Used when communicating the `sender id` value

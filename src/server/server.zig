@@ -66,10 +66,13 @@ fn read_incomming(
 
     if (protocol.is_request()) {
         if (protocol.is_action(ptc.Act.COMM)) {
-            const peer_id = cmn.usize_to_str(peer_pool.items.len + 1);
+            var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
+
+            const peer_id = cmn.usize_to_str(rand.random().int(u8));
             const peer = Peer{
                 .id = peer_id,
                 .conn = conn,
+                .alive = true,
             };
             try peer_pool.append(peer);
             const resp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM, peer.id, "");

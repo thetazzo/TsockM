@@ -76,6 +76,11 @@ pub fn protocol_from_str(str: []const u8) Protocol {
             proto.type = etyp;
         } else {
             std.log.err("Something went wrong with protocol type: `{s}`\n", .{typ});
+            proto.type = Typ.ERR;
+            proto.action = Act.NONE;
+            proto.id = "502";
+            proto.body = "bad gateway";
+            return proto;
         }
     }
     if (spl.next()) |act| {

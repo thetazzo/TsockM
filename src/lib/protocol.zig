@@ -5,16 +5,18 @@ const print = std.debug.print;
 pub const ProtType = enum {
     REQ,
     RES,
+    NONE,
 };
 
 pub const ProtAct = enum {
     COMM,
     MSG,
+    NONE,
 };
 
 pub const Protocol = struct {
-    type: ProtType,
-    action: ProtAct,
+    type: ProtType = ProtType.NONE,
+    action: ProtAct = ProtAct.NONE,
     id: []const u8 = "",
     body: []const u8 = "",
     pub fn init(typ: ProtType, action: ProtAct, id: []const u8, bdy: []const u8) Protocol {
@@ -41,23 +43,9 @@ pub const Protocol = struct {
         var string = std.ArrayList(u8).init(fba.allocator());
         // Consider using the json fomrat instead
         // try std.json.stringify(x, .{}, string.writer());
-        switch (self.type) {
-            ProtType.REQ => {
-                try string.appendSlice("REQ");
-            },
-            ProtType.RES => {
-                try string.appendSlice("RES");
-            },
-        }
+        try string.appendSlice(@tagName(self.type));
         try string.appendSlice("::");
-        switch (self.action) {
-            ProtAct.COMM => {
-                try string.appendSlice("COMM");
-            },
-            ProtAct.MSG => {
-                try string.appendSlice("MSG");
-            },
-        }
+        try string.appendSlice(@tagName(self.action));
         try string.appendSlice("::");
         try string.appendSlice(self.id);
         try string.appendSlice("::");
@@ -78,20 +66,21 @@ pub fn protocol_from_str(str: []const u8) Protocol {
     var spl = mem.split(u8, str, "::");
     // [type]::[action]::[id]::[body]
 
-    var proto = Protocol.init(ProtType.REQ, ProtAct.MSG, "", "");
+    // Empty protocol
+    var proto = Protocol{};
 
     if (spl.next()) |typ| {
-        if (mem.eql(u8, typ, "REQ")) {
-            proto.type = ProtType.REQ;
+        if (std.meta.stringToEnum(ProtType, typ)) |etyp| {
+            proto.type = etyp;
         } else {
-            proto.type = ProtType.RES;
+            std.log.err("Something went wrong with protocol type: `{s}`\n", .{typ});
         }
     }
     if (spl.next()) |act| {
-        if (mem.eql(u8, act, "COMM")) {
-            proto.action = ProtAct.COMM;
+        if (std.meta.stringToEnum(ProtAct, act)) |eact| {
+            proto.action = eact;
         } else {
-            proto.action = ProtAct.MSG;
+            std.log.err("Something went wrong with protocol action: `{s}`\n", .{act});
         }
     }
     if (spl.next()) |id| {

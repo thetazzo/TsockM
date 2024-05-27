@@ -2,25 +2,25 @@ const std = @import("std");
 const mem = std.mem;
 const print = std.debug.print;
 
-pub const ProtType = enum {
+pub const Typ = enum {
     REQ,
     RES,
     ERR,
     NONE,
 };
 
-pub const ProtAct = enum {
+pub const Act = enum {
     COMM,
     MSG,
     NONE,
 };
 
 pub const Protocol = struct {
-    type: ProtType = ProtType.NONE,
-    action: ProtAct = ProtAct.NONE,
+    type: Typ = Typ.NONE,
+    action: Act = Act.NONE,
     id: []const u8 = "",
     body: []const u8 = "",
-    pub fn init(typ: ProtType, action: ProtAct, id: []const u8, bdy: []const u8) Protocol {
+    pub fn init(typ: Typ, action: Act, id: []const u8, bdy: []const u8) Protocol {
         return Protocol{
             .type = typ,
             .action = action,
@@ -54,12 +54,12 @@ pub const Protocol = struct {
         return string.items;
     }
     pub fn is_request(self: @This()) bool {
-        return self.type == ProtType.REQ;
+        return self.type == Typ.REQ;
     }
     pub fn is_response(self: @This()) bool {
-        return self.type == ProtType.RES;
+        return self.type == Typ.RES;
     }
-    pub fn is_action(self: @This(), act: ProtAct) bool {
+    pub fn is_action(self: @This(), act: Act) bool {
         return self.action == act;
     }
 };
@@ -71,14 +71,14 @@ pub fn protocol_from_str(str: []const u8) Protocol {
     var proto = Protocol{};
 
     if (spl.next()) |typ| {
-        if (std.meta.stringToEnum(ProtType, typ)) |etyp| {
+        if (std.meta.stringToEnum(Typ, typ)) |etyp| {
             proto.type = etyp;
         } else {
             std.log.err("Something went wrong with protocol type: `{s}`\n", .{typ});
         }
     }
     if (spl.next()) |act| {
-        if (std.meta.stringToEnum(ProtAct, act)) |eact| {
+        if (std.meta.stringToEnum(Act, act)) |eact| {
             proto.action = eact;
         } else {
             std.log.err("Something went wrong with protocol action: `{s}`\n", .{act});

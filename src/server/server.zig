@@ -40,7 +40,7 @@ fn message_broadcast(
     const psid = try std.fmt.parseInt(usize, sender_id, 10);
     for (peer_pool.items[0..]) |peer| {
         if (pind != psid) {
-            const msgp = ptc.Protocol.init(ptc.ProtType.RES, ptc.ProtAct.MSG, sender_id, msg);
+            const msgp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.MSG, sender_id, msg);
             msgp.dump();
             _ = try peer.conn.stream.write(try msgp.as_str());
         }
@@ -64,29 +64,29 @@ fn read_incomming(
     }
 
     if (protocol.is_request()) {
-        if (protocol.is_action(ptc.ProtAct.COMM)) {
+        if (protocol.is_action(ptc.Act.COMM)) {
             const peer_id = cmn.usize_to_str(peer_pool.items.len + 1);
             const peer = Peer{
                 .id = peer_id,
                 .conn = conn,
             };
             try peer_pool.append(peer);
-            const resp = ptc.Protocol.init(ptc.ProtType.RES, ptc.ProtAct.COMM, peer.id, "");
+            const resp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM, peer.id, "");
             if (!SILENT) {
                 resp.dump();
             }
             _ = try stream.write(try resp.as_str());
-        } else if (protocol.is_action(ptc.ProtAct.MSG)) {
+        } else if (protocol.is_action(ptc.Act.MSG)) {
             try message_broadcast(peer_pool, protocol.id, protocol.body);
-        } else if (protocol.is_action(ptc.ProtAct.NONE)) {
-            const errp = ptc.Protocol.init(ptc.ProtType.ERR, protocol.action, "400", "bad request");
+        } else if (protocol.is_action(ptc.Act.NONE)) {
+            const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "400", "bad request");
             _ = try stream.write(try errp.as_str());
         }
     } else if (protocol.is_response()) {
-        const errp = ptc.Protocol.init(ptc.ProtType.ERR, protocol.action, "405", "method not allowed:\n  NOTE: Server can only process REQUESTS for now");
+        const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "405", "method not allowed:\n  NOTE: Server can only process REQUESTS for now");
         _ = try stream.write(try errp.as_str());
-    } else if (protocol.type == ptc.ProtType.NONE) {
-        const errp = ptc.Protocol.init(ptc.ProtType.ERR, protocol.action, "400", "bad request");
+    } else if (protocol.type == ptc.Typ.NONE) {
+        const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "400", "bad request");
         _ = try stream.write(try errp.as_str());
     } else {
         std.log.err("unreachable code", .{});

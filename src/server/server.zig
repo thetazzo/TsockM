@@ -40,7 +40,7 @@ fn message_broadcast(
     const psid = try std.fmt.parseInt(usize, sender_id, 10);
     for (peer_pool.items[0..]) |peer| {
         if (pind != psid) {
-            const msgp = ptc.Protocol.init(ptc.ProtocolType.RES, "msg", sender_id, msg);
+            const msgp = ptc.Protocol.init(ptc.ProtType.RES, ptc.ProtAct.MSG, sender_id, msg);
             msgp.dump();
             _ = try peer.conn.stream.write(try msgp.as_str());
         }
@@ -64,19 +64,19 @@ fn read_incomming(
     }
 
     if (protocol.is_request()) {
-        if (protocol.is_action("comm")) {
+        if (protocol.is_action(ptc.ProtAct.COMM)) {
             const peer_id = cmn.usize_to_str(peer_pool.items.len + 1);
             const peer = Peer{
                 .id = peer_id,
                 .conn = conn,
             };
             try peer_pool.append(peer);
-            const resp = ptc.Protocol.init(ptc.ProtocolType.RES, "comm", peer.id, "");
+            const resp = ptc.Protocol.init(ptc.ProtType.RES, ptc.ProtAct.COMM, peer.id, "");
             if (!SILENT) {
                 resp.dump();
             }
             _ = try stream.write(try resp.as_str());
-        } else if (protocol.is_action("msg")) {
+        } else if (protocol.is_action(ptc.ProtAct.MSG)) {
             try message_broadcast(peer_pool, protocol.id, protocol.body);
         }
     } else if (protocol.is_response()) {

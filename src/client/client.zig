@@ -22,7 +22,7 @@ const Client = struct {
 fn request_connection(addr: net.Address) !Client {
     const stream = try net.tcpConnectToAddress(addr);
     // request connection
-    const reqp = try ptc.Protocol.init(ptc.ProtocolType.REQ, "comm", "-", "").as_str(); // request communication protocol
+    const reqp = try ptc.Protocol.init(ptc.ProtType.REQ, ptc.ProtAct.COMM, "-", "").as_str();
     _ = try stream.write(reqp); // send request
 
     // collect response
@@ -72,7 +72,7 @@ fn read_cmd(addr: net.Address, sid: []const u8) !void {
                 const val = mem.trimLeft(u8, splits.next().?, " \n");
 
                 // construct message protocol
-                const msgp = try ptc.Protocol.init(ptc.ProtocolType.REQ, "msg", sid, val).as_str();
+                const msgp = try ptc.Protocol.init(ptc.ProtType.REQ, ptc.ProtAct.MSG, sid, val).as_str();
 
                 // send message protocol to server
                 _ = try msg_stream.write(msgp);

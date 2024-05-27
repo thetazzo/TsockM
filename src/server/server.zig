@@ -40,9 +40,19 @@ fn find_peer_ref(
 
 fn peer_construct(
     conn: net.Server.Connection,
+    username: []const u8,
 ) Peer {
     var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
     const peer_id = cmn.usize_to_str(rand.random().int(u8));
+    //var block = [_]u8{0} ** std.crypto.hash.Md5.block_length;
+    //var out: [std.crypto.hash.Md5.digest_length]u8 = undefined;
+    //var h = std.crypto.hash.Md5.init(.{});
+    //h.update(&block);
+    //h.update(username);
+    //h.final(out[0..]);
+    //const allocator = std.heap.page_allocator;
+    //const id = std.fmt.allocPrint(allocator, "{s}", .{out}) catch "format failed";
+    _ = username;
     return Peer.Init(conn, peer_id);
 }
 
@@ -65,7 +75,9 @@ fn peer_kill(
 
 fn localhost_server(port: u16) !net.Server {
     const lh = try net.Address.resolveIp("127.0.0.1", port);
-    return lh.listen(.{});
+    return lh.listen(.{
+        .reuse_address = true,
+    });
 }
 
 fn listen_for_messages(owner: net.Stream, peer: net.Stream, ind: u8) !void {
@@ -117,7 +129,7 @@ fn read_incomming(
 
     if (protocol.is_request()) {
         if (protocol.is_action(ptc.Act.COMM)) {
-            const peer = peer_construct(conn);
+            const peer = peer_construct(conn, protocol.id);
             try peer_pool.append(peer);
             const resp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM, peer.id, "");
             if (!SILENT) {

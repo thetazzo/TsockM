@@ -16,6 +16,12 @@ pub const Act = enum {
     NONE,
 };
 
+pub const LogLevel = enum {
+    SILENT,
+    DEV,
+    TINY,
+};
+
 pub const Id = []const u8;
 pub const Body = []const u8;
 pub const Addr = []const u8;
@@ -37,11 +43,13 @@ pub const Protocol = struct {
             .body = bdy,
         };
     }
-    pub fn dump(self: @This(), loc: []const u8, level: usize) void {
+    pub fn dump(self: @This(), loc: []const u8, log_level: LogLevel) void {
+        if (log_level == LogLevel.SILENT) return;
+
         print("====================================\n", .{});
         print(" {s}: `{s}`                          \n", .{ loc, @tagName(self.action) });
-        if (level > 0) {
-            print("-------------------------------------\n", .{});
+        if (log_level == LogLevel.DEV) {
+            print("------------------------------------\n", .{});
             print(" Protocol \n", .{});
             print("     type: `{s}`\n", .{@tagName(self.type)});
             print("     action: `{s}`\n", .{@tagName(self.action)});
@@ -80,10 +88,8 @@ pub const Protocol = struct {
     pub fn is_action(self: @This(), act: Act) bool {
         return self.action == act;
     }
-    pub fn transmit(self: @This(), loc: []const u8, stream: std.net.Stream, SILENT: bool) !void {
-        if (!SILENT) {
-            self.dump(loc, 0);
-        }
+    pub fn transmit(self: @This(), loc: []const u8, stream: std.net.Stream, log_level: LogLevel) !void {
+        self.dump(loc, log_level);
         _ = try stream.write(try self.as_str());
     }
 };

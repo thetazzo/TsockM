@@ -28,6 +28,10 @@
     * Used when communicating `MSG` ~ holds text of the message
     * Used when communicating error messages
 
+### TODO
+
+* [ ] Protocol should also contain `src` and `dest` IP addresses, socket form
+* [ ] Send periodic peer health check protocol ~ look for dead peers and remove them from the pool
 
 ## Client
 

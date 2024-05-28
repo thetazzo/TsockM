@@ -33,7 +33,7 @@ fn request_connection(addr: net.Address) !Client {
     const dst_addr = cmn.address_to_str(addr);
     // request connection
     const reqp = ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.COMM, "bebey", "client", dst_addr, "");
-    _ = try stream.write(try reqp.as_str()); // send request
+    _ = try stream.write(reqp.as_str()); // send request
     reqp.dump("REQUEST", LOG_LEVEL);
 
     // collect response
@@ -111,13 +111,13 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
                 const msgp = ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.MSG, client.id, "client", addr_str, val);
 
                 // send message protocol to server
-                try msgp.transmit("REQUEST", msg_stream, LOG_LEVEL);
+                _ = ptc.transmit("REQUEST", msg_stream, msgp, LOG_LEVEL);
                 msg_stream.close();
             } else if (mem.startsWith(u8, user_input, ":exit")) {
                 const msg_stream = try net.tcpConnectToAddress(addr);
                 defer msg_stream.close();
                 const endp = ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.COMM_END, client.id, "client", addr_str, "");
-                try endp.transmit("REQUEST", msg_stream, LOG_LEVEL);
+                _ = ptc.transmit("REQUEST", msg_stream, endp, LOG_LEVEL);
                 break;
             } else if (mem.startsWith(u8, user_input, ":help")) {
                 print_usage();

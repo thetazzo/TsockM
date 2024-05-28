@@ -60,23 +60,23 @@ pub const Protocol = struct {
         }
         print("====================================\n", .{});
     }
-    pub fn as_str(self: @This()) ![]const u8 {
+    pub fn as_str(self: @This()) []const u8 {
         var buf: [512]u8 = undefined;
         var fba = std.heap.FixedBufferAllocator.init(&buf);
         var string = std.ArrayList(u8).init(fba.allocator());
         // Consider using the json fomrat instead
         // try std.json.stringify(x, .{}, string.writer());
-        try string.appendSlice(@tagName(self.type));
-        try string.appendSlice("::");
-        try string.appendSlice(@tagName(self.action));
-        try string.appendSlice("::");
-        try string.appendSlice(self.id);
-        try string.appendSlice("::");
-        try string.appendSlice(self.src);
-        try string.appendSlice("::");
-        try string.appendSlice(self.dst);
-        try string.appendSlice("::");
-        try string.appendSlice(self.body);
+        _ = string.appendSlice(@tagName(self.type)) catch "OutOfMemory";
+        _ = string.appendSlice("::") catch "OutOfMemory";
+        _ = string.appendSlice(@tagName(self.action)) catch "OutOfMemory";
+        _ = string.appendSlice("::") catch "OutOfMemory";
+        _ = string.appendSlice(self.id) catch "OutOfMemory";
+        _ = string.appendSlice("::") catch "OutOfMemory";
+        _ = string.appendSlice(self.src) catch "OutOfMemory";
+        _ = string.appendSlice("::") catch "OutOfMemory";
+        _ = string.appendSlice(self.dst) catch "OutOfMemory";
+        _ = string.appendSlice("::") catch "OutOfMemory";
+        _ = string.appendSlice(self.body) catch "OutOfMemory";
         return string.items;
     }
     pub fn is_request(self: @This()) bool {
@@ -88,11 +88,17 @@ pub const Protocol = struct {
     pub fn is_action(self: @This(), act: Act) bool {
         return self.action == act;
     }
-    pub fn transmit(self: @This(), loc: []const u8, stream: std.net.Stream, log_level: LogLevel) !void {
-        self.dump(loc, log_level);
-        _ = try stream.write(try self.as_str());
-    }
 };
+
+pub fn transmit(loc: []const u8, stream: std.net.Stream, p: Protocol, log_level: LogLevel) Protocol {
+    p.dump(loc, log_level);
+    const werr = stream.write(p.as_str()) catch 1;
+    if (werr == 1) {
+        std.log.warn("stream is closed\n", .{});
+    }
+    return p;
+}
+
 pub fn protocol_from_str(str: []const u8) Protocol {
     var spl = mem.split(u8, str, "::");
     // [type]::[action]::[id]::[src]::[dst]::[body]

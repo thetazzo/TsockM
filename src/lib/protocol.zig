@@ -30,14 +30,15 @@ pub const Protocol = struct {
         };
     }
     pub fn dump(self: @This(), loc: []const u8) void {
-        print("---------------- {s} ----------------\n", .{loc});
-        print("Protocol {{\n", .{});
-        print("    type: `{s}`\n", .{@tagName(self.type)});
-        print("    action: `{s}`\n", .{@tagName(self.action)});
-        print("    id: `{s}`\n", .{self.id});
-        print("    body: `{s}`\n", .{self.body});
-        print("}}\n", .{});
-        print("------------------------------------\n", .{});
+        print("=====================================\n", .{});
+        print(" {s}                                 \n", .{loc});
+        print("-------------------------------------\n", .{});
+        print(" Protocol \n", .{});
+        print("     type: `{s}`\n", .{@tagName(self.type)});
+        print("     action: `{s}`\n", .{@tagName(self.action)});
+        print("     id: `{s}`\n", .{self.id});
+        print("     body: `{s}`\n", .{self.body});
+        print("====================================\n", .{});
     }
     pub fn as_str(self: @This()) ![]const u8 {
         var buf: [256]u8 = undefined;

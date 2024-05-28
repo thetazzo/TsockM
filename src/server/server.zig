@@ -119,21 +119,21 @@ fn read_incomming(
             const peer = peer_construct(conn, stream, protocol.id);
             try peer_pool.append(peer);
             const resp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM, peer.id, "");
-            try resp.transmit("RESP::COMM", stream);
+            try resp.transmit("RESPONSE", stream);
         } else if (protocol.is_action(ptc.Act.COMM_END)) {
             try peer_kill(peer_pool, protocol.id);
         } else if (protocol.is_action(ptc.Act.MSG)) {
             try message_broadcast(peer_pool, protocol.id, protocol.body);
         } else if (protocol.is_action(ptc.Act.NONE)) {
             const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "400", "bad request");
-            try errp.transmit("RESP::Act.NONE", stream);
+            try errp.transmit("RESPONSE", stream);
         }
     } else if (protocol.is_response()) {
         const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "405", "method not allowed:\n  NOTE: Server can only process REQUESTS for now");
-        try errp.transmit("RESP::protocol.is_response", stream);
+        try errp.transmit("RESPONSE", stream);
     } else if (protocol.type == ptc.Typ.NONE) {
         const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "400", "bad request");
-        try errp.transmit("RESP::Typ.NONE", stream);
+        try errp.transmit("RESPONSE", stream);
     } else {
         std.log.err("unreachable code", .{});
     }

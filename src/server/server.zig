@@ -14,7 +14,7 @@ const Peer = struct {
     stream: net.Stream,
     id: PEER_ID,
     alive: bool,
-    pub fn Init(conn: net.Server.Connection, stream: net.Stream, id: PEER_ID) Peer {
+    pub fn init(conn: net.Server.Connection, stream: net.Stream, id: PEER_ID) Peer {
         // TODO: check for peer.id collisions
         return Peer{
             .conn = conn,
@@ -56,17 +56,19 @@ fn peer_construct(
     //const allocator = std.heap.page_allocator;
     //const id = std.fmt.allocPrint(allocator, "{s}", .{out}) catch "format failed";
     _ = username;
-    return Peer.Init(conn, stream, peer_id);
+    return Peer.init(conn, stream, peer_id);
 }
 
 fn peer_kill(
     peer_pool: *std.ArrayList(Peer),
     id: PEER_ID,
+    src_addr: ptc.Addr,
 ) !void {
     const peer_ref = find_peer_ref(peer_pool, id);
     if (peer_ref) |pf| {
-        const endp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM_END, "200", "OK");
-        try endp.transmit("peer_kill", peer_pool.items[pf.i].stream);
+        //const addr_str = cmn.address_to_str(pf.peer.conn.address);
+        const endp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM_END, "200", src_addr, "client", "OK");
+        try endp.transmit("RESPONSE", peer_pool.items[pf.i].stream, SILENT);
         _ = peer_pool.orderedRemove(pf.i);
         print("Remaining peers {d}\n", .{peer_pool.items.len});
     }
@@ -76,7 +78,7 @@ fn localhost_server(port: u16) !net.Server {
     const lh = try net.Address.resolveIp("127.0.0.1", port);
     return lh.listen(.{
         // TODO this flag needs to be set for bettter server performance
-        //.reuse_address = true,
+        .reuse_address = true,
     });
 }
 
@@ -90,8 +92,10 @@ fn message_broadcast(
     if (peer_ref) |pf| {
         for (peer_pool.items[0..]) |peer| {
             if (pf.i != pind and peer.alive) {
-                const msgp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.MSG, sender_id, msg);
-                try msgp.transmit("message_boradcast", peer.conn.stream);
+                const src_addr = cmn.address_to_str(pf.peer.conn.address);
+                const dst_addr = cmn.address_to_str(peer.conn.address);
+                const msgp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.MSG, sender_id, src_addr, dst_addr, msg);
+                try msgp.transmit("RESPONSE", peer.conn.stream, SILENT);
             }
             pind += 1;
         }
@@ -111,29 +115,30 @@ fn read_incomming(
     // Handle communication request
     var protocol = ptc.protocol_from_str(recv); // parse protocol from recieved bytes
     if (!SILENT) {
-        protocol.dump("REQUEST");
+        protocol.dump("REQUEST", 0);
     }
 
+    const addr_str = cmn.address_to_str(conn.address);
     if (protocol.is_request()) {
         if (protocol.is_action(ptc.Act.COMM)) {
             const peer = peer_construct(conn, stream, protocol.id);
             try peer_pool.append(peer);
-            const resp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM, peer.id, "");
-            try resp.transmit("RESPONSE", stream);
+            const resp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM, peer.id, "server", addr_str, "");
+            try resp.transmit("RESPONSE", stream, SILENT);
         } else if (protocol.is_action(ptc.Act.COMM_END)) {
-            try peer_kill(peer_pool, protocol.id);
+            try peer_kill(peer_pool, protocol.id, protocol.src);
         } else if (protocol.is_action(ptc.Act.MSG)) {
             try message_broadcast(peer_pool, protocol.id, protocol.body);
         } else if (protocol.is_action(ptc.Act.NONE)) {
-            const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "400", "bad request");
-            try errp.transmit("RESPONSE", stream);
+            const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "400", "server", addr_str, "bad request");
+            try errp.transmit("RESPONSE", stream, SILENT);
         }
     } else if (protocol.is_response()) {
-        const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "405", "method not allowed:\n  NOTE: Server can only process REQUESTS for now");
-        try errp.transmit("RESPONSE", stream);
+        const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "405", "server", addr_str, "method not allowed:\n  NOTE: Server can only process REQUESTS for now");
+        try errp.transmit("RESPONSE", stream, SILENT);
     } else if (protocol.type == ptc.Typ.NONE) {
-        const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "400", "bad request");
-        try errp.transmit("RESPONSE", stream);
+        const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "400", "server", addr_str, "bad request");
+        try errp.transmit("RESPONSE", stream, SILENT);
     } else {
         std.log.err("unreachable code", .{});
     }

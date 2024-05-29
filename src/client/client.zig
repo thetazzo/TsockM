@@ -9,6 +9,7 @@ const LOG_LEVEL = ptc.LogLevel.SILENT;
 
 const Client = struct {
     id: []const u8,
+    username: []const u8,
     stream: net.Stream,
     comm_addr: ptc.Addr,
 
@@ -16,6 +17,7 @@ const Client = struct {
         print("------------------------------------\n", .{});
         print("Client {{\n", .{});
         print("    id: `{s}`\n", .{self.id});
+        print("    username: `{s}`\n", .{self.username});
         print("    comm_addr: `{s}`\n", .{self.comm_addr});
         print("}}\n", .{});
         print("------------------------------------\n", .{});
@@ -57,6 +59,7 @@ fn request_connection(addr: net.Address, username: []const u8) !Client {
     // construct the clint
     var c = Client{
         .id = resp.body,
+        .username = username,
         .stream = stream,
         .comm_addr = resp.dst,
     };

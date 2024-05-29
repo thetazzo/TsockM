@@ -58,9 +58,10 @@ pub const Protocol = struct {
         if (log_level == LogLevel.SILENT) return;
 
         print("====================================\n", .{});
-        print(" {s}: `{s}`                          \n", .{
+        print(" {s}: `{s}` {{{s}}}                 \n", .{
             prot_type_as_str(self.type),
             @tagName(self.action),
+            self.src,
         });
         if (log_level == LogLevel.DEV) {
             print("------------------------------------\n", .{});

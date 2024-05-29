@@ -46,6 +46,8 @@
         * [ ] `KILL_ALL` - removes all peers
         * [x] `LIST`     - prints relevant peer data
         * [ ] `EXIT`     - terminates the server the proper way
+* [ ] Have a delayed peer removal 
+    * Peer after terminating the connectioh has like 13 seconds before it is removed of something like that
 
 ## Client
 

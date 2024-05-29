@@ -217,6 +217,12 @@ fn server_core(
     print("Thread `server_core` finished\n", .{});
 }
 
+fn print_usage() void {
+    print("COMMANDS:\n", .{});
+    print("    * :list ........ list all active peers\n", .{});
+    print("    * :kill_all .... kill all active peers\n", .{});
+}
+
 fn read_cmd(
     peer_pool: *std.ArrayList(Peer),
 ) !void {
@@ -237,9 +243,13 @@ fn read_cmd(
                         peer_dump(peer);
                     }
                 }
+            } else if (mem.eql(u8, user_input, ":kill_all")) {
+                std.log.warn(":kill_all not implemented", .{});
+            } else if (mem.eql(u8, user_input, ":help")) {
+                print_usage();
             } else {
                 print("Unknown command: `{s}`\n", .{user_input});
-                //print_usage();
+                print_usage();
             }
         } else {
             print("Unreachable, maybe?\n", .{});

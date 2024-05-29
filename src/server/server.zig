@@ -11,19 +11,30 @@ const PEER_ID = []const u8;
 
 const Peer = struct {
     conn: net.Server.Connection,
-    stream: net.Stream,
     id: PEER_ID,
-    alive: bool,
-    pub fn init(conn: net.Server.Connection, stream: net.Stream, id: PEER_ID) Peer {
+    pub fn init(conn: net.Server.Connection, id: PEER_ID) Peer {
         // TODO: check for peer.id collisions
         return Peer{
             .conn = conn,
             .id = id,
-            .alive = true,
-            .stream = stream,
         };
     }
+    pub fn stream(self: @This()) net.Stream {
+        return self.conn.stream;
+    }
+    pub fn comm_address(self: @This()) net.Address {
+        return self.conn.address;
+    }
 };
+
+fn peer_dump(p: Peer) void {
+    print("------------------------------------\n", .{});
+    print("Peer {{\n", .{});
+    print("    id: `{s}`\n", .{p.id});
+    print("    comm_addr: `{any}`\n", .{p.comm_address()});
+    print("}}\n", .{});
+    print("------------------------------------\n", .{});
+}
 
 fn find_peer_ref(
     peer_pool: *std.ArrayList(Peer),
@@ -42,7 +53,6 @@ fn find_peer_ref(
 
 fn peer_construct(
     conn: net.Server.Connection,
-    stream: net.Stream,
     username: []const u8,
 ) Peer {
     var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
@@ -56,7 +66,7 @@ fn peer_construct(
     //const allocator = std.heap.page_allocator;
     //const id = std.fmt.allocPrint(allocator, "{s}", .{out}) catch "format failed";
     _ = username;
-    return Peer.init(conn, stream, peer_id);
+    return Peer.init(conn, peer_id);
 }
 
 fn peer_kill(
@@ -77,7 +87,7 @@ fn peer_kill(
             "OK",
         );
         endp.dump(LOG_LEVEL);
-        ptc.prot_transmit(pf.peer.stream, endp);
+        ptc.prot_transmit(pf.peer.stream(), endp);
         _ = peer_pool.orderedRemove(pf.i);
         print("Remaining peers {d}\n", .{peer_pool.items.len});
     }
@@ -100,9 +110,9 @@ fn message_broadcast(
     const peer_ref = find_peer_ref(peer_pool, sender_id);
     if (peer_ref) |pf| {
         for (peer_pool.items[0..]) |peer| {
-            if (pf.i != pind and peer.alive) {
-                const src_addr = cmn.address_to_str(pf.peer.conn.address);
-                const dst_addr = cmn.address_to_str(peer.conn.address);
+            if (pf.i != pind) {
+                const src_addr = cmn.address_to_str(pf.peer.comm_address());
+                const dst_addr = cmn.address_to_str(peer.comm_address());
                 const msgp = ptc.Protocol.init(
                     ptc.Typ.RES,
                     ptc.Act.MSG,
@@ -113,7 +123,7 @@ fn message_broadcast(
                     msg,
                 );
                 msgp.dump(LOG_LEVEL);
-                ptc.prot_transmit(peer.conn.stream, msgp);
+                ptc.prot_transmit(peer.stream(), msgp);
             }
             pind += 1;
         }
@@ -137,7 +147,7 @@ fn read_incomming(
     const addr_str = cmn.address_to_str(conn.address);
     if (protocol.is_request()) {
         if (protocol.is_action(ptc.Act.COMM)) {
-            const peer = peer_construct(conn, stream, protocol.sender_id);
+            const peer = peer_construct(conn, protocol.sender_id);
             try peer_pool.append(peer);
             const resp = ptc.Protocol.init(
                 ptc.Typ.RES,

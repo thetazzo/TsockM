@@ -160,17 +160,21 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
 
 pub fn start() !void {
     print("Client starated\n", .{});
+    print("Enter your username: ", .{});
     const addr = try net.Address.resolveIp("127.0.0.1", 6969);
-    // communication request
-    var client = try request_connection(addr);
-    defer print("Client stopped\n", .{});
-
-    {
-        const t1 = try std.Thread.spawn(.{}, listen_for_comms, .{&client});
-        defer t1.join();
-        errdefer t1.join();
-        const t2 = try std.Thread.spawn(.{}, read_cmd, .{ addr, &client });
-        defer t2.join();
-        errdefer t2.join();
+    var buf: [256]u8 = undefined;
+    const stdin = std.io.getStdIn().reader();
+    if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
+        // communication request
+        var client = try request_connection(addr, user_input);
+        defer print("Client stopped\n", .{});
+        {
+            const t1 = try std.Thread.spawn(.{}, listen_for_comms, .{ addr, &client });
+            defer t1.join();
+            errdefer t1.join();
+            const t2 = try std.Thread.spawn(.{}, read_cmd, .{ addr, &client });
+            defer t2.join();
+            errdefer t2.join();
+        }
     }
 }

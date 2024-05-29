@@ -258,8 +258,10 @@ pub fn start() !void {
     var peer_pool = std.ArrayList(Peer).init(allocator);
     defer peer_pool.deinit();
 
-    while (true) {
-        const conn = try server.accept();
-        try read_incomming(&peer_pool, conn);
+    {
+        const t1 = try std.Thread.spawn(.{}, server_core, .{ &server, &peer_pool });
+        const t2 = try std.Thread.spawn(.{}, read_cmd, .{&peer_pool});
+        t1.join();
+        t2.join();
     }
 }

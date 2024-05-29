@@ -53,13 +53,13 @@
 
 * [x] Protocol should also contain `src` and `dest` IP addresses, socket form
 * [ ] Send periodic peer health check protocol ~ look for dead peers and remove them from the pool
-* [ ] Executable commands on the server application
-        * [ ] `KILL <peer_id>` - removes a specific peer
-        * [ ] `KILL_ALL`       - removes all peers
+* Executable commands on the server application
+        * [x] `KILL <peer_id>` - removes a specific peer
+        * [x] `KILL_ALL`       - removes all peers
         * [x] `LIST`           - prints relevant peer data
-        * [ ] `EXIT`           - terminates the server the proper way
 * [ ] Have a delayed peer removal 
     * Peer after terminating the connectioh has like 13 seconds before it is removed of something like that
+* [ ] Peer unique hash as ID
 
 ## Client
 

@@ -25,6 +25,7 @@ const Client = struct {
 fn print_usage() void {
     print("COMMANDS:\n", .{});
     print("    * :msg <message> .... boradcast the message to all users\n", .{});
+    print("    * :gp <peer_id> ..... request peer data from server\n", .{});
     print("    * :exit ............. terminate the program\n", .{});
 }
 
@@ -121,6 +122,31 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
                 const msgp = ptc.Protocol.init(
                     ptc.Typ.REQ,
                     ptc.Act.MSG,
+                    ptc.StatusCode.OK,
+                    client.id,
+                    "client",
+                    addr_str,
+                    val,
+                );
+
+                // send message protocol to server
+                msgp.dump(LOG_LEVEL);
+                ptc.prot_transmit(msg_stream, msgp);
+            } else if (mem.startsWith(u8, user_input, ":gp")) {
+                // Messaging command
+                // request a tcp socket for sending a message
+                const msg_stream = try net.tcpConnectToAddress(addr);
+                defer msg_stream.close();
+
+                // parse message from cmd
+                var splits = mem.split(u8, user_input, ":gp");
+                _ = splits.next().?; // the `:msg` part
+                const val = mem.trimLeft(u8, splits.next().?, " \n");
+
+                // construct message protocol
+                const msgp = ptc.Protocol.init(
+                    ptc.Typ.REQ,
+                    ptc.Act.GET_PEER,
                     ptc.StatusCode.OK,
                     client.id,
                     "client",

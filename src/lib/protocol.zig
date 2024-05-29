@@ -9,6 +9,17 @@ pub const Typ = enum {
     NONE,
 };
 
+fn prot_type_as_str(typ: Typ) []const u8 {
+    switch (typ) {
+        Typ.REQ => return "request",
+        Typ.RES => return "response",
+        Typ.ERR => return "error",
+        Typ.NONE => return "none",
+    }
+    std.log.err("unreachable");
+    std.os.exit(1);
+}
+
 pub const Act = enum {
     COMM,
     COMM_END,
@@ -43,11 +54,14 @@ pub const Protocol = struct {
             .body = bdy,
         };
     }
-    pub fn dump(self: @This(), loc: []const u8, log_level: LogLevel) void {
+    pub fn dump(self: @This(), log_level: LogLevel) void {
         if (log_level == LogLevel.SILENT) return;
 
         print("====================================\n", .{});
-        print(" {s}: `{s}`                          \n", .{ loc, @tagName(self.action) });
+        print(" {s}: `{s}`                          \n", .{
+            prot_type_as_str(self.type),
+            @tagName(self.action),
+        });
         if (log_level == LogLevel.DEV) {
             print("------------------------------------\n", .{});
             print(" Protocol \n", .{});

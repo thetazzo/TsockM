@@ -68,7 +68,8 @@ fn peer_kill(
     if (peer_ref) |pf| {
         //const addr_str = cmn.address_to_str(pf.peer.conn.address);
         const endp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM_END, "200", src_addr, "client", "OK");
-        _ = ptc.transmit("RESPONSE", peer_pool.items[pf.i].stream, endp, LOG_LEVEL);
+        endp.dump(LOG_LEVEL);
+        endp.transmit(pf.peer.stream);
         _ = peer_pool.orderedRemove(pf.i);
         print("Remaining peers {d}\n", .{peer_pool.items.len});
     }
@@ -95,7 +96,8 @@ fn message_broadcast(
                 const src_addr = cmn.address_to_str(pf.peer.conn.address);
                 const dst_addr = cmn.address_to_str(peer.conn.address);
                 const msgp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.MSG, sender_id, src_addr, dst_addr, msg);
-                _ = ptc.transmit("RESPONSE", peer.conn.stream, msgp, LOG_LEVEL);
+                msgp.dump(LOG_LEVEL);
+                msgp.transmit(peer.conn.stream);
             }
             pind += 1;
         }
@@ -114,7 +116,7 @@ fn read_incomming(
 
     // Handle communication request
     var protocol = ptc.protocol_from_str(recv); // parse protocol from recieved bytes
-    protocol.dump("REQUEST", LOG_LEVEL);
+    protocol.dump(LOG_LEVEL);
 
     const addr_str = cmn.address_to_str(conn.address);
     if (protocol.is_request()) {
@@ -122,21 +124,46 @@ fn read_incomming(
             const peer = peer_construct(conn, stream, protocol.id);
             try peer_pool.append(peer);
             const resp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM, peer.id, "server", addr_str, "");
-            ptc.transmit("RESPONSE", stream, resp, LOG_LEVEL).dump("RESPONSE", LOG_LEVEL);
+            resp.dump(LOG_LEVEL);
+            resp.transmit(stream);
         } else if (protocol.is_action(ptc.Act.COMM_END)) {
             try peer_kill(peer_pool, protocol.id, protocol.src);
         } else if (protocol.is_action(ptc.Act.MSG)) {
             try message_broadcast(peer_pool, protocol.id, protocol.body);
         } else if (protocol.is_action(ptc.Act.NONE)) {
-            const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "400", "server", addr_str, "bad request");
-            _ = ptc.transmit("RESPONSE", stream, errp, LOG_LEVEL);
+            const errp = ptc.Protocol.init(
+                ptc.Typ.ERR,
+                protocol.action,
+                "400",
+                "server",
+                addr_str,
+                "bad request",
+            );
+            errp.dump(LOG_LEVEL);
+            errp.transmit(stream);
         }
     } else if (protocol.is_response()) {
-        const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "405", "server", addr_str, "method not allowed:\n  NOTE: Server can only process REQUESTS for now");
-        _ = ptc.transmit("RESPONSE", stream, errp, LOG_LEVEL);
+        const errp = ptc.Protocol.init(
+            ptc.Typ.ERR,
+            protocol.action,
+            "405",
+            "server",
+            addr_str,
+            "method not allowed:\n  NOTE: Server can only process REQUESTS for now",
+        );
+        errp.dump(LOG_LEVEL);
+        errp.transmit(stream);
     } else if (protocol.type == ptc.Typ.NONE) {
-        const errp = ptc.Protocol.init(ptc.Typ.ERR, protocol.action, "400", "server", addr_str, "bad request");
-        _ = ptc.transmit("RESPONSE", stream, errp, LOG_LEVEL);
+        const errp = ptc.Protocol.init(
+            ptc.Typ.ERR,
+            protocol.action,
+            "400",
+            "server",
+            addr_str,
+            "bad request",
+        );
+        errp.dump(LOG_LEVEL);
+        errp.transmit(stream);
     } else {
         std.log.err("unreachable code", .{});
     }

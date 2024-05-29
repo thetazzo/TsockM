@@ -65,7 +65,9 @@ fn request_connection(addr: net.Address, username: []const u8) !Client {
     return c;
 }
 
-fn listen_for_comms(client: *Client) !void {
+fn listen_for_comms(addr: net.Address, client: *Client) !void {
+    const addr_str = cmn.address_to_str(addr);
+    _ = addr_str;
     while (true) {
         var buf: [1054]u8 = undefined;
         const q = client.stream.read(&buf) catch 1;
@@ -80,7 +82,6 @@ fn listen_for_comms(client: *Client) !void {
             continue;
         }
 
-        print("{s}\n", .{response});
         const resp = ptc.protocol_from_str(response);
         resp.dump(LOG_LEVEL);
         if (resp.is_response()) {
@@ -89,6 +90,15 @@ fn listen_for_comms(client: *Client) !void {
                     client.stream.close();
                     break;
                 }
+            } else if (resp.is_action(ptc.Act.GET_PEER)) {
+                if (resp.status_code == ptc.StatusCode.OK) {
+                    const peer_name = resp.body;
+                    print("Peer name is: {s}\n", .{peer_name});
+                }
+            } else if (resp.is_action(ptc.Act.MSG)) {
+                print("{s}\n", .{response});
+            } else {
+                print("{s}\n", .{response});
             }
         } else if (resp.type == ptc.Typ.ERR) {
             //client.stream.close();

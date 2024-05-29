@@ -90,8 +90,7 @@ pub const Protocol = struct {
     }
 };
 
-pub fn transmit(loc: []const u8, stream: std.net.Stream, p: Protocol, log_level: LogLevel) Protocol {
-    p.dump(loc, log_level);
+pub fn transmit(stream: std.net.Stream, p: Protocol) Protocol {
     const werr = stream.write(p.as_str()) catch 1;
     if (werr == 1) {
         std.log.warn("stream is closed\n", .{});

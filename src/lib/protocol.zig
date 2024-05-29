@@ -88,15 +88,13 @@ pub const Protocol = struct {
     pub fn is_action(self: @This(), act: Act) bool {
         return self.action == act;
     }
-};
-
-pub fn transmit(stream: std.net.Stream, p: Protocol) Protocol {
-    const werr = stream.write(p.as_str()) catch 1;
-    if (werr == 1) {
-        std.log.warn("stream is closed\n", .{});
+    pub fn transmit(self: @This(), stream: std.net.Stream) void {
+        const werr = stream.write(self.as_str()) catch 1;
+        if (werr == 1) {
+            std.log.warn("stream is closed\n", .{});
+        }
     }
-    return p;
-}
+};
 
 pub fn protocol_from_str(str: []const u8) Protocol {
     var spl = mem.split(u8, str, "::");

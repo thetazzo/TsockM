@@ -22,7 +22,7 @@
 * Communication between *server* and *client* is achived through the use of `TsockM.Protocol` 
 * Protocol definition:
 ```
-[type]::[action]::[retcode]::[sender_id]::[src]::[dst]::[body]
+[type]::[action]::[status_code]::[sender_id]::[src]::[dst]::[body]
 ```
 * `[type]` defines the protocol type:
     * `REQ`: request protocol
@@ -32,7 +32,7 @@
     * `COMM`: establishing a communication socket
     * `COMM_END`: terminate the communication socket
     * `MSG`: message handling 
-* `[retcode]` defines the return code of the program (based on HTTP 2.0 codes)
+* `[status_code]` defines the status code of the program (based on HTTP status codes)
     * `OK`: 200
     * `BAD_REQUEST`: 400
     * `NOT_FOUND`: 404

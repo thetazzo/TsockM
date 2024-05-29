@@ -71,7 +71,7 @@ fn peer_kill(ref_id: usize, peer_pool: *std.ArrayList(Peer)) !void {
     const endp = ptc.Protocol.init(
         ptc.Typ.RES,
         ptc.Act.COMM_END,
-        ptc.RetCode.OK,
+        ptc.StatusCode.OK,
         "server",
         "server",
         "client",
@@ -105,7 +105,7 @@ fn message_broadcast(
                 const msgp = ptc.Protocol.init(
                     ptc.Typ.RES,
                     ptc.Act.MSG,
-                    ptc.RetCode.OK,
+                    ptc.StatusCode.OK,
                     sender_id,
                     src_addr,
                     dst_addr,
@@ -141,7 +141,7 @@ fn read_incomming(
             const resp = ptc.Protocol.init(
                 ptc.Typ.RES,
                 ptc.Act.COMM,
-                ptc.RetCode.OK,
+                ptc.StatusCode.OK,
                 "server",
                 "server",
                 addr_str,
@@ -160,11 +160,11 @@ fn read_incomming(
             const errp = ptc.Protocol.init(
                 ptc.Typ.ERR,
                 protocol.action,
-                ptc.RetCode.BAD_REQUEST,
+                ptc.StatusCode.BAD_REQUEST,
                 "server",
                 "server",
                 addr_str,
-                @tagName(ptc.RetCode.BAD_REQUEST),
+                @tagName(ptc.StatusCode.BAD_REQUEST),
             );
             errp.dump(LOG_LEVEL);
             ptc.prot_transmit(stream, errp);
@@ -173,7 +173,7 @@ fn read_incomming(
         const errp = ptc.Protocol.init(
             ptc.Typ.ERR,
             protocol.action,
-            ptc.RetCode.METHOD_NOT_ALLOWED,
+            ptc.StatusCode.METHOD_NOT_ALLOWED,
             "server",
             "server",
             addr_str,
@@ -185,7 +185,7 @@ fn read_incomming(
         const errp = ptc.Protocol.init(
             ptc.Typ.ERR,
             protocol.action,
-            ptc.RetCode.BAD_REQUEST,
+            ptc.StatusCode.BAD_REQUEST,
             "server",
             "server",
             addr_str,
@@ -245,7 +245,7 @@ fn read_cmd(
                         const endp = ptc.Protocol.init(
                             ptc.Typ.RES,
                             ptc.Act.COMM_END,
-                            ptc.RetCode.OK,
+                            ptc.StatusCode.OK,
                             "server",
                             "server",
                             "client",

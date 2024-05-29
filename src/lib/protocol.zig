@@ -115,8 +115,6 @@ pub const Protocol = struct {
         var buf: [512]u8 = undefined;
         var fba = std.heap.FixedBufferAllocator.init(&buf);
         var string = std.ArrayList(u8).init(fba.allocator());
-        // Consider using the json fomrat instead
-        // try std.json.stringify(x, .{}, string.writer());
         _ = string.appendSlice(@tagName(self.type)) catch "OutOfMemory";
         _ = string.appendSlice("::") catch "OutOfMemory";
         _ = string.appendSlice(@tagName(self.action)) catch "OutOfMemory";
@@ -141,13 +139,14 @@ pub const Protocol = struct {
     pub fn is_action(self: @This(), act: Act) bool {
         return self.action == act;
     }
-    pub fn transmit(self: @This(), stream: std.net.Stream) void {
-        const werr = stream.write(self.as_str()) catch 1;
-        if (werr == 1) {
-            std.log.warn("stream is closed\n", .{});
-        }
-    }
 };
+
+pub fn prot_transmit(stream: std.net.Stream, prot: Protocol) void {
+    const werr = stream.write(prot.as_str()) catch 1;
+    if (werr == 1) {
+        std.log.warn("stream is closed\n", .{});
+    }
+}
 
 pub fn protocol_from_str(str: []const u8) Protocol {
     var spl = mem.split(u8, str, "::");

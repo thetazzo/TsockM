@@ -77,7 +77,7 @@ fn peer_kill(
             "OK",
         );
         endp.dump(LOG_LEVEL);
-        endp.transmit(pf.peer.stream);
+        ptc.prot_transmit(pf.peer.stream, endp);
         _ = peer_pool.orderedRemove(pf.i);
         print("Remaining peers {d}\n", .{peer_pool.items.len});
     }
@@ -113,7 +113,7 @@ fn message_broadcast(
                     msg,
                 );
                 msgp.dump(LOG_LEVEL);
-                msgp.transmit(peer.conn.stream);
+                ptc.prot_transmit(peer.conn.stream, msgp);
             }
             pind += 1;
         }
@@ -149,7 +149,7 @@ fn read_incomming(
                 peer.id,
             );
             resp.dump(LOG_LEVEL);
-            resp.transmit(stream);
+            ptc.prot_transmit(stream, resp);
         } else if (protocol.is_action(ptc.Act.COMM_END)) {
             try peer_kill(peer_pool, protocol.sender_id, protocol.src);
         } else if (protocol.is_action(ptc.Act.MSG)) {
@@ -165,7 +165,7 @@ fn read_incomming(
                 @tagName(ptc.RetCode.BAD_REQUEST),
             );
             errp.dump(LOG_LEVEL);
-            errp.transmit(stream);
+            ptc.prot_transmit(stream, errp);
         }
     } else if (protocol.is_response()) {
         const errp = ptc.Protocol.init(
@@ -178,7 +178,7 @@ fn read_incomming(
             "method not allowed:\n  NOTE: Server can only process REQUESTS for now",
         );
         errp.dump(LOG_LEVEL);
-        errp.transmit(stream);
+        ptc.prot_transmit(stream, errp);
     } else if (protocol.type == ptc.Typ.NONE) {
         const errp = ptc.Protocol.init(
             ptc.Typ.ERR,
@@ -190,7 +190,7 @@ fn read_incomming(
             "bad request",
         );
         errp.dump(LOG_LEVEL);
-        errp.transmit(stream);
+        ptc.prot_transmit(stream, errp);
     } else {
         std.log.err("unreachable code", .{});
     }

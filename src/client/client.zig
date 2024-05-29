@@ -42,7 +42,7 @@ fn request_connection(addr: net.Address) !Client {
         "",
     );
     reqp.dump(LOG_LEVEL);
-    reqp.transmit(stream);
+    ptc.prot_transmit(stream, reqp);
 
     // collect response
     var buf: [1024]u8 = undefined;
@@ -129,7 +129,7 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
 
                 // send message protocol to server
                 msgp.dump(LOG_LEVEL);
-                msgp.transmit(msg_stream);
+                ptc.prot_transmit(msg_stream, msgp);
             } else if (mem.startsWith(u8, user_input, ":exit")) {
                 const msg_stream = try net.tcpConnectToAddress(addr);
                 defer msg_stream.close();
@@ -143,7 +143,7 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
                     "",
                 );
                 endp.dump(LOG_LEVEL);
-                endp.transmit(msg_stream);
+                ptc.prot_transmit(msg_stream, endp);
                 break;
             } else if (mem.startsWith(u8, user_input, ":help")) {
                 print_usage();

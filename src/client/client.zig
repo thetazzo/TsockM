@@ -9,6 +9,7 @@ const LOG_LEVEL = ptc.LogLevel.SILENT;
 
 const Client = struct {
     id: []const u8,
+    username: []const u8,
     stream: net.Stream,
     comm_addr: ptc.Addr,
 
@@ -16,6 +17,7 @@ const Client = struct {
         print("------------------------------------\n", .{});
         print("Client {{\n", .{});
         print("    id: `{s}`\n", .{self.id});
+        print("    username: `{s}`\n", .{self.username});
         print("    comm_addr: `{s}`\n", .{self.comm_addr});
         print("}}\n", .{});
         print("------------------------------------\n", .{});
@@ -57,6 +59,7 @@ fn request_connection(addr: net.Address, username: []const u8) !Client {
     // construct the clint
     var c = Client{
         .id = resp.body,
+        .username = username,
         .stream = stream,
         .comm_addr = resp.dst,
     };
@@ -67,7 +70,6 @@ fn request_connection(addr: net.Address, username: []const u8) !Client {
 
 fn listen_for_comms(addr: net.Address, client: *Client) !void {
     const addr_str = cmn.address_to_str(addr);
-    _ = addr_str;
     while (true) {
         var buf: [1054]u8 = undefined;
         const q = client.stream.read(&buf) catch 1;
@@ -96,7 +98,36 @@ fn listen_for_comms(addr: net.Address, client: *Client) !void {
                     print("Peer name is: {s}\n", .{peer_name});
                 }
             } else if (resp.is_action(ptc.Act.MSG)) {
-                print("{s}\n", .{response});
+                // Messaging command
+                // request a tcp socket for sending a message
+                const msg_stream = try net.tcpConnectToAddress(addr);
+                defer msg_stream.close();
+
+                // construct message protocol
+                const msgp = ptc.Protocol.init(
+                    ptc.Typ.REQ,
+                    ptc.Act.GET_PEER,
+                    ptc.StatusCode.OK,
+                    client.id,
+                    "client",
+                    addr_str,
+                    resp.sender_id,
+                );
+                // send message protocol to server
+                msgp.dump(LOG_LEVEL);
+                ptc.prot_transmit(msg_stream, msgp);
+                var gpbuff: [1054]u8 = undefined;
+                const qq = client.stream.read(&gpbuff) catch 1;
+                const gpresp = mem.sliceTo(&gpbuff, 170);
+
+                if (qq == 1) {
+                    std.log.warn("Terminated listener\n", .{});
+                    return;
+                }
+                const np = ptc.protocol_from_str(gpresp);
+                np.dump(LOG_LEVEL);
+
+                print("{s}: {s}\n", .{ np.body, resp.body });
             } else {
                 print("{s}\n", .{response});
             }

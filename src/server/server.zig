@@ -161,6 +161,27 @@ fn read_incomming(
             }
         } else if (protocol.is_action(ptc.Act.MSG)) {
             try message_broadcast(peer_pool, protocol.sender_id, protocol.body);
+        } else if (protocol.is_action(ptc.Act.GET_PEER)) {
+            // TODO: make a peer_find_bridge_ref
+            //      - similar to peer_find_ref just that it constructs a structure of sender peer and search peer
+            const sref = peer_find_ref(peer_pool, protocol.sender_id);
+            const ref = peer_find_ref(peer_pool, protocol.body);
+            if (sref) |sr| {
+                if (ref) |pr| {
+                    const dst_addr = cmn.address_to_str(sr.peer.comm_address());
+                    const resp = ptc.Protocol.init(
+                        ptc.Typ.RES, // type
+                        ptc.Act.GET_PEER, // action
+                        ptc.StatusCode.OK, // status code
+                        "server", // sender id
+                        "server", // src
+                        dst_addr, // dst
+                        pr.peer.username, // body
+                    );
+                    resp.dump(LOG_LEVEL);
+                    ptc.prot_transmit(sr.peer.stream(), resp);
+                }
+            }
         } else if (protocol.is_action(ptc.Act.NONE)) {
             const errp = ptc.Protocol.init(
                 ptc.Typ.ERR,

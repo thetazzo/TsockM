@@ -309,12 +309,12 @@ pub fn start() !void {
     print("Server running on `{s}`\n", .{"127.0.0.1:6969"});
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const gpa_allocator = gpa.allocator();
 
-    var messages = std.ArrayList(u8).init(allocator);
-    defer messages.deinit();
+    //var messages = std.ArrayList(u8).init(gpa_allocator);
+    //defer messages.deinit();
 
-    var peer_pool = std.ArrayList(Peer).init(allocator);
+    var peer_pool = std.ArrayList(Peer).init(gpa_allocator);
     defer peer_pool.deinit();
 
     {

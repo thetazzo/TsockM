@@ -22,6 +22,7 @@ pub const Act = enum {
     COMM,
     COMM_END,
     MSG,
+    GET_PEER,
     NONE,
 };
 

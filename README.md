@@ -43,9 +43,9 @@
 * [x] Protocol should also contain `src` and `dest` IP addresses, socket form
 * [ ] Send periodic peer health check protocol ~ look for dead peers and remove them from the pool
 * [ ] Executable commands on the server application
-        * `KILL_ALL` - removes all peers
-        * `LIST`     - prints relevant peer data
-        * `EXIT`     - terminates the server the proper way
+        * [ ] `KILL_ALL` - removes all peers
+        * [x] `LIST`     - prints relevant peer data
+        * [ ] `EXIT`     - terminates the server the proper way
 
 ## Client
 

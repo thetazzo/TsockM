@@ -217,8 +217,9 @@ fn server_core(
     print("Thread `server_core` finished\n", .{});
 }
 
-fn read_cmd(peer_pool: *std.ArrayList(Peer)) !void {
-    _ = peer_pool;
+fn read_cmd(
+    peer_pool: *std.ArrayList(Peer),
+) !void {
     while (true) {
         // read for command
         var buf: [256]u8 = undefined;
@@ -226,10 +227,16 @@ fn read_cmd(peer_pool: *std.ArrayList(Peer)) !void {
         if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
             // Handle different commands
             if (mem.startsWith(u8, user_input, ":exit")) {
-                print("Exiting!\n", .{});
-                break;
-            } else if (mem.startsWith(u8, user_input, ":help")) {
-                //print_usage();
+                std.log.warn(":exit not implemented", .{});
+            } else if (mem.startsWith(u8, user_input, ":list")) {
+                if (peer_pool.items.len == 0) {
+                    print("Peer list: []\n", .{});
+                } else {
+                    print("Peer list:\n", .{});
+                    for (peer_pool.items[0..]) |peer| {
+                        peer_dump(peer);
+                    }
+                }
             } else {
                 print("Unknown command: `{s}`\n", .{user_input});
                 //print_usage();

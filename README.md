@@ -11,7 +11,7 @@
 * Communication between *server* and *client* is achived through the use of `TsockM.Protocol` 
 * Protocol definition:
 ```
-[type]::[action]::[id]::[src]::[dst]::[body]
+[type]::[action]::[retcode]::[sender_id]::[src]::[dst]::[body]
 ```
 * `[type]` defines the protocol type:
     * `REQ`: request protocol
@@ -21,7 +21,13 @@
     * `COMM`: establishing a communication socket
     * `COMM_END`: terminate the communication socket
     * `MSG`: message handling 
-* `[id]` defines some unsigned integer value
+* `[retcode]` defines the return code of the program (based on HTTP 2.0 codes)
+    * `OK`: 200
+    * `BAD_REQUEST`: 400
+    * `NOT_FOUND`: 404
+    * `METHOD_NOT_ALLOWED`: 405,
+    * `BAD_GATEWAY`: 502,
+* `[sender_id]` defines some unsigned integer value
     * Used when communicating the `sender id` value
     * Used when communicating the `error code` of an *error protocol*
 * `[src]` defines the source of the protocol

@@ -59,8 +59,17 @@
         * [x] `LIST`           - prints relevant peer data
 * [ ] Have a delayed peer removal 
     * Peer after terminating the connectioh has like 13 seconds before it is removed of something like that
-* [ ] Peer unique hash as ID
+* [ ] Peer unique hash as ID 
+* [ ] `peer_bridge_ref`
+    * function that constructs a structre containing the sender peer and the peer the sender is trying to find
+* [ ] when server sends a response set the source of the response to server ip
 
 ## Client
 
 * Application given to the user for chatting
+
+---
+
+# References
+
+* SQIDS: https://github.com/sqids/sqids-zig

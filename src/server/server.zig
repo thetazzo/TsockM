@@ -1,6 +1,7 @@
 const std = @import("std");
 const ptc = @import("ptc");
 const cmn = @import("cmn");
+const sqids = @import("sqids");
 const net = std.net;
 const mem = std.mem;
 const print = std.debug.print;
@@ -8,15 +9,17 @@ const print = std.debug.print;
 const LOG_LEVEL = ptc.LogLevel.DEV;
 
 const PEER_ID = []const u8;
+const str_allocator = std.heap.page_allocator;
 
 const Peer = struct {
     conn: net.Server.Connection,
     id: PEER_ID,
+    username: PEER_ID = "",
     pub fn init(conn: net.Server.Connection, id: PEER_ID) Peer {
         // TODO: check for peer.id collisions
         return Peer{
-            .conn = conn,
             .id = id,
+            .conn = conn,
         };
     }
     pub fn stream(self: @This()) net.Stream {
@@ -31,6 +34,7 @@ fn peer_dump(p: Peer) void {
     print("------------------------------------\n", .{});
     print("Peer {{\n", .{});
     print("    id: `{s}`\n", .{p.id});
+    print("    un: `{s}`\n", .{p.username});
     print("    comm_addr: `{any}`\n", .{p.comm_address()});
     print("}}\n", .{});
     print("------------------------------------\n", .{});
@@ -50,20 +54,17 @@ fn peer_find_ref(peer_pool: *std.ArrayList(Peer), id: PEER_ID) ?struct { peer: P
 
 fn peer_construct(
     conn: net.Server.Connection,
-    username: []const u8,
 ) Peer {
     var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
-    const peer_id = cmn.usize_to_str(rand.random().int(u8));
-    //var block = [_]u8{0} ** std.crypto.hash.Md5.block_length;
-    //var out: [std.crypto.hash.Md5.digest_length]u8 = undefined;
-    //var h = std.crypto.hash.Md5.init(.{});
-    //h.update(&block);
-    //h.update(username);
-    //h.final(out[0..]);
-    //const allocator = std.heap.page_allocator;
-    //const id = std.fmt.allocPrint(allocator, "{s}", .{out}) catch "format failed";
-    _ = username;
-    return Peer.init(conn, peer_id);
+    const s = sqids.Sqids.init(std.heap.page_allocator, .{ .min_length = 10 }) catch |err| {
+        std.log.warn("{any}", .{err});
+        std.posix.exit(1);
+    };
+    const id = s.encode(&.{ rand.random().int(u64), rand.random().int(u64), rand.random().int(u64) }) catch |err| {
+        std.log.warn("{any}", .{err});
+        std.posix.exit(1);
+    };
+    return Peer.init(conn, id);
 }
 
 fn peer_kill(ref_id: usize, peer_pool: *std.ArrayList(Peer)) !void {
@@ -136,7 +137,11 @@ fn read_incomming(
     const addr_str = cmn.address_to_str(conn.address);
     if (protocol.is_request()) {
         if (protocol.is_action(ptc.Act.COMM)) {
-            const peer = peer_construct(conn, protocol.sender_id);
+            var peer = peer_construct(conn);
+            // DON'T EVER FORGET TO ALLOCATE MEMORY !!!!!!
+            const aun = std.fmt.allocPrint(str_allocator, "{s}", .{protocol.body}) catch "format failed";
+            peer.username = aun;
+            peer_dump(peer);
             try peer_pool.append(peer);
             const resp = ptc.Protocol.init(
                 ptc.Typ.RES,
@@ -156,6 +161,27 @@ fn read_incomming(
             }
         } else if (protocol.is_action(ptc.Act.MSG)) {
             try message_broadcast(peer_pool, protocol.sender_id, protocol.body);
+        } else if (protocol.is_action(ptc.Act.GET_PEER)) {
+            // TODO: make a peer_find_bridge_ref
+            //      - similar to peer_find_ref just that it constructs a structure of sender peer and search peer
+            const sref = peer_find_ref(peer_pool, protocol.sender_id);
+            const ref = peer_find_ref(peer_pool, protocol.body);
+            if (sref) |sr| {
+                if (ref) |pr| {
+                    const dst_addr = cmn.address_to_str(sr.peer.comm_address());
+                    const resp = ptc.Protocol.init(
+                        ptc.Typ.RES, // type
+                        ptc.Act.GET_PEER, // action
+                        ptc.StatusCode.OK, // status code
+                        "server", // sender id
+                        "server", // src
+                        dst_addr, // dst
+                        pr.peer.username, // body
+                    );
+                    resp.dump(LOG_LEVEL);
+                    ptc.prot_transmit(sr.peer.stream(), resp);
+                }
+            }
         } else if (protocol.is_action(ptc.Act.NONE)) {
             const errp = ptc.Protocol.init(
                 ptc.Typ.ERR,
@@ -283,12 +309,12 @@ pub fn start() !void {
     print("Server running on `{s}`\n", .{"127.0.0.1:6969"});
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const gpa_allocator = gpa.allocator();
 
-    var messages = std.ArrayList(u8).init(allocator);
-    defer messages.deinit();
+    //var messages = std.ArrayList(u8).init(gpa_allocator);
+    //defer messages.deinit();
 
-    var peer_pool = std.ArrayList(Peer).init(allocator);
+    var peer_pool = std.ArrayList(Peer).init(gpa_allocator);
     defer peer_pool.deinit();
 
     {

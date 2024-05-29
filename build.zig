@@ -1,6 +1,8 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
+    const sqids_dep = b.dependency("sqids", .{});
+
     const target = b.standardTargetOptions(.{});
 
     const optimize = b.standardOptimizeOption(.{});
@@ -11,6 +13,7 @@ pub fn build(b: *std.Build) void {
     const protocol_mod = b.addModule("ptc", .{
         .root_source_file = b.path("src/lib/protocol.zig"),
     });
+    const sqids_mod = sqids_dep.module("sqids");
 
     const server_exe = b.addExecutable(.{
         .name = "tsockm-server",
@@ -20,6 +23,7 @@ pub fn build(b: *std.Build) void {
     });
     server_exe.root_module.addImport("ptc", protocol_mod);
     server_exe.root_module.addImport("cmn", common_mod);
+    server_exe.root_module.addImport("sqids", sqids_mod);
 
     b.installArtifact(server_exe);
     const run_server_exe = b.addRunArtifact(server_exe);

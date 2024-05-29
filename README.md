@@ -40,7 +40,7 @@
 
 ### TODO
 
-* [ ] Protocol should also contain `src` and `dest` IP addresses, socket form
+* [x] Protocol should also contain `src` and `dest` IP addresses, socket form
 * [ ] Send periodic peer health check protocol ~ look for dead peers and remove them from the pool
 * [ ] Executable commands on the server application
         * `KILL_ALL` - removes all peers

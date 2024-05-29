@@ -101,13 +101,13 @@ pub const Protocol = struct {
         if (log_level == LogLevel.DEV) {
             print("------------------------------------\n", .{});
             print(" Protocol \n", .{});
-            print("     type: `{s}`\n", .{@tagName(self.type)});
-            print("     action: `{s}`\n", .{@tagName(self.action)});
-            print("     ret_code: `{s}`\n", .{retcode_as_str(self.ret_code)});
-            print("     sender_id: `{s}\n", .{self.sender_id});
-            print("     src_addr: `{s}`\n", .{self.src});
-            print("     dst_addr: `{s}`\n", .{self.dst});
-            print("     body: `{s}`\n", .{self.body});
+            print("     type:      `{s}`\n", .{@tagName(self.type)});
+            print("     action:    `{s}`\n", .{@tagName(self.action)});
+            print("     ret_code:  `{s}`\n", .{retcode_as_str(self.ret_code)});
+            print("     sender_id: `{s}`\n", .{self.sender_id});
+            print("     src_addr:  `{s}`\n", .{self.src});
+            print("     dst_addr:  `{s}`\n", .{self.dst});
+            print("     body:      `{s}`\n", .{self.body});
         }
         print("====================================\n", .{});
     }

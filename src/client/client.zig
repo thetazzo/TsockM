@@ -28,7 +28,7 @@ fn print_usage() void {
     print("    * :exit ............. terminate the program\n", .{});
 }
 
-fn request_connection(addr: net.Address) !Client {
+fn request_connection(addr: net.Address, username: []const u8) !Client {
     const stream = try net.tcpConnectToAddress(addr);
     const dst_addr = cmn.address_to_str(addr);
     // request connection
@@ -39,7 +39,7 @@ fn request_connection(addr: net.Address) !Client {
         "client",
         "client",
         dst_addr,
-        "",
+        username,
     );
     reqp.dump(LOG_LEVEL);
     ptc.prot_transmit(stream, reqp);

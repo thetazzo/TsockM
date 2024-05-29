@@ -71,6 +71,7 @@ pub const Id = []const u8;
 pub const Body = []const u8;
 pub const Addr = []const u8;
 
+// [type]::[action]::[status_code]::[id]::[src]::[dst]::[body]
 pub const Protocol = struct {
     type: Typ = Typ.NONE,
     action: Act = Act.NONE,
@@ -151,7 +152,7 @@ pub fn prot_transmit(stream: std.net.Stream, prot: Protocol) void {
 
 pub fn protocol_from_str(str: []const u8) Protocol {
     var spl = mem.split(u8, str, "::");
-    // [type]::[action]::[retcode]::[id]::[src]::[dst]::[body]
+    // [type]::[action]::[status_code]::[id]::[src]::[dst]::[body]
 
     // Empty protocol
     var proto = Protocol{};

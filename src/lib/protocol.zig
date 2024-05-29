@@ -25,7 +25,7 @@ pub const Act = enum {
     NONE,
 };
 
-pub const RetCode = enum(u16) {
+pub const StatusCode = enum(u16) {
     OK = 200,
     BAD_REQUEST = 400,
     NOT_FOUND = 404,
@@ -33,27 +33,27 @@ pub const RetCode = enum(u16) {
     BAD_GATEWAY = 502,
 };
 
-pub fn retcode_as_str(code: RetCode) []const u8 {
+pub fn retcode_as_str(code: StatusCode) []const u8 {
     switch (code) {
-        RetCode.OK => return "200",
-        RetCode.BAD_REQUEST => return "400",
-        RetCode.NOT_FOUND => return "404",
-        RetCode.METHOD_NOT_ALLOWED => return "405",
-        RetCode.BAD_GATEWAY => return "502",
+        StatusCode.OK => return "200",
+        StatusCode.BAD_REQUEST => return "400",
+        StatusCode.NOT_FOUND => return "404",
+        StatusCode.METHOD_NOT_ALLOWED => return "405",
+        StatusCode.BAD_GATEWAY => return "502",
     }
 }
 
-pub fn str_as_retcode(code: []const u8) RetCode {
+pub fn str_as_retcode(code: []const u8) StatusCode {
     if (mem.eql(u8, code, "200")) {
-        return RetCode.OK;
+        return StatusCode.OK;
     } else if (mem.eql(u8, code, "400")) {
-        return RetCode.BAD_REQUEST;
+        return StatusCode.BAD_REQUEST;
     } else if (mem.eql(u8, code, "404")) {
-        return RetCode.NOT_FOUND;
+        return StatusCode.NOT_FOUND;
     } else if (mem.eql(u8, code, "405")) {
-        return RetCode.METHOD_NOT_ALLOWED;
+        return StatusCode.METHOD_NOT_ALLOWED;
     } else if (mem.eql(u8, code, "502")) {
-        return RetCode.BAD_GATEWAY;
+        return StatusCode.BAD_GATEWAY;
     } else {
         std.log.err("unreachable", .{});
         unreachable;
@@ -73,16 +73,16 @@ pub const Addr = []const u8;
 pub const Protocol = struct {
     type: Typ = Typ.NONE,
     action: Act = Act.NONE,
-    ret_code: RetCode = RetCode.NOT_FOUND,
+    status_code: StatusCode = StatusCode.NOT_FOUND,
     sender_id: Id = "",
     body: Body = "",
     src: Addr = "",
     dst: Addr = "",
-    pub fn init(typ: Typ, action: Act, ret_code: RetCode, sender_id: Id, src: Addr, dst: Addr, bdy: Body) Protocol {
+    pub fn init(typ: Typ, action: Act, status_code: StatusCode, sender_id: Id, src: Addr, dst: Addr, bdy: Body) Protocol {
         return Protocol{
             .type = typ,
             .action = action,
-            .ret_code = ret_code,
+            .status_code = status_code,
             .sender_id = sender_id,
             .src = src,
             .dst = dst,
@@ -103,7 +103,7 @@ pub const Protocol = struct {
             print(" Protocol \n", .{});
             print("     type:      `{s}`\n", .{@tagName(self.type)});
             print("     action:    `{s}`\n", .{@tagName(self.action)});
-            print("     ret_code:  `{s}`\n", .{retcode_as_str(self.ret_code)});
+            print("     status_code:  `{s}`\n", .{retcode_as_str(self.status_code)});
             print("     sender_id: `{s}`\n", .{self.sender_id});
             print("     src_addr:  `{s}`\n", .{self.src});
             print("     dst_addr:  `{s}`\n", .{self.dst});
@@ -119,7 +119,7 @@ pub const Protocol = struct {
         _ = string.appendSlice("::") catch "OutOfMemory";
         _ = string.appendSlice(@tagName(self.action)) catch "OutOfMemory";
         _ = string.appendSlice("::") catch "OutOfMemory";
-        _ = string.appendSlice(retcode_as_str(self.ret_code)) catch "OutOfMemory";
+        _ = string.appendSlice(retcode_as_str(self.status_code)) catch "OutOfMemory";
         _ = string.appendSlice("::") catch "OutOfMemory";
         _ = string.appendSlice(self.sender_id) catch "OutOfMemory";
         _ = string.appendSlice("::") catch "OutOfMemory";
@@ -162,8 +162,8 @@ pub fn protocol_from_str(str: []const u8) Protocol {
             std.log.err("Something went wrong with protocol type: `{s}`\n", .{typ});
             proto.type = Typ.ERR;
             proto.action = Act.NONE;
-            proto.ret_code = RetCode.BAD_GATEWAY;
-            proto.body = @tagName(RetCode.BAD_GATEWAY);
+            proto.status_code = StatusCode.BAD_GATEWAY;
+            proto.body = @tagName(StatusCode.BAD_GATEWAY);
             return proto;
         }
     }
@@ -175,7 +175,7 @@ pub fn protocol_from_str(str: []const u8) Protocol {
         }
     }
     if (spl.next()) |rc| {
-        proto.ret_code = str_as_retcode(rc);
+        proto.status_code = str_as_retcode(rc);
     }
     if (spl.next()) |id| {
         proto.sender_id = id;

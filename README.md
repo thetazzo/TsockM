@@ -6,12 +6,23 @@
 
 * The server portion of the application that handles communication between multiple client instances
 
+### Server Commands
+* These actions can be executed by the server administrator using these commands
+* `:list`
+    * Print information about peers that are currenlty connected to the server
+* `:kill`
+    * Disconnects one or more peers from the server
+    * `:kill all` - disconnect all connected peers
+    * `:kill <peer_id>` - disconnect the peer with the provided id
+* `:help`
+    * Print available commands to the standard output
+
 ### Protocol
 
 * Communication between *server* and *client* is achived through the use of `TsockM.Protocol` 
 * Protocol definition:
 ```
-[type]::[action]::[retcode]::[sender_id]::[src]::[dst]::[body]
+[type]::[action]::[status_code]::[sender_id]::[src]::[dst]::[body]
 ```
 * `[type]` defines the protocol type:
     * `REQ`: request protocol
@@ -21,7 +32,7 @@
     * `COMM`: establishing a communication socket
     * `COMM_END`: terminate the communication socket
     * `MSG`: message handling 
-* `[retcode]` defines the return code of the program (based on HTTP 2.0 codes)
+* `[status_code]` defines the status code of the program (based on HTTP status codes)
     * `OK`: 200
     * `BAD_REQUEST`: 400
     * `NOT_FOUND`: 404
@@ -42,10 +53,13 @@
 
 * [x] Protocol should also contain `src` and `dest` IP addresses, socket form
 * [ ] Send periodic peer health check protocol ~ look for dead peers and remove them from the pool
-* [ ] Executable commands on the server application
-        * `KILL_ALL` - removes all peers
-        * `LIST`     - prints relevant peer data
-        * `EXIT`     - terminates the server the proper way
+* Executable commands on the server application
+        * [x] `KILL <peer_id>` - removes a specific peer
+        * [x] `KILL_ALL`       - removes all peers
+        * [x] `LIST`           - prints relevant peer data
+* [ ] Have a delayed peer removal 
+    * Peer after terminating the connectioh has like 13 seconds before it is removed of something like that
+* [ ] Peer unique hash as ID
 
 ## Client
 

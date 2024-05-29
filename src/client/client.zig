@@ -35,7 +35,7 @@ fn request_connection(addr: net.Address) !Client {
     const reqp = ptc.Protocol.init(
         ptc.Typ.REQ,
         ptc.Act.COMM,
-        ptc.RetCode.OK,
+        ptc.StatusCode.OK,
         "client",
         "client",
         dst_addr,
@@ -84,7 +84,7 @@ fn listen_for_comms(client: *Client) !void {
         resp.dump(LOG_LEVEL);
         if (resp.is_response()) {
             if (resp.is_action(ptc.Act.COMM_END)) {
-                if (resp.ret_code == ptc.RetCode.OK) {
+                if (resp.status_code == ptc.StatusCode.OK) {
                     client.stream.close();
                     break;
                 }
@@ -95,6 +95,7 @@ fn listen_for_comms(client: *Client) !void {
         }
     }
     print("end me\n", .{});
+    std.posix.exit(0);
 }
 
 fn read_cmd(addr: net.Address, client: *Client) !void {
@@ -120,7 +121,7 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
                 const msgp = ptc.Protocol.init(
                     ptc.Typ.REQ,
                     ptc.Act.MSG,
-                    ptc.RetCode.OK,
+                    ptc.StatusCode.OK,
                     client.id,
                     "client",
                     addr_str,
@@ -136,7 +137,7 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
                 const endp = ptc.Protocol.init(
                     ptc.Typ.REQ,
                     ptc.Act.COMM_END,
-                    ptc.RetCode.OK,
+                    ptc.StatusCode.OK,
                     client.id,
                     "client",
                     addr_str,

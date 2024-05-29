@@ -1,6 +1,7 @@
 const std = @import("std");
 const ptc = @import("ptc");
 const cmn = @import("cmn");
+const sqids = @import("sqids");
 const net = std.net;
 const mem = std.mem;
 const print = std.debug.print;
@@ -50,20 +51,17 @@ fn peer_find_ref(peer_pool: *std.ArrayList(Peer), id: PEER_ID) ?struct { peer: P
 
 fn peer_construct(
     conn: net.Server.Connection,
-    username: []const u8,
 ) Peer {
     var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
-    const peer_id = cmn.usize_to_str(rand.random().int(u8));
-    //var block = [_]u8{0} ** std.crypto.hash.Md5.block_length;
-    //var out: [std.crypto.hash.Md5.digest_length]u8 = undefined;
-    //var h = std.crypto.hash.Md5.init(.{});
-    //h.update(&block);
-    //h.update(username);
-    //h.final(out[0..]);
-    //const allocator = std.heap.page_allocator;
-    //const id = std.fmt.allocPrint(allocator, "{s}", .{out}) catch "format failed";
-    _ = username;
-    return Peer.init(conn, peer_id);
+    const s = sqids.Sqids.init(std.heap.page_allocator, .{ .min_length = 10 }) catch |err| {
+        std.log.warn("{any}", .{err});
+        std.posix.exit(1);
+    };
+    const id = s.encode(&.{ rand.random().int(u64), rand.random().int(u64), rand.random().int(u64) }) catch |err| {
+        std.log.warn("{any}", .{err});
+        std.posix.exit(1);
+    };
+    return Peer.init(conn, id);
 }
 
 fn peer_kill(ref_id: usize, peer_pool: *std.ArrayList(Peer)) !void {

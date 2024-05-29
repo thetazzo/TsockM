@@ -9,15 +9,17 @@ const print = std.debug.print;
 const LOG_LEVEL = ptc.LogLevel.DEV;
 
 const PEER_ID = []const u8;
+const str_allocator = std.heap.page_allocator;
 
 const Peer = struct {
     conn: net.Server.Connection,
     id: PEER_ID,
+    username: PEER_ID = "",
     pub fn init(conn: net.Server.Connection, id: PEER_ID) Peer {
         // TODO: check for peer.id collisions
         return Peer{
-            .conn = conn,
             .id = id,
+            .conn = conn,
         };
     }
     pub fn stream(self: @This()) net.Stream {
@@ -32,6 +34,7 @@ fn peer_dump(p: Peer) void {
     print("------------------------------------\n", .{});
     print("Peer {{\n", .{});
     print("    id: `{s}`\n", .{p.id});
+    print("    un: `{s}`\n", .{p.username});
     print("    comm_addr: `{any}`\n", .{p.comm_address()});
     print("}}\n", .{});
     print("------------------------------------\n", .{});
@@ -134,7 +137,11 @@ fn read_incomming(
     const addr_str = cmn.address_to_str(conn.address);
     if (protocol.is_request()) {
         if (protocol.is_action(ptc.Act.COMM)) {
-            const peer = peer_construct(conn, protocol.sender_id);
+            var peer = peer_construct(conn);
+            // DON'T EVER FORGET TO ALLOCATE MEMORY !!!!!!
+            const aun = std.fmt.allocPrint(str_allocator, "{s}", .{protocol.body}) catch "format failed";
+            peer.username = aun;
+            peer_dump(peer);
             try peer_pool.append(peer);
             const resp = ptc.Protocol.init(
                 ptc.Typ.RES,

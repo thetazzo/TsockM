@@ -67,7 +67,15 @@ fn peer_kill(
     const peer_ref = find_peer_ref(peer_pool, id);
     if (peer_ref) |pf| {
         //const addr_str = cmn.address_to_str(pf.peer.conn.address);
-        const endp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM_END, "200", src_addr, "client", "OK");
+        const endp = ptc.Protocol.init(
+            ptc.Typ.RES,
+            ptc.Act.COMM_END,
+            ptc.RetCode.OK,
+            id,
+            src_addr,
+            "client",
+            "OK",
+        );
         endp.dump(LOG_LEVEL);
         endp.transmit(pf.peer.stream);
         _ = peer_pool.orderedRemove(pf.i);
@@ -95,7 +103,15 @@ fn message_broadcast(
             if (pf.i != pind and peer.alive) {
                 const src_addr = cmn.address_to_str(pf.peer.conn.address);
                 const dst_addr = cmn.address_to_str(peer.conn.address);
-                const msgp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.MSG, sender_id, src_addr, dst_addr, msg);
+                const msgp = ptc.Protocol.init(
+                    ptc.Typ.RES,
+                    ptc.Act.MSG,
+                    ptc.RetCode.OK,
+                    sender_id,
+                    src_addr,
+                    dst_addr,
+                    msg,
+                );
                 msgp.dump(LOG_LEVEL);
                 msgp.transmit(peer.conn.stream);
             }
@@ -121,23 +137,32 @@ fn read_incomming(
     const addr_str = cmn.address_to_str(conn.address);
     if (protocol.is_request()) {
         if (protocol.is_action(ptc.Act.COMM)) {
-            const peer = peer_construct(conn, stream, protocol.id);
+            const peer = peer_construct(conn, stream, protocol.sender_id);
             try peer_pool.append(peer);
-            const resp = ptc.Protocol.init(ptc.Typ.RES, ptc.Act.COMM, peer.id, "server", addr_str, "");
+            const resp = ptc.Protocol.init(
+                ptc.Typ.RES,
+                ptc.Act.COMM,
+                ptc.RetCode.OK,
+                "server",
+                "server",
+                addr_str,
+                peer.id,
+            );
             resp.dump(LOG_LEVEL);
             resp.transmit(stream);
         } else if (protocol.is_action(ptc.Act.COMM_END)) {
-            try peer_kill(peer_pool, protocol.id, protocol.src);
+            try peer_kill(peer_pool, protocol.sender_id, protocol.src);
         } else if (protocol.is_action(ptc.Act.MSG)) {
-            try message_broadcast(peer_pool, protocol.id, protocol.body);
+            try message_broadcast(peer_pool, protocol.sender_id, protocol.body);
         } else if (protocol.is_action(ptc.Act.NONE)) {
             const errp = ptc.Protocol.init(
                 ptc.Typ.ERR,
                 protocol.action,
-                "400",
+                ptc.RetCode.BAD_REQUEST,
+                "server",
                 "server",
                 addr_str,
-                "bad request",
+                @tagName(ptc.RetCode.BAD_REQUEST),
             );
             errp.dump(LOG_LEVEL);
             errp.transmit(stream);
@@ -146,7 +171,8 @@ fn read_incomming(
         const errp = ptc.Protocol.init(
             ptc.Typ.ERR,
             protocol.action,
-            "405",
+            ptc.RetCode.METHOD_NOT_ALLOWED,
+            "server",
             "server",
             addr_str,
             "method not allowed:\n  NOTE: Server can only process REQUESTS for now",
@@ -157,7 +183,8 @@ fn read_incomming(
         const errp = ptc.Protocol.init(
             ptc.Typ.ERR,
             protocol.action,
-            "400",
+            ptc.RetCode.BAD_REQUEST,
+            "server",
             "server",
             addr_str,
             "bad request",

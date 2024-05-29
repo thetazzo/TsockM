@@ -32,7 +32,15 @@ fn request_connection(addr: net.Address) !Client {
     const stream = try net.tcpConnectToAddress(addr);
     const dst_addr = cmn.address_to_str(addr);
     // request connection
-    const reqp = ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.COMM, "bebey", "client", dst_addr, "");
+    const reqp = ptc.Protocol.init(
+        ptc.Typ.REQ,
+        ptc.Act.COMM,
+        ptc.RetCode.OK,
+        "client",
+        "client",
+        dst_addr,
+        "",
+    );
     reqp.dump(LOG_LEVEL);
     reqp.transmit(stream);
 
@@ -47,7 +55,7 @@ fn request_connection(addr: net.Address) !Client {
 
     // construct the clint
     var c = Client{
-        .id = resp.id,
+        .id = resp.body,
         .stream = stream,
         .comm_addr = resp.dst,
     };
@@ -76,8 +84,8 @@ fn listen_for_comms(client: *Client) !void {
         resp.dump(LOG_LEVEL);
         if (resp.is_response()) {
             if (resp.is_action(ptc.Act.COMM_END)) {
-                if (mem.eql(u8, resp.id, "200")) {
-                    //client.stream.close();
+                if (resp.ret_code == ptc.RetCode.OK) {
+                    client.stream.close();
                     break;
                 }
             }
@@ -109,7 +117,15 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
                 const val = mem.trimLeft(u8, splits.next().?, " \n");
 
                 // construct message protocol
-                const msgp = ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.MSG, client.id, "client", addr_str, val);
+                const msgp = ptc.Protocol.init(
+                    ptc.Typ.REQ,
+                    ptc.Act.MSG,
+                    ptc.RetCode.OK,
+                    client.id,
+                    "client",
+                    addr_str,
+                    val,
+                );
 
                 // send message protocol to server
                 msgp.dump(LOG_LEVEL);
@@ -117,7 +133,15 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
             } else if (mem.startsWith(u8, user_input, ":exit")) {
                 const msg_stream = try net.tcpConnectToAddress(addr);
                 defer msg_stream.close();
-                const endp = ptc.Protocol.init(ptc.Typ.REQ, ptc.Act.COMM_END, client.id, "client", addr_str, "");
+                const endp = ptc.Protocol.init(
+                    ptc.Typ.REQ,
+                    ptc.Act.COMM_END,
+                    ptc.RetCode.OK,
+                    client.id,
+                    "client",
+                    addr_str,
+                    "",
+                );
                 endp.dump(LOG_LEVEL);
                 endp.transmit(msg_stream);
                 break;

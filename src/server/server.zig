@@ -36,15 +36,12 @@ fn peer_dump(p: Peer) void {
     print("------------------------------------\n", .{});
 }
 
-fn find_peer_ref(
-    peer_pool: *std.ArrayList(Peer),
-    id: []const u8,
-) ?struct { peer: Peer, i: usize } {
+fn peer_find_ref(peer_pool: *std.ArrayList(Peer), id: PEER_ID) ?struct { peer: Peer, ref_id: usize } {
     // O(n)
     var i: usize = 0;
     for (peer_pool.items[0..]) |peer| {
         if (mem.eql(u8, peer.id, id)) {
-            return .{ .peer = peer, .i = i };
+            return .{ .peer = peer, .ref_id = i };
         }
         i += 1;
     }
@@ -69,28 +66,20 @@ fn peer_construct(
     return Peer.init(conn, peer_id);
 }
 
-fn peer_kill(
-    peer_pool: *std.ArrayList(Peer),
-    id: PEER_ID,
-    src_addr: ptc.Addr,
-) !void {
-    const peer_ref = find_peer_ref(peer_pool, id);
-    if (peer_ref) |pf| {
-        //const addr_str = cmn.address_to_str(pf.peer.conn.address);
-        const endp = ptc.Protocol.init(
-            ptc.Typ.RES,
-            ptc.Act.COMM_END,
-            ptc.RetCode.OK,
-            id,
-            src_addr,
-            "client",
-            "OK",
-        );
-        endp.dump(LOG_LEVEL);
-        ptc.prot_transmit(pf.peer.stream(), endp);
-        _ = peer_pool.orderedRemove(pf.i);
-        print("Remaining peers {d}\n", .{peer_pool.items.len});
-    }
+fn peer_kill(ref_id: usize, peer_pool: *std.ArrayList(Peer)) !void {
+    const peer = peer_pool.items[ref_id];
+    const endp = ptc.Protocol.init(
+        ptc.Typ.RES,
+        ptc.Act.COMM_END,
+        ptc.RetCode.OK,
+        "server",
+        "server",
+        "client",
+        "OK",
+    );
+    endp.dump(LOG_LEVEL);
+    ptc.prot_transmit(peer.stream(), endp);
+    _ = peer_pool.orderedRemove(ref_id);
 }
 
 fn localhost_server(port: u16) !net.Server {
@@ -107,10 +96,10 @@ fn message_broadcast(
     msg: []const u8,
 ) !void {
     var pind: usize = 0;
-    const peer_ref = find_peer_ref(peer_pool, sender_id);
+    const peer_ref = peer_find_ref(peer_pool, sender_id);
     if (peer_ref) |pf| {
         for (peer_pool.items[0..]) |peer| {
-            if (pf.i != pind) {
+            if (pf.ref_id != pind) {
                 const src_addr = cmn.address_to_str(pf.peer.comm_address());
                 const dst_addr = cmn.address_to_str(peer.comm_address());
                 const msgp = ptc.Protocol.init(
@@ -161,7 +150,10 @@ fn read_incomming(
             resp.dump(LOG_LEVEL);
             ptc.prot_transmit(stream, resp);
         } else if (protocol.is_action(ptc.Act.COMM_END)) {
-            try peer_kill(peer_pool, protocol.sender_id, protocol.src);
+            const peer_ref = peer_find_ref(peer_pool, protocol.sender_id);
+            if (peer_ref) |pf| {
+                try peer_kill(pf.ref_id, peer_pool);
+            }
         } else if (protocol.is_action(ptc.Act.MSG)) {
             try message_broadcast(peer_pool, protocol.sender_id, protocol.body);
         } else if (protocol.is_action(ptc.Act.NONE)) {
@@ -219,8 +211,9 @@ fn server_core(
 
 fn print_usage() void {
     print("COMMANDS:\n", .{});
-    print("    * :list ........ list all active peers\n", .{});
-    print("    * :kill_all .... kill all active peers\n", .{});
+    print("    * :list .............. list all active peers\n", .{});
+    print("    * :kill all .......... kill all peers\n", .{});
+    print("    * :kill <peer_id> .... kill one peer\n", .{});
 }
 
 fn read_cmd(
@@ -238,13 +231,36 @@ fn read_cmd(
                 if (peer_pool.items.len == 0) {
                     print("Peer list: []\n", .{});
                 } else {
-                    print("Peer list:\n", .{});
+                    print("Peer list ({d}):\n", .{peer_pool.items.len});
                     for (peer_pool.items[0..]) |peer| {
                         peer_dump(peer);
                     }
                 }
-            } else if (mem.eql(u8, user_input, ":kill_all")) {
-                std.log.warn(":kill_all not implemented", .{});
+            } else if (mem.startsWith(u8, user_input, ":kill")) {
+                var splits = mem.split(u8, user_input, ":kill");
+                _ = splits.next().?; // the `:kill` part
+                const id = mem.trimLeft(u8, splits.next().?, " \n");
+                if (mem.eql(u8, id, "all")) {
+                    for (peer_pool.items[0..]) |peer| {
+                        const endp = ptc.Protocol.init(
+                            ptc.Typ.RES,
+                            ptc.Act.COMM_END,
+                            ptc.RetCode.OK,
+                            "server",
+                            "server",
+                            "client",
+                            "OK",
+                        );
+                        endp.dump(LOG_LEVEL);
+                        ptc.prot_transmit(peer.stream(), endp);
+                    }
+                    peer_pool.clearAndFree();
+                } else {
+                    const peer_ref = peer_find_ref(peer_pool, id);
+                    if (peer_ref) |pf| {
+                        try peer_kill(pf.ref_id, peer_pool);
+                    }
+                }
             } else if (mem.eql(u8, user_input, ":help")) {
                 print_usage();
             } else {

@@ -95,6 +95,7 @@ fn listen_for_comms(client: *Client) !void {
         }
     }
     print("end me\n", .{});
+    std.posix.exit(0);
 }
 
 fn read_cmd(addr: net.Address, client: *Client) !void {

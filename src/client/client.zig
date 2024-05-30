@@ -214,6 +214,9 @@ fn read_cmd(sd: *SharedData, addr: net.Address, client: *Client) !void {
                 );
                 sd.update_value(true);
                 try send_request(addr, reqp);
+            } else if (mem.eql(u8, user_input, ":cc")) {
+                try cmn.screen_clear();
+                client.dump();
             } else if (mem.eql(u8, user_input, ":help")) {
                 print_usage();
             } else {
@@ -228,6 +231,7 @@ fn read_cmd(sd: *SharedData, addr: net.Address, client: *Client) !void {
 }
 
 pub fn start() !void {
+    try cmn.screen_clear();
     print("Client starated\n", .{});
     print("Enter your username: ", .{});
     const addr = try net.Address.resolveIp("127.0.0.1", 6969);

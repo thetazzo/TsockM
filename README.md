@@ -57,17 +57,27 @@
         * [x] `KILL <peer_id>` - removes a specific peer
         * [x] `KILL_ALL`       - removes all peers
         * [x] `LIST`           - prints relevant peer data
+        * [x] `CC`             - Clear screen
 * [ ] Have a delayed peer removal 
     * Peer after terminating the connectioh has like 13 seconds before it is removed of something like that
-* [ ] Peer unique hash as ID 
+* [x] Peer unique hash as ID 
 * [ ] `peer_bridge_ref`
     * function that constructs a structre containing the sender peer and the peer the sender is trying to find
 * [ ] when server sends a response set the source of the response to server ip
+* [ ] Handle invalid *action* arguments
+    * `KILL` - action must be provided with eather `<peer_id` or `all`, error otherwise 
+* [ ] Consume program arguments:
+    * `LOG_LEVEL`:
+        * `-s` .... silent mode
+        * `-t` .... tiny mode
+        * default `DEV`
 
 ## Client
 
 * Application given to the user for chatting
-
+    
+### TODO
+* [x] Use **Mutex** to share `should_exit` state between `read_cmd` and `listen_for_comms`
 ---
 
 # References

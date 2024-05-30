@@ -34,7 +34,7 @@ pub const StatusCode = enum(u16) {
     BAD_GATEWAY = 502,
 };
 
-pub fn retcode_as_str(code: StatusCode) []const u8 {
+pub fn statuscode_as_str(code: StatusCode) []const u8 {
     switch (code) {
         StatusCode.OK => return "200",
         StatusCode.BAD_REQUEST => return "400",
@@ -80,15 +80,23 @@ pub const Protocol = struct {
     body: Body = "",
     src: Addr = "",
     dst: Addr = "",
-    pub fn init(typ: Typ, action: Act, status_code: StatusCode, sender_id: Id, src: Addr, dst: Addr, bdy: Body) Protocol {
+    pub fn init(
+        typ: Typ,
+        action: Act,
+        status_code: StatusCode,
+        sender_id: Id,
+        src: Addr,
+        dst: Addr,
+        bdy: Body,
+    ) Protocol {
         return Protocol{
-            .type = typ,
-            .action = action,
-            .status_code = status_code,
-            .sender_id = sender_id,
-            .src = src,
-            .dst = dst,
-            .body = bdy,
+            .type = typ, // type
+            .action = action, // action
+            .status_code = status_code, // status_code
+            .sender_id = sender_id, // sender_id
+            .src = src, // src_address
+            .dst = dst, // dst_addres
+            .body = bdy, // body
         };
     }
     pub fn dump(self: @This(), log_level: LogLevel) void {
@@ -105,7 +113,7 @@ pub const Protocol = struct {
             print(" Protocol \n", .{});
             print("     type:      `{s}`\n", .{@tagName(self.type)});
             print("     action:    `{s}`\n", .{@tagName(self.action)});
-            print("     status_code:  `{s}`\n", .{retcode_as_str(self.status_code)});
+            print("     status_code:  `{s}`\n", .{statuscode_as_str(self.status_code)});
             print("     sender_id: `{s}`\n", .{self.sender_id});
             print("     src_addr:  `{s}`\n", .{self.src});
             print("     dst_addr:  `{s}`\n", .{self.dst});
@@ -121,7 +129,7 @@ pub const Protocol = struct {
         _ = string.appendSlice("::") catch "OutOfMemory";
         _ = string.appendSlice(@tagName(self.action)) catch "OutOfMemory";
         _ = string.appendSlice("::") catch "OutOfMemory";
-        _ = string.appendSlice(retcode_as_str(self.status_code)) catch "OutOfMemory";
+        _ = string.appendSlice(statuscode_as_str(self.status_code)) catch "OutOfMemory";
         _ = string.appendSlice("::") catch "OutOfMemory";
         _ = string.appendSlice(self.sender_id) catch "OutOfMemory";
         _ = string.appendSlice("::") catch "OutOfMemory";

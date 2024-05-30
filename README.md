@@ -64,7 +64,7 @@
 * [ ] `peer_bridge_ref`
     * function that constructs a structre containing the sender peer and the peer the sender is trying to find
 * [ ] when server sends a response set the source of the response to server ip
-* [ ] Handle invalid *action* arguments
+* [x] Handle invalid *action* arguments
     * `KILL` - action must be provided with eather `<peer_id` or `all`, error otherwise 
 * [ ] Consume program arguments:
     * `LOG_LEVEL`:

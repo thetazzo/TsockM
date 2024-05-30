@@ -163,7 +163,8 @@ fn read_incomming(
             try message_broadcast(peer_pool, protocol.sender_id, protocol.body);
         } else if (protocol.is_action(ptc.Act.GET_PEER)) {
             // TODO: make a peer_find_bridge_ref
-            //      - similar to peer_find_ref just that it constructs a structure of sender peer and search peer
+            //      - similar to peer_find_ref
+            //      - constructs a structure of sender peer and search peer
             const sref = peer_find_ref(peer_pool, protocol.sender_id);
             const ref = peer_find_ref(peer_pool, protocol.body);
             if (sref) |sr| {
@@ -233,6 +234,17 @@ fn print_usage() void {
     print("    * :kill <peer_id> .... kill one peer\n", .{});
 }
 
+fn extract_command_val(cs: []const u8, cmd: []const u8) []const u8 {
+    var splits = mem.split(u8, cs, cmd);
+    _ = splits.next().?; // the `:msg` part
+    const val = mem.trimLeft(u8, splits.next().?, " \n");
+    if (val.len <= 0) {
+        std.log.err("missing action value", .{});
+        print_usage();
+    }
+    return val;
+}
+
 fn read_cmd(
     peer_pool: *std.ArrayList(Peer),
 ) !void {
@@ -244,7 +256,7 @@ fn read_cmd(
             // Handle different commands
             if (mem.startsWith(u8, user_input, ":exit")) {
                 std.log.warn(":exit not implemented", .{});
-            } else if (mem.startsWith(u8, user_input, ":list")) {
+            } else if (mem.eql(u8, user_input, ":list")) {
                 if (peer_pool.items.len == 0) {
                     print("Peer list: []\n", .{});
                 } else {
@@ -254,10 +266,8 @@ fn read_cmd(
                     }
                 }
             } else if (mem.startsWith(u8, user_input, ":kill")) {
-                var splits = mem.split(u8, user_input, ":kill");
-                _ = splits.next().?; // the `:kill` part
-                const id = mem.trimLeft(u8, splits.next().?, " \n");
-                if (mem.eql(u8, id, "all")) {
+                const karrg = extract_command_val(user_input, ":kill");
+                if (mem.eql(u8, karrg, "all")) {
                     for (peer_pool.items[0..]) |peer| {
                         const endp = ptc.Protocol.init(
                             ptc.Typ.RES,
@@ -273,7 +283,7 @@ fn read_cmd(
                     }
                     peer_pool.clearAndFree();
                 } else {
-                    const peer_ref = peer_find_ref(peer_pool, id);
+                    const peer_ref = peer_find_ref(peer_pool, karrg);
                     if (peer_ref) |pf| {
                         try peer_kill(pf.ref_id, peer_pool);
                     }

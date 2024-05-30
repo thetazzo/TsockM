@@ -153,6 +153,17 @@ fn listen_for_comms(sd: *SharedData, addr: net.Address, client: *Client) !void {
     sd.update_value(true);
 }
 
+fn extract_command_val(cs: []const u8, cmd: []const u8) []const u8 {
+    var splits = mem.split(u8, cs, cmd);
+    _ = splits.next().?; // the `:msg` part
+    const val = mem.trimLeft(u8, splits.next().?, " \n");
+    if (val.len <= 0) {
+        std.log.err("missing action value", .{});
+        print_usage();
+    }
+    return val;
+}
+
 fn read_cmd(sd: *SharedData, addr: net.Address, client: *Client) !void {
     const addr_str = cmn.address_as_str(addr);
     while (!sd.should_exit) {
@@ -162,10 +173,7 @@ fn read_cmd(sd: *SharedData, addr: net.Address, client: *Client) !void {
         if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
             // Handle different commands
             if (mem.startsWith(u8, user_input, ":msg")) {
-                // parse message from cmd
-                var splits = mem.split(u8, user_input, ":msg");
-                _ = splits.next().?; // the `:msg` part
-                const val = mem.trimLeft(u8, splits.next().?, " \n");
+                const msg = extract_command_val(user_input, ":msg");
 
                 // construct message protocol
                 const reqp = ptc.Protocol.init(
@@ -175,15 +183,12 @@ fn read_cmd(sd: *SharedData, addr: net.Address, client: *Client) !void {
                     client.id,
                     "client",
                     addr_str,
-                    val,
+                    msg,
                 );
 
                 try send_request(addr, reqp);
             } else if (mem.startsWith(u8, user_input, ":gp")) {
-                // parse message from cmd
-                var splits = mem.split(u8, user_input, ":gp");
-                _ = splits.next().?; // the `:msg` part
-                const val = mem.trimLeft(u8, splits.next().?, " \n");
+                const pid = extract_command_val(user_input, ":gp");
 
                 // construct message protocol
                 const reqp = ptc.Protocol.init(
@@ -193,11 +198,11 @@ fn read_cmd(sd: *SharedData, addr: net.Address, client: *Client) !void {
                     client.id,
                     "client",
                     addr_str,
-                    val,
+                    pid,
                 );
 
                 try send_request(addr, reqp);
-            } else if (mem.startsWith(u8, user_input, ":exit")) {
+            } else if (mem.eql(u8, user_input, ":exit")) {
                 const reqp = ptc.Protocol.init(
                     ptc.Typ.REQ,
                     ptc.Act.COMM_END,
@@ -209,7 +214,7 @@ fn read_cmd(sd: *SharedData, addr: net.Address, client: *Client) !void {
                 );
                 sd.update_value(true);
                 try send_request(addr, reqp);
-            } else if (mem.startsWith(u8, user_input, ":help")) {
+            } else if (mem.eql(u8, user_input, ":help")) {
                 print_usage();
             } else {
                 print("Unknown command: `{s}`\n", .{user_input});

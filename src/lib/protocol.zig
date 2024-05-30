@@ -152,6 +152,18 @@ pub fn prot_transmit(stream: std.net.Stream, prot: Protocol) u8 {
     return 0;
 }
 
+pub fn prot_collect(allocator: mem.Allocator, stream: std.net.Stream) !Protocol {
+    var buf: [1024]u8 = undefined;
+    const q = stream.read(&buf) catch 1;
+    if (q == 1) {
+        std.log.warn("{{REDAING}} stream closed\n", .{});
+    }
+    const resps = mem.sliceTo(&buf, 170);
+    const respss = try std.fmt.allocPrint(allocator, "{s}", .{resps});
+    const resp = protocol_from_str(respss);
+    return resp;
+}
+
 pub fn protocol_from_str(str: []const u8) Protocol {
     var spl = mem.split(u8, str, "::");
     // [type]::[action]::[status_code]::[id]::[src]::[dst]::[body]

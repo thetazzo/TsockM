@@ -35,7 +35,7 @@ fn print_usage() void {
 
 fn request_connection(addr: net.Address, username: []const u8) !Client {
     const stream = try net.tcpConnectToAddress(addr);
-    const dst_addr = cmn.address_to_str(addr);
+    const dst_addr = cmn.address_as_str(addr);
     // request connection
     const reqp = ptc.Protocol.init(
         ptc.Typ.REQ,
@@ -88,7 +88,7 @@ const SharedData = struct {
 };
 
 fn listen_for_comms(sd: *SharedData, addr: net.Address, client: *Client) !void {
-    const addr_str = cmn.address_to_str(addr);
+    const addr_str = cmn.address_as_str(addr);
     while (true) {
         const resp = try ptc.prot_collect(str_allocator, client.stream);
         resp.dump(LOG_LEVEL);
@@ -154,7 +154,7 @@ fn listen_for_comms(sd: *SharedData, addr: net.Address, client: *Client) !void {
 }
 
 fn read_cmd(sd: *SharedData, addr: net.Address, client: *Client) !void {
-    const addr_str = cmn.address_to_str(addr);
+    const addr_str = cmn.address_as_str(addr);
     while (!sd.should_exit) {
         // read for command
         var buf: [256]u8 = undefined;

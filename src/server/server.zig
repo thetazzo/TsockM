@@ -101,8 +101,8 @@ fn message_broadcast(
     if (peer_ref) |pf| {
         for (peer_pool.items[0..]) |peer| {
             if (pf.ref_id != pind) {
-                const src_addr = cmn.address_to_str(pf.peer.comm_address());
-                const dst_addr = cmn.address_to_str(peer.comm_address());
+                const src_addr = cmn.address_as_str(pf.peer.comm_address());
+                const dst_addr = cmn.address_as_str(peer.comm_address());
                 const msgp = ptc.Protocol.init(
                     ptc.Typ.RES,
                     ptc.Act.MSG,
@@ -134,7 +134,7 @@ fn read_incomming(
     var protocol = ptc.protocol_from_str(recv); // parse protocol from recieved bytes
     protocol.dump(LOG_LEVEL);
 
-    const addr_str = cmn.address_to_str(conn.address);
+    const addr_str = cmn.address_as_str(conn.address);
     if (protocol.is_request()) {
         if (protocol.is_action(ptc.Act.COMM)) {
             var peer = peer_construct(conn);
@@ -168,7 +168,7 @@ fn read_incomming(
             const ref = peer_find_ref(peer_pool, protocol.body);
             if (sref) |sr| {
                 if (ref) |pr| {
-                    const dst_addr = cmn.address_to_str(sr.peer.comm_address());
+                    const dst_addr = cmn.address_as_str(sr.peer.comm_address());
                     const resp = ptc.Protocol.init(
                         ptc.Typ.RES, // type
                         ptc.Act.GET_PEER, // action

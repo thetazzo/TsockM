@@ -304,6 +304,11 @@ fn read_cmd(
     print("Thread `run_cmd` finished\n", .{});
 }
 
+fn polizei(peer_pool: *std.ArrayList(Peer)) !void {
+    _ = peer_pool;
+    std.log.err("not implemented");
+}
+
 pub fn start() !void {
     try cmn.screen_clear();
     // create a localhost server
@@ -327,5 +332,7 @@ pub fn start() !void {
         defer t1.join();
         const t2 = try std.Thread.spawn(.{}, read_cmd, .{&peer_pool});
         defer t2.join();
+        //const t3 = try std.Thread.spawn(.{}, polizei, .{&peer_pool});
+        //defer t3.join();
     }
 }

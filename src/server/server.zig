@@ -34,7 +34,7 @@ fn peer_dump(p: Peer) void {
     print("------------------------------------\n", .{});
     print("Peer {{\n", .{});
     print("    id: `{s}`\n", .{p.id});
-    print("    un: `{s}`\n", .{p.username});
+    print("    username: `{s}`\n", .{p.username});
     print("    comm_addr: `{any}`\n", .{p.comm_address()});
     print("}}\n", .{});
     print("------------------------------------\n", .{});
@@ -79,7 +79,7 @@ fn peer_kill(ref_id: usize, peer_pool: *std.ArrayList(Peer)) !void {
         "OK",
     );
     endp.dump(LOG_LEVEL);
-    ptc.prot_transmit(peer.stream(), endp);
+    _ = ptc.prot_transmit(peer.stream(), endp);
     _ = peer_pool.orderedRemove(ref_id);
 }
 
@@ -113,7 +113,7 @@ fn message_broadcast(
                     msg,
                 );
                 msgp.dump(LOG_LEVEL);
-                ptc.prot_transmit(peer.stream(), msgp);
+                _ = ptc.prot_transmit(peer.stream(), msgp);
             }
             pind += 1;
         }
@@ -153,7 +153,7 @@ fn read_incomming(
                 peer.id,
             );
             resp.dump(LOG_LEVEL);
-            ptc.prot_transmit(stream, resp);
+            _ = ptc.prot_transmit(stream, resp);
         } else if (protocol.is_action(ptc.Act.COMM_END)) {
             const peer_ref = peer_find_ref(peer_pool, protocol.sender_id);
             if (peer_ref) |pf| {
@@ -179,7 +179,7 @@ fn read_incomming(
                         pr.peer.username, // body
                     );
                     resp.dump(LOG_LEVEL);
-                    ptc.prot_transmit(sr.peer.stream(), resp);
+                    _ = ptc.prot_transmit(sr.peer.stream(), resp);
                 }
             }
         } else if (protocol.is_action(ptc.Act.NONE)) {
@@ -193,20 +193,10 @@ fn read_incomming(
                 @tagName(ptc.StatusCode.BAD_REQUEST),
             );
             errp.dump(LOG_LEVEL);
-            ptc.prot_transmit(stream, errp);
+            _ = ptc.prot_transmit(stream, errp);
         }
     } else if (protocol.is_response()) {
-        const errp = ptc.Protocol.init(
-            ptc.Typ.ERR,
-            protocol.action,
-            ptc.StatusCode.METHOD_NOT_ALLOWED,
-            "server",
-            "server",
-            addr_str,
-            "method not allowed:\n  NOTE: Server can only process REQUESTS for now",
-        );
-        errp.dump(LOG_LEVEL);
-        ptc.prot_transmit(stream, errp);
+        if (protocol.is_action(ptc.Act.COMM)) {}
     } else if (protocol.type == ptc.Typ.NONE) {
         const errp = ptc.Protocol.init(
             ptc.Typ.ERR,
@@ -218,7 +208,7 @@ fn read_incomming(
             "bad request",
         );
         errp.dump(LOG_LEVEL);
-        ptc.prot_transmit(stream, errp);
+        _ = ptc.prot_transmit(stream, errp);
     } else {
         std.log.err("unreachable code", .{});
     }
@@ -278,7 +268,7 @@ fn read_cmd(
                             "OK",
                         );
                         endp.dump(LOG_LEVEL);
-                        ptc.prot_transmit(peer.stream(), endp);
+                        _ = ptc.prot_transmit(peer.stream(), endp);
                     }
                     peer_pool.clearAndFree();
                 } else {
@@ -319,8 +309,8 @@ pub fn start() !void {
 
     {
         const t1 = try std.Thread.spawn(.{}, server_core, .{ &server, &peer_pool });
+        defer t1.join();
         const t2 = try std.Thread.spawn(.{}, read_cmd, .{&peer_pool});
-        t1.join();
-        t2.join();
+        defer t2.join();
     }
 }

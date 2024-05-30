@@ -45,7 +45,7 @@ fn request_connection(addr: net.Address, username: []const u8) !Client {
         username,
     );
     reqp.dump(LOG_LEVEL);
-    ptc.prot_transmit(stream, reqp);
+    _ = ptc.prot_transmit(stream, reqp);
 
     // collect response
     var buf: [1024]u8 = undefined;
@@ -98,38 +98,63 @@ fn listen_for_comms(addr: net.Address, client: *Client) !void {
                     print("Peer name is: {s}\n", .{peer_name});
                 }
             } else if (resp.is_action(ptc.Act.MSG)) {
-                // Messaging command
-                // request a tcp socket for sending a message
-                const msg_stream = try net.tcpConnectToAddress(addr);
-                defer msg_stream.close();
+                if (resp.status_code == ptc.StatusCode.OK) {
+                    // Messaging command
+                    // request a tcp socket for sending a message
+                    const msg_stream = try net.tcpConnectToAddress(addr);
+                    defer msg_stream.close();
 
-                // construct message protocol
-                const msgp = ptc.Protocol.init(
-                    ptc.Typ.REQ,
-                    ptc.Act.GET_PEER,
-                    ptc.StatusCode.OK,
-                    client.id,
-                    "client",
-                    addr_str,
-                    resp.sender_id,
-                );
-                // send message protocol to server
-                msgp.dump(LOG_LEVEL);
-                ptc.prot_transmit(msg_stream, msgp);
-                var gpbuff: [1054]u8 = undefined;
-                const qq = client.stream.read(&gpbuff) catch 1;
-                const gpresp = mem.sliceTo(&gpbuff, 170);
+                    // construct message protocol
+                    const msgp = ptc.Protocol.init(
+                        ptc.Typ.REQ,
+                        ptc.Act.GET_PEER,
+                        ptc.StatusCode.OK,
+                        client.id,
+                        "client",
+                        addr_str,
+                        resp.sender_id,
+                    );
+                    // send message protocol to server
+                    msgp.dump(LOG_LEVEL);
+                    _ = ptc.prot_transmit(msg_stream, msgp);
+                    var gpbuff: [1054]u8 = undefined;
+                    const qq = client.stream.read(&gpbuff) catch 1;
+                    const gpresp = mem.sliceTo(&gpbuff, 170);
 
-                if (qq == 1) {
-                    std.log.warn("Terminated listener\n", .{});
-                    return;
+                    if (qq == 1) {
+                        std.log.warn("Terminated listener\n", .{});
+                        return;
+                    }
+                    const np = ptc.protocol_from_str(gpresp);
+                    np.dump(LOG_LEVEL);
+
+                    print("{s}: {s}\n", .{ np.body, resp.body });
+                } else {
+                    print("{s}\n", .{response});
                 }
-                const np = ptc.protocol_from_str(gpresp);
-                np.dump(LOG_LEVEL);
+            }
+        } else if (resp.type == ptc.Typ.REQ) {
+            if (resp.status_code == ptc.StatusCode.OK) {
+                if (resp.is_action(ptc.Act.COMM)) {
+                    // Messaging command
+                    // request a tcp socket for sending a message
+                    const msg_stream = try net.tcpConnectToAddress(addr);
+                    defer msg_stream.close();
 
-                print("{s}: {s}\n", .{ np.body, resp.body });
-            } else {
-                print("{s}\n", .{response});
+                    // construct message protocol
+                    const msgp = ptc.Protocol.init(
+                        ptc.Typ.RES,
+                        ptc.Act.COMM,
+                        ptc.StatusCode.OK,
+                        client.id,
+                        "client",
+                        addr_str,
+                        "OK",
+                    );
+                    // send message protocol to server
+                    msgp.dump(LOG_LEVEL);
+                    _ = ptc.prot_transmit(msg_stream, msgp);
+                }
             }
         } else if (resp.type == ptc.Typ.ERR) {
             //client.stream.close();
@@ -172,7 +197,7 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
 
                 // send message protocol to server
                 msgp.dump(LOG_LEVEL);
-                ptc.prot_transmit(msg_stream, msgp);
+                _ = ptc.prot_transmit(msg_stream, msgp);
             } else if (mem.startsWith(u8, user_input, ":gp")) {
                 // Messaging command
                 // request a tcp socket for sending a message
@@ -197,7 +222,7 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
 
                 // send message protocol to server
                 msgp.dump(LOG_LEVEL);
-                ptc.prot_transmit(msg_stream, msgp);
+                _ = ptc.prot_transmit(msg_stream, msgp);
             } else if (mem.startsWith(u8, user_input, ":exit")) {
                 const msg_stream = try net.tcpConnectToAddress(addr);
                 defer msg_stream.close();
@@ -211,7 +236,7 @@ fn read_cmd(addr: net.Address, client: *Client) !void {
                     "",
                 );
                 endp.dump(LOG_LEVEL);
-                ptc.prot_transmit(msg_stream, endp);
+                _ = ptc.prot_transmit(msg_stream, endp);
                 break;
             } else if (mem.startsWith(u8, user_input, ":help")) {
                 print_usage();

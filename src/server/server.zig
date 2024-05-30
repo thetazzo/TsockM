@@ -227,6 +227,7 @@ fn server_core(
 
 fn print_usage() void {
     print("COMMANDS:\n", .{});
+    print("    * :cc ................ clear screen\n", .{});
     print("    * :list .............. list all active peers\n", .{});
     print("    * :kill all .......... kill all peers\n", .{});
     print("    * :kill <peer_id> .... kill one peer\n", .{});
@@ -277,6 +278,9 @@ fn read_cmd(
                         try peer_kill(pf.ref_id, peer_pool);
                     }
                 }
+            } else if (mem.eql(u8, user_input, ":cc")) {
+                try cmn.screen_clear();
+                print("Server running on `{s}`\n", .{"127.0.0.1:6969"});
             } else if (mem.eql(u8, user_input, ":help")) {
                 print_usage();
             } else {

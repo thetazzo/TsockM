@@ -12,3 +12,8 @@ pub fn address_to_str(addr: std.net.Address) []const u8 {
     const addr_str = std.fmt.allocPrint(allocator, "{any}", .{addr}) catch "format failed";
     return addr_str;
 }
+
+pub fn screen_clear() !void {
+    const stdout = std.io.getStdOut().writer();
+    try stdout.print("\x1B[2J\x1B[H", .{});
+}

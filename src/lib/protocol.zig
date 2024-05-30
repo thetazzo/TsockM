@@ -143,11 +143,13 @@ pub const Protocol = struct {
     }
 };
 
-pub fn prot_transmit(stream: std.net.Stream, prot: Protocol) void {
+// returns 1 when stream is closed
+pub fn prot_transmit(stream: std.net.Stream, prot: Protocol) u8 {
     const werr = stream.write(prot.as_str()) catch 1;
     if (werr == 1) {
-        std.log.warn("stream is closed\n", .{});
+        return 1;
     }
+    return 0;
 }
 
 pub fn protocol_from_str(str: []const u8) Protocol {

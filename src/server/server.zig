@@ -305,6 +305,7 @@ fn read_cmd(
 }
 
 pub fn start() !void {
+    try cmn.screen_clear();
     // create a localhost server
     var server = try localhost_server(6969);
     errdefer server.deinit();

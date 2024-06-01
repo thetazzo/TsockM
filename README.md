@@ -53,7 +53,6 @@
 
 * [ ] Thread shared data
     * Mutex and shared data between threads
-* [ ] Accept address as a variable when launching a server
 * [ ] Send periodic peer health check protocol ~ look for dead peers and remove them from the pool
 * [ ] `peer_bridge_ref`
     * function that constructs a structre containing the sender peer and the peer the sender is trying to find
@@ -70,6 +69,7 @@
         * [x] `KILL_ALL`       - removes all peers
         * [x] `LIST`           - prints relevant peer data
         * [x] `CC`             - Clear screen
+* [x] Accept address as a variable when launching a server
 * [x] Protocol should also contain `src` and `dest` IP addresses, socket form
 * [x] Peer unique hash as ID 
 * [x] Handle invalid *action* arguments
@@ -80,7 +80,7 @@
 * Application given to the user for chatting
     
 ### TODO
-* [ ] Accept address as a variable when launching a server
+* [x] Accept address as a variable when connecting a server
 * [x] Use **Mutex** to share `should_exit` state between `read_cmd` and `listen_for_comms`
 ---
 

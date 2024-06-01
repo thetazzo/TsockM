@@ -9,6 +9,9 @@ const str_allocator = std.heap.page_allocator;
 
 const LOG_LEVEL = ptc.LogLevel.SILENT;
 
+const SERVER_ADDRESS = "192.168.88.145";
+const SERVER_PORT = 6969;
+
 const Client = struct {
     id: []const u8,
     username: []const u8,
@@ -234,7 +237,7 @@ pub fn start() !void {
     try cmn.screen_clear();
     print("Client starated\n", .{});
     print("Enter your username: ", .{});
-    const addr = try net.Address.resolveIp("127.0.0.1", 6969);
+    const addr = try net.Address.resolveIp(SERVER_ADDRESS, SERVER_PORT);
     var buf: [256]u8 = undefined;
     const stdin = std.io.getStdIn().reader();
     if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {

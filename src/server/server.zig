@@ -8,6 +8,9 @@ const print = std.debug.print;
 
 const LOG_LEVEL = ptc.LogLevel.DEV;
 
+const SERVER_ADDRESS = "192.168.88.145";
+const SERVER_PORT = 6969;
+
 const PEER_ID = []const u8;
 const str_allocator = std.heap.page_allocator;
 
@@ -83,8 +86,9 @@ fn peer_kill(ref_id: usize, peer_pool: *std.ArrayList(Peer)) !void {
     _ = peer_pool.orderedRemove(ref_id);
 }
 
-fn localhost_server(port: u16) !net.Server {
-    const lh = try net.Address.resolveIp("127.0.0.1", port);
+fn server_start(address: []const u8, port: u16) !net.Server {
+    const lh = try net.Address.resolveIp(address, port);
+    print("Server running on `{s}:{d}`\n", .{ address, port });
     return lh.listen(.{
         // TODO this flag needs to be set for bettter server performance
         .reuse_address = true,
@@ -311,12 +315,10 @@ fn polizei(peer_pool: *std.ArrayList(Peer)) !void {
 
 pub fn start() !void {
     try cmn.screen_clear();
-    // create a localhost server
-    var server = try localhost_server(6969);
+
+    var server = try server_start(SERVER_ADDRESS, SERVER_PORT);
     errdefer server.deinit();
     defer server.deinit();
-
-    print("Server running on `{s}`\n", .{"127.0.0.1:6969"});
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();

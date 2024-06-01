@@ -82,6 +82,8 @@
 ### TODO
 * [x] Accept address as a variable when connecting a server
 * [x] Use **Mutex** to share `should_exit` state between `read_cmd` and `listen_for_comms`
+* [ ] `:info` command to print information about the client instance
+* [ ] don't crash the the client wait for a connection to the server be available
 ---
 
 # References

@@ -51,32 +51,36 @@
 
 ### TODO
 
-* [x] Protocol should also contain `src` and `dest` IP addresses, socket form
+* [ ] Thread shared data
+    * Mutex and shared data between threads
+* [ ] Accept address as a variable when launching a server
 * [ ] Send periodic peer health check protocol ~ look for dead peers and remove them from the pool
-* Executable commands on the server application
-        * [x] `KILL <peer_id>` - removes a specific peer
-        * [x] `KILL_ALL`       - removes all peers
-        * [x] `LIST`           - prints relevant peer data
-        * [x] `CC`             - Clear screen
-* [ ] Have a delayed peer removal 
-    * Peer after terminating the connectioh has like 13 seconds before it is removed of something like that
-* [x] Peer unique hash as ID 
 * [ ] `peer_bridge_ref`
     * function that constructs a structre containing the sender peer and the peer the sender is trying to find
 * [ ] when server sends a response set the source of the response to server ip
-* [x] Handle invalid *action* arguments
-    * `KILL` - action must be provided with eather `<peer_id` or `all`, error otherwise 
+* [ ] Have a delayed peer removal 
+    * Peer after terminating the connectioh has like 13 seconds before it is removed of something like that
 * [ ] Consume program arguments:
     * `LOG_LEVEL`:
         * `-s` .... silent mode
         * `-t` .... tiny mode
         * default `DEV`
+* Executable commands on the server application
+        * [x] `KILL <peer_id>` - removes a specific peer
+        * [x] `KILL_ALL`       - removes all peers
+        * [x] `LIST`           - prints relevant peer data
+        * [x] `CC`             - Clear screen
+* [x] Protocol should also contain `src` and `dest` IP addresses, socket form
+* [x] Peer unique hash as ID 
+* [x] Handle invalid *action* arguments
+    * `KILL` - action must be provided with eather `<peer_id` or `all`, error otherwise 
 
 ## Client
 
 * Application given to the user for chatting
     
 ### TODO
+* [ ] Accept address as a variable when launching a server
 * [x] Use **Mutex** to share `should_exit` state between `read_cmd` and `listen_for_comms`
 ---
 

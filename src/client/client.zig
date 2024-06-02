@@ -36,6 +36,8 @@ fn print_usage() void {
     print("    * :msg <message> .... boradcast the message to all users\n", .{});
     print("    * :gp <peer_id> ..... request peer data from server\n", .{});
     print("    * :exit ............. terminate the program\n", .{});
+    print("    * :info ............. print information about the client\n", .{});
+    print("    * :cc ,,............. clear screen\n", .{});
 }
 
 fn request_connection(address: []const u8, port: u16, username: []const u8) !Client {
@@ -173,6 +175,7 @@ fn extract_command_val(cs: []const u8, cmd: []const u8) []const u8 {
 
 fn read_cmd(sd: *SharedData, client: *Client) !void {
     const addr_str = cmn.address_as_str(client.server_addr);
+    print("Enter action here:\n", .{});
     while (!sd.should_exit) {
         // read for command
         var buf: [256]u8 = undefined;
@@ -181,7 +184,6 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
             // Handle different commands
             if (mem.startsWith(u8, user_input, ":msg")) {
                 const msg = extract_command_val(user_input, ":msg");
-
                 // construct message protocol
                 const reqp = ptc.Protocol.init(
                     ptc.Typ.REQ,
@@ -192,11 +194,9 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
                     addr_str,
                     msg,
                 );
-
                 try send_request(client.server_addr, reqp);
             } else if (mem.startsWith(u8, user_input, ":gp")) {
                 const pid = extract_command_val(user_input, ":gp");
-
                 // construct message protocol
                 const reqp = ptc.Protocol.init(
                     ptc.Typ.REQ,
@@ -207,8 +207,9 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
                     addr_str,
                     pid,
                 );
-
                 try send_request(client.server_addr, reqp);
+            } else if (mem.eql(u8, user_input, ":info")) {
+                client.dump();
             } else if (mem.eql(u8, user_input, ":exit")) {
                 const reqp = ptc.Protocol.init(
                     ptc.Typ.REQ,

@@ -51,14 +51,12 @@
 
 ### TODO
 
-* [ ] Thread shared data
-    * Mutex and shared data between threads
+* [ ] `:info` action for printing server stats (amount of peers connected, uptime, server-address, etc.)
+* [ ] `:ping <peer_username>` action for pinging the status of a peer
+* [ ] Thread shared data - Mutex and shared data between threads
 * [ ] Send periodic peer health check protocol ~ look for dead peers and remove them from the pool
-* [ ] `peer_bridge_ref`
-    * function that constructs a structre containing the sender peer and the peer the sender is trying to find
+* [ ] `peer_bridge_ref` function that constructs a structre containing the sender peer and the peer the sender is trying to find
 * [ ] when server sends a response set the source of the response to server ip
-* [ ] Have a delayed peer removal 
-    * Peer after terminating the connectioh has like 13 seconds before it is removed of something like that
 * [ ] Consume program arguments:
     * `LOG_LEVEL`:
         * `-s` .... silent mode
@@ -82,7 +80,8 @@
 ### TODO
 * [x] Accept address as a variable when connecting a server
 * [x] Use **Mutex** to share `should_exit` state between `read_cmd` and `listen_for_comms`
-* [ ] `:info` command to print information about the client instance
+* [x] `:info` command to print information about the client instance
+* [ ] `:ping <peer_username` action for pinging the status of a peer
 * [ ] don't crash the the client wait for a connection to the server be available
 ---
 

@@ -17,7 +17,7 @@ const Client = struct {
     username: []const u8,
     stream: net.Stream,
     server_addr: net.Address,
-    comm_addr: ptc.Addr,
+    client_addr: ptc.Addr,
 
     pub fn dump(self: @This()) void {
         print("------------------------------------\n", .{});
@@ -25,7 +25,7 @@ const Client = struct {
         print("    id: `{s}`\n", .{self.id});
         print("    username: `{s}`\n", .{self.username});
         print("    server_addr: `{s}`\n", .{cmn.address_as_str(self.server_addr)});
-        print("    comm_addr: `{s}`\n", .{self.comm_addr});
+        print("    client_addr: `{s}`\n", .{self.client_addr});
         print("}}\n", .{});
         print("------------------------------------\n", .{});
     }
@@ -36,6 +36,8 @@ fn print_usage() void {
     print("    * :msg <message> .... boradcast the message to all users\n", .{});
     print("    * :gp <peer_id> ..... request peer data from server\n", .{});
     print("    * :exit ............. terminate the program\n", .{});
+    print("    * :info ............. print information about the client\n", .{});
+    print("    * :cc ,,............. clear screen\n", .{});
 }
 
 fn request_connection(address: []const u8, port: u16, username: []const u8) !Client {
@@ -58,17 +60,24 @@ fn request_connection(address: []const u8, port: u16, username: []const u8) !Cli
     const resp = try ptc.prot_collect(str_allocator, stream);
     resp.dump(LOG_LEVEL);
 
-    // construct the clint
-    var c = Client{
-        .id = resp.body,
-        .username = username,
-        .stream = stream,
-        .server_addr = addr,
-        .comm_addr = resp.dst,
-    };
-    c.dump(); // print the client
+    if (resp.status_code == ptc.StatusCode.OK) {
+        print("Client connected successfully to `{s}` :)\n", .{cmn.address_as_str(addr)});
+        var peer_spl = mem.split(u8, resp.body, "|");
+        const id = peer_spl.next().?;
+        const username_ = peer_spl.next().?;
 
-    return c;
+        // construct the client
+        return Client{
+            .id = id,
+            .username = username_,
+            .stream = stream,
+            .server_addr = addr,
+            .client_addr = resp.dst,
+        };
+    } else {
+        std.log.err("server error when creating client", .{});
+        std.posix.exit(1);
+    }
 }
 
 fn send_request(addr: net.Address, req: ptc.Protocol) !void {
@@ -173,6 +182,7 @@ fn extract_command_val(cs: []const u8, cmd: []const u8) []const u8 {
 
 fn read_cmd(sd: *SharedData, client: *Client) !void {
     const addr_str = cmn.address_as_str(client.server_addr);
+    print("Enter action here:\n", .{});
     while (!sd.should_exit) {
         // read for command
         var buf: [256]u8 = undefined;
@@ -181,7 +191,6 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
             // Handle different commands
             if (mem.startsWith(u8, user_input, ":msg")) {
                 const msg = extract_command_val(user_input, ":msg");
-
                 // construct message protocol
                 const reqp = ptc.Protocol.init(
                     ptc.Typ.REQ,
@@ -192,11 +201,9 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
                     addr_str,
                     msg,
                 );
-
                 try send_request(client.server_addr, reqp);
             } else if (mem.startsWith(u8, user_input, ":gp")) {
                 const pid = extract_command_val(user_input, ":gp");
-
                 // construct message protocol
                 const reqp = ptc.Protocol.init(
                     ptc.Typ.REQ,
@@ -207,8 +214,9 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
                     addr_str,
                     pid,
                 );
-
                 try send_request(client.server_addr, reqp);
+            } else if (mem.eql(u8, user_input, ":info")) {
+                client.dump();
             } else if (mem.eql(u8, user_input, ":exit")) {
                 const reqp = ptc.Protocol.init(
                     ptc.Typ.REQ,

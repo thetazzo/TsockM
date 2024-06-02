@@ -57,6 +57,7 @@ fn peer_find_ref(peer_pool: *std.ArrayList(Peer), id: PEER_ID) ?struct { peer: P
 
 fn peer_construct(
     conn: net.Server.Connection,
+    protocol: ptc.Protocol,
 ) Peer {
     var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
     const s = sqids.Sqids.init(std.heap.page_allocator, .{ .min_length = 10 }) catch |err| {
@@ -67,7 +68,16 @@ fn peer_construct(
         std.log.warn("{any}", .{err});
         std.posix.exit(1);
     };
-    return Peer.init(conn, id);
+    var peer = Peer.init(conn, id);
+    const user_sig = s.encode(&.{ rand.random().int(u8), rand.random().int(u8), rand.random().int(u8) }) catch |err| {
+        std.log.warn("{any}", .{err});
+        std.posix.exit(1);
+    };
+    // DON'T EVER FORGET TO ALLOCATE MEMORY !!!!!!
+    const aun = std.fmt.allocPrint(str_allocator, "{s}#{s}", .{ protocol.body, user_sig }) catch "format failed";
+    peer.username = aun;
+    peer_dump(peer);
+    return peer;
 }
 
 fn peer_kill(ref_id: usize, peer_pool: *std.ArrayList(Peer)) !void {
@@ -141,11 +151,8 @@ fn read_incomming(
     const addr_str = cmn.address_as_str(conn.address);
     if (protocol.is_request()) {
         if (protocol.is_action(ptc.Act.COMM)) {
-            var peer = peer_construct(conn);
-            // DON'T EVER FORGET TO ALLOCATE MEMORY !!!!!!
-            const aun = std.fmt.allocPrint(str_allocator, "{s}", .{protocol.body}) catch "format failed";
-            peer.username = aun;
-            peer_dump(peer);
+            const peer = peer_construct(conn, protocol);
+            const peer_str = std.fmt.allocPrint(str_allocator, "{s}|{s}", .{ peer.id, peer.username }) catch "format failed";
             try peer_pool.append(peer);
             const resp = ptc.Protocol.init(
                 ptc.Typ.RES,
@@ -154,7 +161,7 @@ fn read_incomming(
                 "server",
                 "server",
                 addr_str,
-                peer.id,
+                peer_str,
             );
             resp.dump(LOG_LEVEL);
             _ = ptc.prot_transmit(stream, resp);

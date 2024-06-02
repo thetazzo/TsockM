@@ -51,10 +51,11 @@
 
 ### TODO
 
-* [ ] `:info` action for printing server stats (amount of peers connected, uptime, server-address, etc.)
-* [ ] `:ping <peer_username>` action for pinging the status of a peer
-* [ ] Thread shared data - Mutex and shared data between threads
-* [ ] Send periodic peer health check protocol ~ look for dead peers and remove them from the pool
+* [x] `:info` action for printing server stats (amount of peers connected, uptime, server-address, etc.)
+* [x] `:ping <peer_username>` action for pinging the status of a peer
+* [ ] `peer_find_all_username` find all peers with specific username
+* [x] Thread shared data - Mutex and shared data between threads
+* [x] Send periodic peer health check protocol ~ look for dead peers and remove them from the pool
 * [ ] `peer_bridge_ref` function that constructs a structre containing the sender peer and the peer the sender is trying to find
 * [ ] when server sends a response set the source of the response to server ip
 * [ ] Consume program arguments:
@@ -83,6 +84,7 @@
 * [x] `:info` command to print information about the client instance
 * [ ] `:ping <peer_username` action for pinging the status of a peer
 * [ ] don't crash the the client wait for a connection to the server be available
+
 ---
 
 # References

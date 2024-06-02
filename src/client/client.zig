@@ -17,7 +17,7 @@ const Client = struct {
     username: []const u8,
     stream: net.Stream,
     server_addr: net.Address,
-    comm_addr: ptc.Addr,
+    client_addr: ptc.Addr,
 
     pub fn dump(self: @This()) void {
         print("------------------------------------\n", .{});
@@ -25,7 +25,7 @@ const Client = struct {
         print("    id: `{s}`\n", .{self.id});
         print("    username: `{s}`\n", .{self.username});
         print("    server_addr: `{s}`\n", .{cmn.address_as_str(self.server_addr)});
-        print("    comm_addr: `{s}`\n", .{self.comm_addr});
+        print("    client_addr: `{s}`\n", .{self.client_addr});
         print("}}\n", .{});
         print("------------------------------------\n", .{});
     }
@@ -60,17 +60,24 @@ fn request_connection(address: []const u8, port: u16, username: []const u8) !Cli
     const resp = try ptc.prot_collect(str_allocator, stream);
     resp.dump(LOG_LEVEL);
 
-    // construct the clint
-    var c = Client{
-        .id = resp.body,
-        .username = username,
-        .stream = stream,
-        .server_addr = addr,
-        .comm_addr = resp.dst,
-    };
-    c.dump(); // print the client
+    if (resp.status_code == ptc.StatusCode.OK) {
+        print("Client connected successfully to `{s}` :)\n", .{cmn.address_as_str(addr)});
+        var peer_spl = mem.split(u8, resp.body, "|");
+        const id = peer_spl.next().?;
+        const username_ = peer_spl.next().?;
 
-    return c;
+        // construct the client
+        return Client{
+            .id = id,
+            .username = username_,
+            .stream = stream,
+            .server_addr = addr,
+            .client_addr = resp.dst,
+        };
+    } else {
+        std.log.err("server error when creating client", .{});
+        std.posix.exit(1);
+    }
 }
 
 fn send_request(addr: net.Address, req: ptc.Protocol) !void {

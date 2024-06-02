@@ -258,6 +258,9 @@ fn extract_command_val(cs: []const u8, cmd: []const u8) []const u8 {
 
 fn read_cmd(
     peer_pool: *std.ArrayList(Peer),
+    addr_str: []const u8,
+    port: u16,
+    start_time: std.time.Instant,
 ) !void {
     while (true) {
         // read for command
@@ -302,6 +305,16 @@ fn read_cmd(
             } else if (mem.eql(u8, user_input, ":cc")) {
                 try cmn.screen_clear();
                 print("Server running on `{s}`\n", .{"127.0.0.1:6969"});
+            } else if (mem.eql(u8, user_input, ":info")) {
+                const now = try std.time.Instant.now();
+                const dt = now.since(start_time) / std.time.ns_per_ms / 1000;
+                print("==================================================\n", .{});
+                print("Server status\n", .{});
+                print("--------------------------------------------------\n", .{});
+                print("peers connected: {d}\n", .{peer_pool.items.len});
+                print("uptime: {d:.3}s\n", .{dt});
+                print("address: {s}::{d}\n", .{ addr_str, port });
+                print("==================================================\n", .{});
             } else if (mem.eql(u8, user_input, ":help")) {
                 print_usage();
             } else {
@@ -326,6 +339,7 @@ pub fn start() !void {
     var server = try server_start(SERVER_ADDRESS, SERVER_PORT);
     errdefer server.deinit();
     defer server.deinit();
+    const start_time = try std.time.Instant.now();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
@@ -339,7 +353,7 @@ pub fn start() !void {
     {
         const t1 = try std.Thread.spawn(.{}, server_core, .{ &server, &peer_pool });
         defer t1.join();
-        const t2 = try std.Thread.spawn(.{}, read_cmd, .{&peer_pool});
+        const t2 = try std.Thread.spawn(.{}, read_cmd, .{ &peer_pool, SERVER_ADDRESS, SERVER_PORT, start_time });
         defer t2.join();
         //const t3 = try std.Thread.spawn(.{}, polizei, .{&peer_pool});
         //defer t3.join();

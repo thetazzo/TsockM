@@ -112,6 +112,7 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
             if (resp.is_action(ptc.Act.COMM_END)) {
                 if (resp.status_code == ptc.StatusCode.OK) {
                     client.stream.close();
+                    print("Server connection terminated.\n", .{});
                     break;
                 }
             } else if (resp.is_action(ptc.Act.GET_PEER)) {
@@ -142,9 +143,9 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                     resp.dump(LOG_LEVEL);
                 }
             }
-        } else if (resp.type == ptc.Typ.REQ) {
-            if (resp.status_code == ptc.StatusCode.OK) {
-                if (resp.is_action(ptc.Act.COMM)) {
+        } else if (resp.is_request()) {
+            if (resp.is_action(ptc.Act.COMM)) {
+                if (resp.status_code == ptc.StatusCode.OK) {
                     // protocol to say communication is OK
                     const msgp = ptc.Protocol.init(
                         ptc.Typ.RES,
@@ -158,14 +159,19 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                     // send message protocol to server
                     try send_request(client.server_addr, msgp);
                 }
-            }
+            } else if (resp.is_action(ptc.Act.COMM_END)) {
+                if (resp.status_code == ptc.StatusCode.OK) {
+                    client.stream.close();
+                    print("Server connection terminated. Press <ENTER> to close the program.\n", .{});
+                    break;
+                }
+            } 
         } else if (resp.type == ptc.Typ.ERR) {
             //client.stream.close();
             resp.dump(LOG_LEVEL);
             break;
         }
     }
-    print("exiting listen_for_comms\n", .{});
     sd.update_value(true);
 }
 
@@ -188,6 +194,9 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
         var buf: [256]u8 = undefined;
         const stdin = std.io.getStdIn().reader();
         if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
+            if (sd.should_exit) {
+                break;
+            }
             // Handle different commands
             if (mem.startsWith(u8, user_input, ":msg")) {
                 const msg = extract_command_val(user_input, ":msg");

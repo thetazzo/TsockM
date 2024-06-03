@@ -106,7 +106,7 @@ pub const Protocol = struct {
         print(" {s}: `{s}` {{{s}}}                 \n", .{
             prot_type_as_str(self.type),
             @tagName(self.action),
-            self.src,
+            self.sender_id,
         });
         if (log_level == LogLevel.DEV) {
             print("------------------------------------\n", .{});

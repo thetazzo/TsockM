@@ -1,6 +1,7 @@
 const std = @import("std");
 const ptc = @import("ptc");
 const cmn = @import("cmn");
+const tclr = @import("text_color");
 const sqids = @import("sqids");
 const net = std.net;
 const mem = std.mem;
@@ -48,7 +49,9 @@ fn peer_dump(p: Peer) void {
     print("------------------------------------\n", .{});
 }
 
-fn peer_find_id(peer_pool: *std.ArrayList(Peer), id: PEER_ID) ?struct { peer: Peer, ref_id: usize } {
+const PeerRef = struct { peer: Peer, ref_id: usize };
+
+fn peer_find_id(peer_pool: *std.ArrayList(Peer), id: PEER_ID) ?PeerRef {
     // O(n)
     var i: usize = 0;
     for (peer_pool.items[0..]) |peer| {
@@ -60,7 +63,7 @@ fn peer_find_id(peer_pool: *std.ArrayList(Peer), id: PEER_ID) ?struct { peer: Pe
     return null;
 }
 
-fn peer_find_username(peer_pool: *std.ArrayList(Peer), un: []const u8) ?struct {peer: Peer, ref_id: usize} {
+fn peer_find_username(peer_pool: *std.ArrayList(Peer), un: []const u8) ?PeerRef {
     // O(n)
     var i: usize = 0;
     for (peer_pool.items[0..]) |peer| {
@@ -99,7 +102,7 @@ fn peer_construct(
 
 fn server_start(address: []const u8, port: u16) !net.Server {
     const lh = try net.Address.resolveIp(address, port);
-    print("Server running on `{s}:{d}`\n", .{ address, port });
+    print("Server running on `" ++ tclr.paint_green("{s}:{d}") ++ "`\n", .{address, port});
     return lh.listen(.{
         .reuse_address = true,
     });
@@ -134,6 +137,38 @@ fn message_broadcast(
     }
 }
 
+fn connection_accept(
+    sd: *SharedData,
+    conn: net.Server.Connection,
+    server_addr: []const u8,
+    protocol: ptc.Protocol,
+) !void {
+    const addr_str = cmn.address_as_str(conn.address);
+    const stream = conn.stream;
+
+    const peer = peer_construct(conn, protocol);
+    const peer_str = std.fmt.allocPrint(str_allocator, "{s}|{s}", .{ peer.id, peer.username }) catch "format failed";
+    try sd.peer_add(peer);
+    const resp = ptc.Protocol.init(
+        ptc.Typ.RES, // type
+        ptc.Act.COMM, // action
+        ptc.StatusCode.OK, // status code
+        "server", // sender id
+        server_addr, // sender address
+        addr_str, // reciever address
+        peer_str,
+    );
+    resp.dump(LOG_LEVEL);
+    _ = ptc.prot_transmit(stream, resp);
+}
+
+fn connection_terminate(sd: *SharedData, protocol: ptc.Protocol) !void {
+    const peer_ref = peer_find_id(sd.peer_pool, protocol.sender_id);
+    if (peer_ref) |pf| {
+        try sd.peer_kill(pf.ref_id);
+    }
+}
+
 fn read_incomming(
     sd: *SharedData,
     server: *net.Server,
@@ -156,25 +191,9 @@ fn read_incomming(
         if (protocol.is_request()) {
             // Handle COMM request
             if (protocol.is_action(ptc.Act.COMM)) {
-                const peer = peer_construct(conn, protocol);
-                const peer_str = std.fmt.allocPrint(str_allocator, "{s}|{s}", .{ peer.id, peer.username }) catch "format failed";
-                try sd.peer_add(peer);
-                const resp = ptc.Protocol.init(
-                ptc.Typ.RES, // type
-                ptc.Act.COMM, // action
-                ptc.StatusCode.OK, // status code
-                "server", // sender id
-                server_addr, // sender address
-                addr_str, // reciever address
-                peer_str,
-            );
-                resp.dump(LOG_LEVEL);
-                _ = ptc.prot_transmit(stream, resp);
+                try connection_accept(sd, conn, server_addr, protocol);
             } else if (protocol.is_action(ptc.Act.COMM_END)) {
-                const peer_ref = peer_find_id(sd.peer_pool, protocol.sender_id);
-                if (peer_ref) |pf| {
-                    try sd.peer_kill(pf.ref_id);
-                }
+                try connection_terminate(sd, protocol);
             } else if (protocol.is_action(ptc.Act.MSG)) {
                 try message_broadcast(sd, protocol.sender_id, protocol.body);
             } else if (protocol.is_action(ptc.Act.GET_PEER)) {
@@ -350,6 +369,14 @@ const SharedData = struct {
         try self.peer_pool.append(peer);
     }
 };
+//fn toString(comptime num: comptime_int) []const u8 {
+//    return std.fmt.comptimePrint("{}", .{num});
+//}
+
+//pub fn wrapAnsi16m(r: u8, g: u8, b: u8) []const u8 {
+//    return "\u{001B}[38;2;0;255;0m";
+//}
+
 fn read_cmd(
     sd: *SharedData,
     addr_str: []const u8,
@@ -429,7 +456,7 @@ fn read_cmd(
                 sd.peer_clean();
             } else if (mem.eql(u8, user_input, ":cc")) {
                 try cmn.screen_clear();
-                print("Server running on `{s}`\n", .{"127.0.0.1:6969"});
+                print("Server runng on `{s}`\n", .{"127.0.0.1:6969"});
             } else if (mem.eql(u8, user_input, ":info")) {
                 const now = try std.time.Instant.now();
                 const dt = now.since(start_time) / std.time.ns_per_ms / 1000;

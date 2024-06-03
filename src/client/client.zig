@@ -1,6 +1,7 @@
 const std = @import("std");
 const ptc = @import("ptc");
 const cmn = @import("cmn");
+const tclr = @import("text_color");
 const mem = std.mem;
 const net = std.net;
 const print = std.debug.print;
@@ -138,7 +139,12 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                     const np = try ptc.prot_collect(str_allocator, client.stream);
                     np.dump(LOG_LEVEL);
 
-                    print("{s}: {s}\n", .{ np.body, resp.body });
+                    var un_spl = mem.split(u8, np.body, "#");
+                    const unn = un_spl.next().?; // user name
+                    const unh = un_spl.next().?; // username hash
+
+                    // print recieved message
+                    print("{s}" ++ tclr.paint_hex("#555555", "#{s}") ++ ": {s}\n", .{ unn, unh, resp.body });
                 } else {
                     resp.dump(LOG_LEVEL);
                 }

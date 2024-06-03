@@ -6,7 +6,7 @@ const net = std.net;
 const mem = std.mem;
 const print = std.debug.print;
 
-const LOG_LEVEL = ptc.LogLevel.TINY;
+const LOG_LEVEL = ptc.LogLevel.DEV;
 
 const SERVER_ADDRESS = "192.168.88.145";
 const SERVER_PORT = 6969;
@@ -31,6 +31,9 @@ const Peer = struct {
     }
     pub fn comm_address(self: @This()) net.Address {
         return self.conn.address;
+    }
+    pub fn comm_address_as_str(self: @This()) []const u8 {
+        return cmn.address_as_str(self.conn.address);
     }
 };
 
@@ -94,22 +97,6 @@ fn peer_construct(
     return peer;
 }
 
-fn peer_kill(sd: *SharedData, ref_id: usize) !void {
-    const peer = sd.peer_pool.items[ref_id];
-    const endp = ptc.Protocol.init(
-        ptc.Typ.RES,
-        ptc.Act.COMM_END,
-        ptc.StatusCode.OK,
-        "server",
-        "server",
-        "client",
-        "OK",
-    );
-    endp.dump(LOG_LEVEL);
-    _ = ptc.prot_transmit(peer.stream(), endp);
-    sd.peer_remove(ref_id);
-}
-
 fn server_start(address: []const u8, port: u16) !net.Server {
     const lh = try net.Address.resolveIp(address, port);
     print("Server running on `{s}:{d}`\n", .{ address, port });
@@ -129,8 +116,8 @@ fn message_broadcast(
     if (peer_ref) |pf| {
         for (sd.peer_pool.items[0..]) |peer| {
             if (pf.ref_id != pind and peer.alive) {
-                const src_addr = cmn.address_as_str(pf.peer.comm_address());
-                const dst_addr = cmn.address_as_str(peer.comm_address());
+                const src_addr = pf.peer.comm_address_as_str();
+                const dst_addr = peer.comm_address_as_str();
                 const msgp = ptc.Protocol.init(
                     ptc.Typ.RES,
                     ptc.Act.MSG,
@@ -151,6 +138,7 @@ fn message_broadcast(
 fn read_incomming(
     sd: *SharedData,
     conn: net.Server.Connection,
+    server_addr: []const u8,
 ) !void {
     const stream = conn.stream;
 
@@ -164,17 +152,18 @@ fn read_incomming(
 
     const addr_str = cmn.address_as_str(conn.address);
     if (protocol.is_request()) {
+        // Handle COMM request
         if (protocol.is_action(ptc.Act.COMM)) {
             const peer = peer_construct(conn, protocol);
             const peer_str = std.fmt.allocPrint(str_allocator, "{s}|{s}", .{ peer.id, peer.username }) catch "format failed";
             try sd.peer_add(peer);
             const resp = ptc.Protocol.init(
-                ptc.Typ.RES,
-                ptc.Act.COMM,
-                ptc.StatusCode.OK,
-                "server",
-                "server",
-                addr_str,
+                ptc.Typ.RES, // type
+                ptc.Act.COMM, // action
+                ptc.StatusCode.OK, // status code
+                "server", // sender id
+                server_addr, // sender address
+                addr_str, // reciever address
                 peer_str,
             );
             resp.dump(LOG_LEVEL);
@@ -182,7 +171,7 @@ fn read_incomming(
         } else if (protocol.is_action(ptc.Act.COMM_END)) {
             const peer_ref = peer_find_id(sd.peer_pool, protocol.sender_id);
             if (peer_ref) |pf| {
-                try peer_kill(sd, pf.ref_id);
+                try sd.peer_kill(pf.ref_id);
             }
         } else if (protocol.is_action(ptc.Act.MSG)) {
             try message_broadcast(sd, protocol.sender_id, protocol.body);
@@ -194,13 +183,13 @@ fn read_incomming(
             const ref = peer_find_id(sd.peer_pool, protocol.body);
             if (sref) |sr| {
                 if (ref) |pr| {
-                    const dst_addr = cmn.address_as_str(sr.peer.comm_address());
+                    const dst_addr = sr.peer.comm_address_as_str();
                     const resp = ptc.Protocol.init(
                         ptc.Typ.RES, // type
                         ptc.Act.GET_PEER, // action
                         ptc.StatusCode.OK, // status code
                         "server", // sender id
-                        "server", // src
+                        server_addr, // src
                         dst_addr, // dst
                         pr.peer.username, // body
                     );
@@ -214,7 +203,7 @@ fn read_incomming(
                 protocol.action,
                 ptc.StatusCode.BAD_REQUEST,
                 "server",
-                "server",
+                server_addr,
                 addr_str,
                 @tagName(ptc.StatusCode.BAD_REQUEST),
             );
@@ -253,7 +242,7 @@ fn server_core(
 ) !void {
     while (true) {
         const conn = try server.accept();
-        try read_incomming(sd, conn);
+        try read_incomming(sd, conn, cmn.address_as_str(server.listen_address));
     }
     print("Thread `server_core` finished\n", .{});
 }
@@ -296,6 +285,26 @@ const SharedData = struct {
         self.peer_pool.clearAndFree();
     }
 
+    fn peer_kill(self: *@This(), ref_id: usize) !void {
+        self.m.lock();
+        defer self.m.unlock();
+        const peer = self.peer_pool.items[ref_id];
+        const endp = ptc.Protocol.init(
+            ptc.Typ.RES,
+            ptc.Act.COMM_END,
+            ptc.StatusCode.OK,
+            "server",
+            "server",
+            "client",
+            "OK",
+        );
+        endp.dump(LOG_LEVEL);
+        _ = ptc.prot_transmit(peer.stream(), endp);
+
+        self.peer_pool.items[ref_id].alive = false;
+        _ = self.peer_pool.orderedRemove(ref_id);
+    }
+
     pub fn peer_remove(self: *@This(), pid: usize) void {
         self.m.lock();
         defer self.m.unlock();
@@ -315,7 +324,7 @@ const SharedData = struct {
                 .status_code = ptc.StatusCode.OK, // status_code
                 .sender_id = "server", // sender_id
                 .src = address_str, // src_address
-                .dst = cmn.address_as_str(peer.comm_address()), // dst_addres
+                .dst = peer.comm_address_as_str(), // dst address
                 .body = "check?", // body
             };
             reqp.dump(LOG_LEVEL);
@@ -336,7 +345,6 @@ const SharedData = struct {
         while (pplen > 0) {
             pplen -= 1;
             const p = self.peer_pool.items[pplen];
-            peer_dump(p);
             if (p.alive == false) {
                 _ = self.peer_pool.orderedRemove(pplen);
             }
@@ -379,12 +387,12 @@ fn read_cmd(
                 if (mem.eql(u8, karrg, "all")) {
                     for (sd.peer_pool.items[0..]) |peer| {
                         const endp = ptc.Protocol.init(
-                            ptc.Typ.RES,
+                            ptc.Typ.REQ,
                             ptc.Act.COMM_END,
                             ptc.StatusCode.OK,
                             "server",
-                            "server",
-                            "client",
+                            addr_str,
+                            peer.comm_address_as_str(),
                             "OK",
                         );
                         endp.dump(LOG_LEVEL);
@@ -394,7 +402,7 @@ fn read_cmd(
                 } else {
                     const peer_ref = peer_find_id(sd.peer_pool, karrg);
                     if (peer_ref) |pf| {
-                        try peer_kill(sd, pf.ref_id, );
+                        try sd.peer_kill(pf.ref_id);
                     }
                 }
             } else if (mem.startsWith(u8, user_input, ":ping")) {
@@ -410,7 +418,7 @@ fn read_cmd(
                             .status_code = ptc.StatusCode.OK, // status_code
                             .sender_id = "server", // sender_id
                             .src = address_str, // src_address
-                            .dst = cmn.address_as_str(pr.peer.comm_address()), // dst_addres
+                            .dst = pr.peer.comm_address_as_str(), // dst_addres
                             .body = "check?", // body
                         };
                         reqp.dump(LOG_LEVEL);

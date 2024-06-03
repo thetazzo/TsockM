@@ -13,6 +13,9 @@ pub fn build(b: *std.Build) void {
     const protocol_mod = b.addModule("ptc", .{
         .root_source_file = b.path("src/lib/protocol.zig"),
     });
+    const text_clr_mod = b.addModule("text_color", .{
+        .root_source_file = b.path("src/lib/text_color.zig"),
+    });
     const sqids_mod = sqids_dep.module("sqids");
 
     const server_exe = b.addExecutable(.{
@@ -23,6 +26,7 @@ pub fn build(b: *std.Build) void {
     });
     server_exe.root_module.addImport("ptc", protocol_mod);
     server_exe.root_module.addImport("cmn", common_mod);
+    server_exe.root_module.addImport("text_color", text_clr_mod);
     server_exe.root_module.addImport("sqids", sqids_mod);
 
     b.installArtifact(server_exe);
@@ -39,6 +43,7 @@ pub fn build(b: *std.Build) void {
     });
     client_exe.root_module.addImport("ptc", protocol_mod);
     client_exe.root_module.addImport("cmn", common_mod);
+    client_exe.root_module.addImport("text_color", text_clr_mod);
 
     b.installArtifact(client_exe);
     const run_client_exe = b.addRunArtifact(client_exe);

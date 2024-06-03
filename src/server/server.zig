@@ -6,14 +6,14 @@ const net = std.net;
 const mem = std.mem;
 const print = std.debug.print;
 
+const str_allocator = std.heap.page_allocator;
+
 const LOG_LEVEL = ptc.LogLevel.DEV;
 
 const SERVER_ADDRESS = "192.168.88.145";
 const SERVER_PORT = 6969;
 
 const PEER_ID = []const u8;
-const str_allocator = std.heap.page_allocator;
-
 const Peer = struct {
     conn: net.Server.Connection,
     id: PEER_ID,
@@ -101,7 +101,6 @@ fn server_start(address: []const u8, port: u16) !net.Server {
     const lh = try net.Address.resolveIp(address, port);
     print("Server running on `{s}:{d}`\n", .{ address, port });
     return lh.listen(.{
-        // TODO this flag needs to be set for bettter server performance
         .reuse_address = true,
     });
 }
@@ -137,27 +136,30 @@ fn message_broadcast(
 
 fn read_incomming(
     sd: *SharedData,
-    conn: net.Server.Connection,
-    server_addr: []const u8,
+    server: *net.Server,
 ) !void {
-    const stream = conn.stream;
+    while (true) {
+        const conn = try server.accept();
+        const server_addr = cmn.address_as_str(server.listen_address);
 
-    var buf: [256]u8 = undefined;
-    _ = try stream.read(&buf);
-    const recv = mem.sliceTo(&buf, 170);
+        const stream = conn.stream;
 
-    // Handle communication request
-    var protocol = ptc.protocol_from_str(recv); // parse protocol from recieved bytes
-    protocol.dump(LOG_LEVEL);
+        var buf: [256]u8 = undefined;
+        _ = try stream.read(&buf);
+        const recv = mem.sliceTo(&buf, 170);
 
-    const addr_str = cmn.address_as_str(conn.address);
-    if (protocol.is_request()) {
-        // Handle COMM request
-        if (protocol.is_action(ptc.Act.COMM)) {
-            const peer = peer_construct(conn, protocol);
-            const peer_str = std.fmt.allocPrint(str_allocator, "{s}|{s}", .{ peer.id, peer.username }) catch "format failed";
-            try sd.peer_add(peer);
-            const resp = ptc.Protocol.init(
+        // Handle communication request
+        var protocol = ptc.protocol_from_str(recv); // parse protocol from recieved bytes
+        protocol.dump(LOG_LEVEL);
+
+        const addr_str = cmn.address_as_str(conn.address);
+        if (protocol.is_request()) {
+            // Handle COMM request
+            if (protocol.is_action(ptc.Act.COMM)) {
+                const peer = peer_construct(conn, protocol);
+                const peer_str = std.fmt.allocPrint(str_allocator, "{s}|{s}", .{ peer.id, peer.username }) catch "format failed";
+                try sd.peer_add(peer);
+                const resp = ptc.Protocol.init(
                 ptc.Typ.RES, // type
                 ptc.Act.COMM, // action
                 ptc.StatusCode.OK, // status code
@@ -166,25 +168,25 @@ fn read_incomming(
                 addr_str, // reciever address
                 peer_str,
             );
-            resp.dump(LOG_LEVEL);
-            _ = ptc.prot_transmit(stream, resp);
-        } else if (protocol.is_action(ptc.Act.COMM_END)) {
-            const peer_ref = peer_find_id(sd.peer_pool, protocol.sender_id);
-            if (peer_ref) |pf| {
-                try sd.peer_kill(pf.ref_id);
-            }
-        } else if (protocol.is_action(ptc.Act.MSG)) {
-            try message_broadcast(sd, protocol.sender_id, protocol.body);
-        } else if (protocol.is_action(ptc.Act.GET_PEER)) {
-            // TODO: make a peer_find_bridge_ref
-            //      - similar to peer_find_id
-            //      - constructs a structure of sender peer and search peer
-            const sref = peer_find_id(sd.peer_pool, protocol.sender_id);
-            const ref = peer_find_id(sd.peer_pool, protocol.body);
-            if (sref) |sr| {
-                if (ref) |pr| {
-                    const dst_addr = sr.peer.comm_address_as_str();
-                    const resp = ptc.Protocol.init(
+                resp.dump(LOG_LEVEL);
+                _ = ptc.prot_transmit(stream, resp);
+            } else if (protocol.is_action(ptc.Act.COMM_END)) {
+                const peer_ref = peer_find_id(sd.peer_pool, protocol.sender_id);
+                if (peer_ref) |pf| {
+                    try sd.peer_kill(pf.ref_id);
+                }
+            } else if (protocol.is_action(ptc.Act.MSG)) {
+                try message_broadcast(sd, protocol.sender_id, protocol.body);
+            } else if (protocol.is_action(ptc.Act.GET_PEER)) {
+                // TODO: make a peer_find_bridge_ref
+                //      - similar to peer_find_id
+                //      - constructs a structure of sender peer and search peer
+                const sref = peer_find_id(sd.peer_pool, protocol.sender_id);
+                const ref = peer_find_id(sd.peer_pool, protocol.body);
+                if (sref) |sr| {
+                    if (ref) |pr| {
+                        const dst_addr = sr.peer.comm_address_as_str();
+                        const resp = ptc.Protocol.init(
                         ptc.Typ.RES, // type
                         ptc.Act.GET_PEER, // action
                         ptc.StatusCode.OK, // status code
@@ -193,12 +195,12 @@ fn read_incomming(
                         dst_addr, // dst
                         pr.peer.username, // body
                     );
-                    resp.dump(LOG_LEVEL);
-                    _ = ptc.prot_transmit(sr.peer.stream(), resp);
+                        resp.dump(LOG_LEVEL);
+                        _ = ptc.prot_transmit(sr.peer.stream(), resp);
+                    }
                 }
-            }
-        } else if (protocol.is_action(ptc.Act.NONE)) {
-            const errp = ptc.Protocol.init(
+            } else if (protocol.is_action(ptc.Act.NONE)) {
+                const errp = ptc.Protocol.init(
                 ptc.Typ.ERR,
                 protocol.action,
                 ptc.StatusCode.BAD_REQUEST,
@@ -207,20 +209,20 @@ fn read_incomming(
                 addr_str,
                 @tagName(ptc.StatusCode.BAD_REQUEST),
             );
-            errp.dump(LOG_LEVEL);
-            _ = ptc.prot_transmit(stream, errp);
-        }
-    } else if (protocol.is_response()) {
-        if (protocol.is_action(ptc.Act.COMM)) {
-            const ref = peer_find_id(sd.peer_pool, protocol.sender_id);
-            if (ref) |pr| {
-                print("peer `{s}` is alive\n", .{pr.peer.username});
-            } else {
-                print("Peer with id `{s}` does not exist!\n", .{protocol.sender_id});
+                errp.dump(LOG_LEVEL);
+                _ = ptc.prot_transmit(stream, errp);
             }
-        } 
-    } else if (protocol.type == ptc.Typ.NONE) {
-        const errp = ptc.Protocol.init(
+        } else if (protocol.is_response()) {
+            if (protocol.is_action(ptc.Act.COMM)) {
+                const ref = peer_find_id(sd.peer_pool, protocol.sender_id);
+                if (ref) |pr| {
+                    print("peer `{s}` is alive\n", .{pr.peer.username});
+                } else {
+                    print("Peer with id `{s}` does not exist!\n", .{protocol.sender_id});
+                }
+            } 
+        } else if (protocol.type == ptc.Typ.NONE) {
+            const errp = ptc.Protocol.init(
             ptc.Typ.ERR,
             protocol.action,
             ptc.StatusCode.BAD_REQUEST,
@@ -229,22 +231,12 @@ fn read_incomming(
             addr_str,
             "bad request",
         );
-        errp.dump(LOG_LEVEL);
-        _ = ptc.prot_transmit(stream, errp);
-    } else {
-        std.log.err("unreachable code", .{});
+            errp.dump(LOG_LEVEL);
+            _ = ptc.prot_transmit(stream, errp);
+        } else {
+            std.log.err("unreachable code", .{});
+        }
     }
-}
-
-fn server_core(
-    sd: *SharedData,
-    server: *net.Server,
-) !void {
-    while (true) {
-        const conn = try server.accept();
-        try read_incomming(sd, conn, cmn.address_as_str(server.listen_address));
-    }
-    print("Thread `server_core` finished\n", .{});
 }
 
 fn print_usage() void {
@@ -498,7 +490,7 @@ pub fn start() !void {
         .peer_pool = &peer_pool,
     };
     {
-        const t1 = try std.Thread.spawn(.{}, server_core, .{ &sd, &server });
+        const t1 = try std.Thread.spawn(.{}, read_incomming, .{ &sd, &server });
         defer t1.join();
         const t2 = try std.Thread.spawn(.{}, read_cmd, .{ &sd, SERVER_ADDRESS, SERVER_PORT, start_time });
         defer t2.join();

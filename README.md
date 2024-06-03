@@ -51,11 +51,9 @@
 
 ### TODO
 
-* [x] `:info` action for printing server stats (amount of peers connected, uptime, server-address, etc.)
-* [x] `:ping <peer_username>` action for pinging the status of a peer
+* [x] Test message coloring
+* [ ] send a notification to client when a peer gets terminated
 * [ ] `peer_find_all_username` find all peers with specific username
-* [x] Thread shared data - Mutex and shared data between threads
-* [x] Send periodic peer health check protocol ~ look for dead peers and remove them from the pool
 * [ ] `peer_bridge_ref` function that constructs a structre containing the sender peer and the peer the sender is trying to find
 * [ ] when server sends a response set the source of the response to server ip
 * [ ] Consume program arguments:
@@ -63,6 +61,10 @@
         * `-s` .... silent mode
         * `-t` .... tiny mode
         * default `DEV`
+* [x] `:info` action for printing server stats (amount of peers connected, uptime, server-address, etc.)
+* [x] `:ping <peer_username>` action for pinging the status of a peer
+* [x] Thread shared data - Mutex and shared data between threads
+* [x] Send periodic peer health check protocol ~ look for dead peers and remove them from the pool
 * Executable commands on the server application
         * [x] `KILL <peer_id>` - removes a specific peer
         * [x] `KILL_ALL`       - removes all peers
@@ -79,11 +81,13 @@
 * Application given to the user for chatting
     
 ### TODO
+* [x] Test message coloring
+* [ ] Consume peer termination notification and print it on screen
+* [ ] `:ping <peer_username` action for pinging the status of a peer
+* [ ] don't crash the the client wait for a connection to the server be available
 * [x] Accept address as a variable when connecting a server
 * [x] Use **Mutex** to share `should_exit` state between `read_cmd` and `listen_for_comms`
 * [x] `:info` command to print information about the client instance
-* [ ] `:ping <peer_username` action for pinging the status of a peer
-* [ ] don't crash the the client wait for a connection to the server be available
 
 ---
 

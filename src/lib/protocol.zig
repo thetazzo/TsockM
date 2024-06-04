@@ -65,6 +65,7 @@ pub const LogLevel = enum {
     SILENT,
     DEV,
     TINY,
+    REQ,
 };
 
 pub const Id = []const u8;
@@ -101,6 +102,8 @@ pub const Protocol = struct {
     }
     pub fn dump(self: @This(), log_level: LogLevel) void {
         if (log_level == LogLevel.SILENT) return;
+
+        if (log_level == LogLevel.REQ and self.type != Typ.REQ) return;
 
         print("====================================\n", .{});
         print(" {s}: `{s}` {{{s}}}                 \n", .{

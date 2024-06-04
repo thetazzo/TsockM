@@ -154,14 +154,14 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                 if (resp.status_code == ptc.StatusCode.OK) {
                     // protocol to say communication is OK
                     const msgp = ptc.Protocol.init(
-                        ptc.Typ.RES,
-                        ptc.Act.COMM,
-                        ptc.StatusCode.OK,
-                        client.id,
-                        "client",
-                        addr_str,
-                        "OK",
-                    );
+                    ptc.Typ.RES,
+                    ptc.Act.COMM,
+                    ptc.StatusCode.OK,
+                    client.id,
+                    "client",
+                    addr_str,
+                    "OK",
+                );
                     // send message protocol to server
                     try send_request(client.server_addr, msgp);
                 }

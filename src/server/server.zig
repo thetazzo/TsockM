@@ -301,7 +301,7 @@ const SharedData = struct {
         defer self.m.unlock();
         const peer = self.peer_pool.items[ref_id];
         const endp = ptc.Protocol.init(
-            ptc.Typ.RES,
+            ptc.Typ.REQ,
             ptc.Act.COMM_END,
             ptc.StatusCode.OK,
             "server",

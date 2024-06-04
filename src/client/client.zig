@@ -154,16 +154,38 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                 if (resp.status_code == ptc.StatusCode.OK) {
                     // protocol to say communication is OK
                     const msgp = ptc.Protocol.init(
-                    ptc.Typ.RES,
-                    ptc.Act.COMM,
-                    ptc.StatusCode.OK,
-                    client.id,
-                    "client",
-                    addr_str,
-                    "OK",
-                );
-                    // send message protocol to server
+                        ptc.Typ.RES,
+                        ptc.Act.COMM,
+                        ptc.StatusCode.OK,
+                        client.id,
+                        "client",
+                        addr_str,
+                        "OK"
+                    );
                     try send_request(client.server_addr, msgp);
+                }
+            } else if (resp.is_action(ptc.Act.NTFY_KILL)) {
+                if (resp.status_code == ptc.StatusCode.OK) {
+                    // construct protocol to get peer data
+                    const reqp = ptc.Protocol.init(
+                        ptc.Typ.REQ, // type
+                        ptc.Act.GET_PEER, // action
+                        ptc.StatusCode.OK, // status code
+                        client.id, // sender id
+                        "client", // src address
+                        addr_str, // destination address
+                        resp.body, //body
+                    );
+                    try send_request(client.server_addr, reqp);
+
+                    // collect GET_PEER response
+                    const np = try ptc.prot_collect(str_allocator, client.stream);
+                    np.dump(LOG_LEVEL);
+
+                    var un_spl = mem.split(u8, np.body, "#");
+                    const unn = un_spl.next().?; // user name
+                    const unh = un_spl.next().?; // username hash
+                    print("Peer `{s}" ++ tclr.paint_hex("#555555", "#{s}") ++ "` has died\n", .{unn, unh});
                 }
             } else if (resp.is_action(ptc.Act.COMM_END)) {
                 if (resp.status_code == ptc.StatusCode.OK) {

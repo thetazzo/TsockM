@@ -349,6 +349,29 @@ const SharedData = struct {
         }
     }
 
+    pub fn peer_ntfy_death(self: *@This()) void {
+        self.m.lock();
+        defer self.m.unlock();
+        for (self.peer_pool.items) |peer| {
+            if (peer.alive == false) {
+                for (self.peer_pool.items) |ap| {
+                    if (!mem.eql(u8, ap.id, peer.id)) {
+                        const ntfy = ptc.Protocol.init(
+                            ptc.Typ.REQ,
+                            ptc.Act.NTFY_KILL,
+                            ptc.StatusCode.OK,
+                            "server",
+                            "server",
+                            "client",
+                            peer.id,
+                        );
+                        _ = ptc.prot_transmit(ap.stream(), ntfy);
+                    }
+                }
+            }
+        }
+    }
+
     pub fn peer_clean(self: *@This()) void {
         self.m.lock();
         defer self.m.unlock();
@@ -369,13 +392,6 @@ const SharedData = struct {
         try self.peer_pool.append(peer);
     }
 };
-//fn toString(comptime num: comptime_int) []const u8 {
-//    return std.fmt.comptimePrint("{}", .{num});
-//}
-
-//pub fn wrapAnsi16m(r: u8, g: u8, b: u8) []const u8 {
-//    return "\u{001B}[38;2;0;255;0m";
-//}
 
 fn read_cmd(
     sd: *SharedData,
@@ -456,7 +472,7 @@ fn read_cmd(
                 sd.peer_clean();
             } else if (mem.eql(u8, user_input, ":cc")) {
                 try cmn.screen_clear();
-                print("Server runng on `{s}`\n", .{"127.0.0.1:6969"});
+                print("Server running on `" ++ tclr.paint_green("{s}:{d}") ++ "`\n", .{addr_str, port});
             } else if (mem.eql(u8, user_input, ":info")) {
                 const now = try std.time.Instant.now();
                 const dt = now.since(start_time) / std.time.ns_per_ms / 1000;
@@ -481,15 +497,22 @@ fn read_cmd(
 }
 
 fn polizei(sd: *SharedData) !void {
-    //std.log.err("not implemented", .{});
-    //std.posix.exit(1);
     var start_t = try std.time.Instant.now();
+    var lock = false;
     while (true) {
         const now_t = try std.time.Instant.now();
-        const dt  = now_t.since(start_t) / std.time.ns_per_s;
-        if (dt > 5 and dt < 7) {
+        const dt  = now_t.since(start_t) / std.time.ns_per_ms;
+        if (dt == 2000 and !lock) {
             sd.peer_ping_all("server");
+            lock = true;
+        }
+        if (dt == 3000 and lock) {
+            sd.peer_ntfy_death();
+            lock = false;
+        }
+        if (dt == 4000 and !lock) {
             sd.peer_clean();
+            lock = false;
             start_t = try std.time.Instant.now();
         }
     }

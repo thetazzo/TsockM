@@ -2,6 +2,19 @@
 
 * A TCP socket based chatting application
 
+## Quick Start
+
+* App is being developed on ``zig 0.13.0-dev.230+50a141945``
+
+* **SERVER**
+```bash
+zig build server
+```
+* **CLIENT**
+```bash
+zig build client
+```
+
 ## Server
 
 * The server portion of the application that handles communication between multiple client instances

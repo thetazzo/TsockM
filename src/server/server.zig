@@ -314,6 +314,22 @@ const SharedData = struct {
 
         self.peer_pool.items[ref_id].alive = false;
         _ = self.peer_pool.orderedRemove(ref_id);
+
+        // TODO: peer_broadcast_death
+        for (self.peer_pool.items) |ap| {
+            if (!mem.eql(u8, ap.id, peer.id)) {
+                const ntfy = ptc.Protocol.init(
+                ptc.Typ.REQ,
+                ptc.Act.NTFY_KILL,
+                ptc.StatusCode.OK,
+                "server",
+                "server",
+                "client",
+                peer.id,
+            );
+                _ = ptc.prot_transmit(ap.stream(), ntfy);
+            }
+        }
     }
 
     pub fn peer_remove(self: *@This(), pid: usize) void {
@@ -354,6 +370,7 @@ const SharedData = struct {
         defer self.m.unlock();
         for (self.peer_pool.items) |peer| {
             if (peer.alive == false) {
+                // TODO: peer_broadcast_death
                 for (self.peer_pool.items) |ap| {
                     if (!mem.eql(u8, ap.id, peer.id)) {
                         const ntfy = ptc.Protocol.init(
@@ -456,12 +473,14 @@ fn read_cmd(
                             .dst = pr.peer.comm_address_as_str(), // dst_addres
                             .body = "check?", // body
                         };
+
                         reqp.dump(LOG_LEVEL);
                         // TODO: I don't know why but i must send 2 requests to determine the status of the stream
                         _ = ptc.prot_transmit(pr.peer.stream(), reqp);
                         const status = ptc.prot_transmit(pr.peer.stream(), reqp);
                         if (status == 1) {
                             print("peer `{s}` is dead\n", .{pr.peer.username});
+                            // TODO: replace with peer_kill
                             sd.peer_remove(pr.ref_id);
                         }  
                     } else {

@@ -10,7 +10,7 @@ const str_allocator = std.heap.page_allocator;
 
 const LOG_LEVEL = ptc.LogLevel.SILENT;
 
-const SERVER_ADDRESS = "192.168.88.145";
+const SERVER_ADDRESS = "83.212.82.210";
 const SERVER_PORT = 6969;
 
 const Client = struct {

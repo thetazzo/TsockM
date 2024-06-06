@@ -17,9 +17,11 @@ zig build client -- <subcommand>
 ```
 
 * **SUBCOMMANDS**
-    * `help` ........................... print program usage
-    * `start <?flag>` .................. start the program
-        * `--addr [address] [port]` .... specify the address and port on which the program runs / is connected to (default: `127.0.0.1 6969`)
+```
+`help` ........................... print program usage
+`start <?flag>` .................. start the program
+    `--addr [address] [port]` .... specify the address and port on which the program runs / is connected to (default: `127.0.0.1 6969`)
+```
 
 ## Server
 

@@ -1,6 +1,7 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
+
     const sqids_dep = b.dependency("sqids", .{});
 
     const target = b.standardTargetOptions(.{});
@@ -33,12 +34,18 @@ pub fn build(b: *std.Build) void {
     const run_server_exe = b.addRunArtifact(server_exe);
 
     const run_server_step = b.step("server", "Run the SERVER");
+    // add command line arguments
+    if (b.args) |args| {
+        run_server_exe.addArgs(args);
+    }
     run_server_step.dependOn(&run_server_exe.step);
 
+    const linux_target = .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu };
     const client_exe = b.addExecutable(.{
         .name = "tsockm-client",
         .root_source_file = b.path("src/client/main.zig"),
-        .target = target,
+        .target = b.resolveTargetQuery(linux_target),
+        .strip = true,
         .optimize = optimize,
     });
     client_exe.root_module.addImport("ptc", protocol_mod);
@@ -47,7 +54,10 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(client_exe);
     const run_client_exe = b.addRunArtifact(client_exe);
-
+    // add command line arguments
+    if (b.args) |args| {
+        run_client_exe.addArgs(args);
+    }
     const run_client_step = b.step("client", "Run the CLIENT");
     run_client_step.dependOn(&run_client_exe.step);
 }

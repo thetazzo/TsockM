@@ -9,7 +9,7 @@ fn print_usage(program: []const u8) void {
     std.debug.print("SUBCOMMANDS:\n", .{});
     std.debug.print("    help ...................,,,,,,,,.. print program usage\n", .{});
     std.debug.print("    start <flag> ..................... start the server\n", .{});
-    std.debug.print("        --addr <address> <port> ...... specify a custom address to the TsockM server (default: 127.0.0.1:6969)", .{});
+    std.debug.print("        --addr <address> <port> ...... specify a custom address to the TsockM server (default: 127.0.0.1:6969)\n", .{});
 }
 
 pub fn main() !void {

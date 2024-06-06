@@ -3,9 +3,6 @@
 * A TCP socket based chatting application
 
 ## Quick Start
-
-* App is being developed on ``zig 0.13.0-dev.230+50a141945``
-
 * Build and run
 * **SERVER**
 ```bash

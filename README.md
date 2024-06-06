@@ -72,8 +72,10 @@ start <?flag>` .................. start the program
 
 ### TODO
 
+* [ ] {UPDATE} transform functions to be camel case as per zig standrad
+* [ ] {UPDATE} transform variables to be snake case as per zig standrad
 * [ ] {FEAT} encrypt body of the protocol
-* [ ] {BUG} notifying peer death on `client:exit` does not work
+* [ ] {BUG} notifying peer death does not work every time
 * [ ] send a notification to client when a peer gets terminated
 * [ ] `peer_find_all_username` find all peers with specific username
 * [ ] `peer_bridge_ref` function that constructs a structre containing the sender peer and the peer the sender is trying to find
@@ -105,6 +107,8 @@ start <?flag>` .................. start the program
     
 ### TODO
 
+* [ ] {UPDATE} transform functions to be camel case as per zig standrad
+* [ ] {UPDATE} transform variables to be snake case as per zig standrad
 * [ ] {FEAT} read server adddress as program argument
 * [ ] {BUG} a message is printed on top of a command being written
 * [ ] {FEAT} decrypt body of the protocol

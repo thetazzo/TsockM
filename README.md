@@ -51,6 +51,8 @@ start <?flag>` .................. start the program
     * `COMM`: establishing a communication socket
     * `COMM_END`: terminate the communication socket
     * `MSG`: message handling 
+    * `GET_PEER`: when pinging a peer
+    * `NTFY_KILL`: reporting termination of a peer
 * `[status_code]` defines the status code of the program (based on HTTP status codes)
     * `OK`: 200
     * `BAD_REQUEST`: 400

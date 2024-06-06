@@ -8,12 +8,17 @@
 
 * **SERVER**
 ```bash
-zig build server
+zig build server -- <args>
 ```
 * **CLIENT**
 ```bash
-zig build client
+zig build client -- <args>
 ```
+
+* Both client and server can accept:
+    * `-addr [address] [PORT]`
+        * where `[PORT]` is optional (default: `6969`)
+        * if no `-addr` is provided the default connection string is `127.0.0.1:6969`
 
 ## Server
 
@@ -64,7 +69,8 @@ zig build client
 
 ### TODO
 
-* [x] Test message coloring
+* [ ] {FEAT} encrypt body of the protocol
+* [ ] {BUG} notifying peer death on `client:exit` does not work
 * [ ] send a notification to client when a peer gets terminated
 * [ ] `peer_find_all_username` find all peers with specific username
 * [ ] `peer_bridge_ref` function that constructs a structre containing the sender peer and the peer the sender is trying to find
@@ -74,6 +80,7 @@ zig build client
         * `-s` .... silent mode
         * `-t` .... tiny mode
         * default `DEV`
+* [x] Test message coloring
 * [x] `:info` action for printing server stats (amount of peers connected, uptime, server-address, etc.)
 * [x] `:ping <peer_username>` action for pinging the status of a peer
 * [x] Thread shared data - Mutex and shared data between threads
@@ -94,10 +101,15 @@ zig build client
 * Application given to the user for chatting
     
 ### TODO
-* [x] Test message coloring
-* [ ] Consume peer termination notification and print it on screen
+
+* [ ] {FEAT} read server adddress as program argument
+* [ ] {BUG} a message is printed on top of a command being written
+* [ ] {FEAT} decrypt body of the protocol
 * [ ] `:ping <peer_username` action for pinging the status of a peer
 * [ ] don't crash the the client wait for a connection to the server be available
+* [ ] Allow user to specify the color of the text
+* [x] Consume peer termination notification and print it on screen
+* [x] Test message coloring
 * [x] Accept address as a variable when connecting a server
 * [x] Use **Mutex** to share `should_exit` state between `read_cmd` and `listen_for_comms`
 * [x] `:info` command to print information about the client instance
@@ -107,3 +119,4 @@ zig build client
 # References
 
 * SQIDS: https://github.com/sqids/sqids-zig
+* Raylib.zig: https://github.com/Not-Nik/raylib-zig

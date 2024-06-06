@@ -3,6 +3,7 @@
 * A TCP socket based chatting application
 
 ## Quick Start
+* This shoudl work on zig version `0.12.0`
 * Build and run
 * **SERVER**
 ```bash

@@ -76,7 +76,7 @@ start <?flag>` .................. start the program
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad
 * [ ] {FEAT} encrypt body of the protocol
 * [ ] {BUG} notifying peer death does not work every time
-* [ ] send a notification to client when a peer gets terminated
+* [x] send a notification to client when a peer gets terminated
 * [ ] `peer_find_all_username` find all peers with specific username
 * [ ] `peer_bridge_ref` function that constructs a structre containing the sender peer and the peer the sender is trying to find
 * [ ] when server sends a response set the source of the response to server ip

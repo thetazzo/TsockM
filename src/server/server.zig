@@ -11,9 +11,6 @@ const str_allocator = std.heap.page_allocator;
 
 const LOG_LEVEL = ptc.LogLevel.DEV;
 
-const SERVER_ADDRESS = "192.168.88.145";
-const SERVER_PORT = 6969;
-
 const PEER_ID = []const u8;
 const Peer = struct {
     conn: net.Server.Connection,
@@ -312,24 +309,8 @@ const SharedData = struct {
         endp.dump(LOG_LEVEL);
         _ = ptc.prot_transmit(peer.stream(), endp);
 
-        self.peer_pool.items[ref_id].alive = false;
-        _ = self.peer_pool.orderedRemove(ref_id);
-
-        // TODO: peer_broadcast_death
-        for (self.peer_pool.items) |ap| {
-            if (!mem.eql(u8, ap.id, peer.id)) {
-                const ntfy = ptc.Protocol.init(
-                ptc.Typ.REQ,
-                ptc.Act.NTFY_KILL,
-                ptc.StatusCode.OK,
-                "server",
-                "server",
-                "client",
-                peer.id,
-            );
-                _ = ptc.prot_transmit(ap.stream(), ntfy);
-            }
-        }
+        //self.peer_pool.items[ref_id].alive = false;
+        //_ = self.peer_pool.orderedRemove(ref_id);
     }
 
     pub fn peer_remove(self: *@This(), pid: usize) void {
@@ -537,10 +518,9 @@ fn polizei(sd: *SharedData) !void {
     }
 }
 
-pub fn start() !void {
+pub fn start(server_addr: []const u8, server_port: u16) !void {
     try cmn.screen_clear();
-
-    var server = try server_start(SERVER_ADDRESS, SERVER_PORT);
+    var server = try server_start(server_addr, server_port);
     errdefer server.deinit();
     defer server.deinit();
     const start_time = try std.time.Instant.now();
@@ -561,7 +541,7 @@ pub fn start() !void {
     {
         const t1 = try std.Thread.spawn(.{}, read_incomming, .{ &sd, &server });
         defer t1.join();
-        const t2 = try std.Thread.spawn(.{}, read_cmd, .{ &sd, SERVER_ADDRESS, SERVER_PORT, start_time });
+        const t2 = try std.Thread.spawn(.{}, read_cmd, .{ &sd, server_addr, server_port, start_time });
         defer t2.join();
         const t3 = try std.Thread.spawn(.{}, polizei, .{ &sd });
         defer t3.join();

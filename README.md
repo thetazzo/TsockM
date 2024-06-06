@@ -111,6 +111,8 @@ start <?flag>` .................. start the program
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad
 * [ ] {FEAT} read server adddress as program argument
 * [ ] {BUG} a message is printed on top of a command being written
+    * I don't know how to fix this
+    * Probably it will be an issue until we move to raylib
 * [ ] {FEAT} decrypt body of the protocol
 * [ ] `:ping <peer_username` action for pinging the status of a peer
 * [ ] don't crash the the client wait for a connection to the server be available

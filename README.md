@@ -6,19 +6,20 @@
 
 * App is being developed on ``zig 0.13.0-dev.230+50a141945``
 
+* Build and run
 * **SERVER**
 ```bash
-zig build server -- <args>
+zig build server -- <subcommand>
 ```
 * **CLIENT**
 ```bash
-zig build client -- <args>
+zig build client -- <subcommand>
 ```
 
-* Both client and server can accept:
-    * `-addr [address] [PORT]`
-        * where `[PORT]` is optional (default: `6969`)
-        * if no `-addr` is provided the default connection string is `127.0.0.1:6969`
+* **SUBCOMMANDS**
+    * `help` ........................... print program usage
+    * `start <?flag>` .................. start the program
+        * `--addr [address] [port]` .... specify the address and port on which the program runs / is connected to (default: `127.0.0.1 6969`)
 
 ## Server
 

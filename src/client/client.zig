@@ -10,9 +10,6 @@ const str_allocator = std.heap.page_allocator;
 
 const LOG_LEVEL = ptc.LogLevel.SILENT;
 
-const SERVER_ADDRESS = "83.212.82.210";
-const SERVER_PORT = 6969;
-
 const Client = struct {
     id: []const u8,
     username: []const u8,
@@ -43,8 +40,10 @@ fn print_usage() void {
 
 fn request_connection(address: []const u8, port: u16, username: []const u8) !Client {
     const addr = try net.Address.resolveIp(address, port);
+    print("Requesting connection to `{s}`\n", .{cmn.address_as_str(addr)});
     const stream = try net.tcpConnectToAddress(addr);
     const dst_addr = cmn.address_as_str(addr);
+    print("{any}\n", .{stream});
     // request connection
     const reqp = ptc.Protocol.init(
         ptc.Typ.REQ,
@@ -282,15 +281,15 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
     print("exiting read_cmd\n", .{});
 }
 
-pub fn start() !void {
+pub fn start(server_addr: []const u8, server_port: u16) !void {
     try cmn.screen_clear();
-    print("Client starated\n", .{});
+    print("Client starated.\n", .{});
     print("Enter your username: ", .{});
     var buf: [256]u8 = undefined;
     const stdin = std.io.getStdIn().reader();
     if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
         // communication request
-        var client = try request_connection(SERVER_ADDRESS, SERVER_PORT, user_input);
+        var client = try request_connection(server_addr, server_port, user_input);
         defer print("Client stopped\n", .{});
         var sd = SharedData{
             .m = std.Thread.Mutex{},

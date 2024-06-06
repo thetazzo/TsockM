@@ -2,7 +2,7 @@ const std = @import("std");
 const ptc = @import("ptc");
 const cmn = @import("cmn");
 const tclr = @import("text_color");
-const sqids = @import("sqids");
+const pr = @import("peer.zig");
 const net = std.net;
 const mem = std.mem;
 const print = std.debug.print;
@@ -10,92 +10,6 @@ const print = std.debug.print;
 const str_allocator = std.heap.page_allocator;
 
 const LOG_LEVEL = ptc.LogLevel.DEV;
-
-const PEER_ID = []const u8;
-const Peer = struct {
-    conn: net.Server.Connection,
-    id: PEER_ID,
-    username: PEER_ID = "",
-    alive: bool = true,
-    pub fn init(conn: net.Server.Connection, id: PEER_ID) Peer {
-        // TODO: check for peer.id collisions
-        return Peer{
-            .id = id,
-            .conn = conn,
-        };
-    }
-    pub fn stream(self: @This()) net.Stream {
-        return self.conn.stream;
-    }
-    pub fn comm_address(self: @This()) net.Address {
-        return self.conn.address;
-    }
-    pub fn comm_address_as_str(self: @This()) []const u8 {
-        return cmn.address_as_str(self.conn.address);
-    }
-};
-
-fn peer_dump(p: Peer) void {
-    print("------------------------------------\n", .{});
-    print("Peer {{\n", .{});
-    print("    id: `{s}`\n", .{p.id});
-    print("    username: `{s}`\n", .{p.username});
-    print("    comm_addr: `{any}`\n", .{p.comm_address()});
-    print("    alive: `{any}`\n", .{p.alive});
-    print("}}\n", .{});
-    print("------------------------------------\n", .{});
-}
-
-const PeerRef = struct { peer: Peer, ref_id: usize };
-
-fn peer_find_id(peer_pool: *std.ArrayList(Peer), id: PEER_ID) ?PeerRef {
-    // O(n)
-    var i: usize = 0;
-    for (peer_pool.items[0..]) |peer| {
-        if (mem.eql(u8, peer.id, id)) {
-            return .{ .peer = peer, .ref_id = i };
-        }
-        i += 1;
-    }
-    return null;
-}
-
-fn peer_find_username(peer_pool: *std.ArrayList(Peer), un: []const u8) ?PeerRef {
-    // O(n)
-    var i: usize = 0;
-    for (peer_pool.items[0..]) |peer| {
-        if (mem.eql(u8, peer.username, un)) {
-            return .{ .peer = peer, .ref_id = i };
-        }
-        i += 1;
-    }
-    return null;
-}
-
-fn peer_construct(
-    conn: net.Server.Connection,
-    protocol: ptc.Protocol,
-) Peer {
-    var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
-    const s = sqids.Sqids.init(std.heap.page_allocator, .{ .min_length = 10 }) catch |err| {
-        std.log.warn("{any}", .{err});
-        std.posix.exit(1);
-    };
-    const id = s.encode(&.{ rand.random().int(u64), rand.random().int(u64), rand.random().int(u64) }) catch |err| {
-        std.log.warn("{any}", .{err});
-        std.posix.exit(1);
-    };
-    var peer = Peer.init(conn, id);
-    const user_sig = s.encode(&.{ rand.random().int(u8), rand.random().int(u8), rand.random().int(u8) }) catch |err| {
-        std.log.warn("{any}", .{err});
-        std.posix.exit(1);
-    };
-    // DON'T EVER FORGET TO ALLOCATE MEMORY !!!!!!
-    const aun = std.fmt.allocPrint(str_allocator, "{s}#{s}", .{ protocol.body, user_sig }) catch "format failed";
-    peer.username = aun;
-    peer_dump(peer);
-    return peer;
-}
 
 fn server_start(address: []const u8, port: u16) !net.Server {
     const lh = try net.Address.resolveIp(address, port);
@@ -111,12 +25,12 @@ fn message_broadcast(
     msg: []const u8,
 ) !void {
     var pind: usize = 0;
-    const peer_ref = peer_find_id(sd.peer_pool, sender_id);
-    if (peer_ref) |pf| {
+    const ref = pr.findRef(sd.peer_pool, sender_id);
+    if (ref) |peer_ref| {
         for (sd.peer_pool.items[0..]) |peer| {
-            if (pf.ref_id != pind and peer.alive) {
-                const src_addr = pf.peer.comm_address_as_str();
-                const dst_addr = peer.comm_address_as_str();
+            if (peer_ref.ref_id != pind and peer.alive) {
+                const src_addr = peer_ref.peer.commAddressAsStr();
+                const dst_addr = peer.commAddressAsStr();
                 const msgp = ptc.Protocol.init(
                     ptc.Typ.RES,
                     ptc.Act.MSG,
@@ -143,7 +57,7 @@ fn connection_accept(
     const addr_str = cmn.address_as_str(conn.address);
     const stream = conn.stream;
 
-    const peer = peer_construct(conn, protocol);
+    const peer = pr.construct(str_allocator, conn, protocol);
     const peer_str = std.fmt.allocPrint(str_allocator, "{s}|{s}", .{ peer.id, peer.username }) catch "format failed";
     try sd.peer_add(peer);
     const resp = ptc.Protocol.init(
@@ -160,9 +74,9 @@ fn connection_accept(
 }
 
 fn connection_terminate(sd: *SharedData, protocol: ptc.Protocol) !void {
-    const peer_ref = peer_find_id(sd.peer_pool, protocol.sender_id);
-    if (peer_ref) |pf| {
-        try sd.peer_kill(pf.ref_id);
+    const ref = pr.findRef(sd.peer_pool, protocol.sender_id);
+    if (ref) |peer_ref| {
+        try sd.peer_kill(peer_ref.ref_id);
     }
 }
 
@@ -195,13 +109,13 @@ fn read_incomming(
                 try message_broadcast(sd, protocol.sender_id, protocol.body);
             } else if (protocol.is_action(ptc.Act.GET_PEER)) {
                 // TODO: make a peer_find_bridge_ref
-                //      - similar to peer_find_id
+                //      - similar to peerFindRef
                 //      - constructs a structure of sender peer and search peer
-                const sref = peer_find_id(sd.peer_pool, protocol.sender_id);
-                const ref = peer_find_id(sd.peer_pool, protocol.body);
+                const sref = pr.findRef(sd.peer_pool, protocol.sender_id);
+                const ref = pr.findRef(sd.peer_pool, protocol.body);
                 if (sref) |sr| {
-                    if (ref) |pr| {
-                        const dst_addr = sr.peer.comm_address_as_str();
+                    if (ref) |peer| {
+                        const dst_addr = sr.peer.commAddressAsStr();
                         const resp = ptc.Protocol.init(
                         ptc.Typ.RES, // type
                         ptc.Act.GET_PEER, // action
@@ -209,7 +123,7 @@ fn read_incomming(
                         "server", // sender id
                         server_addr, // src
                         dst_addr, // dst
-                        pr.peer.username, // body
+                        peer.peer.username, // body
                     );
                         resp.dump(LOG_LEVEL);
                         _ = ptc.prot_transmit(sr.peer.stream(), resp);
@@ -230,9 +144,9 @@ fn read_incomming(
             }
         } else if (protocol.is_response()) {
             if (protocol.is_action(ptc.Act.COMM)) {
-                const ref = peer_find_id(sd.peer_pool, protocol.sender_id);
-                if (ref) |pr| {
-                    print("peer `{s}` is alive\n", .{pr.peer.username});
+                const ref = pr.findRef(sd.peer_pool, protocol.sender_id);
+                if (ref) |peer| {
+                    print("peer `{s}` is alive\n", .{peer.peer.username});
                 } else {
                     print("Peer with id `{s}` does not exist!\n", .{protocol.sender_id});
                 }
@@ -277,7 +191,7 @@ fn extract_command_val(cs: []const u8, cmd: []const u8) []const u8 {
 const SharedData = struct {
     m: std.Thread.Mutex,
     should_exit: bool,
-    peer_pool: *std.ArrayList(Peer),
+    peer_pool: *std.ArrayList(pr.Peer),
 
     pub fn update_value(self: *@This(), should: bool) void {
         self.m.lock();
@@ -296,7 +210,7 @@ const SharedData = struct {
     fn peer_kill(self: *@This(), ref_id: usize) !void {
         self.m.lock();
         defer self.m.unlock();
-        const peer = self.peer_pool.items[ref_id];
+        const peer_ = self.peer_pool.items[ref_id];
         const endp = ptc.Protocol.init(
             ptc.Typ.REQ,
             ptc.Act.COMM_END,
@@ -307,7 +221,7 @@ const SharedData = struct {
             "OK",
         );
         endp.dump(LOG_LEVEL);
-        _ = ptc.prot_transmit(peer.stream(), endp);
+        _ = ptc.prot_transmit(peer_.stream(), endp);
 
         //self.peer_pool.items[ref_id].alive = false;
         //_ = self.peer_pool.orderedRemove(ref_id);
@@ -324,25 +238,23 @@ const SharedData = struct {
     pub fn peer_ping_all(self: *@This(), address_str: []const u8) void {
         self.m.lock();
         defer self.m.unlock();
-        var pid: usize = 0;
-        for (self.peer_pool.items[0..]) |peer| {
+        for (self.peer_pool.items, 0..) |peer_, pid| {
             const reqp = ptc.Protocol{
                 .type = ptc.Typ.REQ, // type
                 .action = ptc.Act.COMM, // action
                 .status_code = ptc.StatusCode.OK, // status_code
                 .sender_id = "server", // sender_id
                 .src = address_str, // src_address
-                .dst = peer.comm_address_as_str(), // dst address
+                .dst = peer_.commAddressAsStr(), // dst address
                 .body = "check?", // body
             };
             reqp.dump(LOG_LEVEL);
             // TODO: I don't know why but i must send 2 requests to determine the status of the stream
-            _ = ptc.prot_transmit(peer.stream(), reqp);
-            const status = ptc.prot_transmit(peer.stream(), reqp);
+            _ = ptc.prot_transmit(peer_.stream(), reqp);
+            const status = ptc.prot_transmit(peer_.stream(), reqp);
             if (status == 1) {
                 self.peer_pool.items[pid].alive = false;
             } 
-            pid += 1;
         }
     }
 
@@ -383,7 +295,7 @@ const SharedData = struct {
         }
     }
 
-    pub fn peer_add(self: *@This(), peer: Peer) !void {
+    pub fn peer_add(self: *@This(), peer: pr.Peer) !void {
         self.m.lock();
         defer self.m.unlock();
 
@@ -412,7 +324,7 @@ fn read_cmd(
                 } else {
                     print("Peer list ({d}):\n", .{sd.peer_pool.items.len});
                     for (sd.peer_pool.items[0..]) |peer| {
-                        peer_dump(peer);
+                        pr.dump(peer);
                     }
                 }
             } else if (mem.startsWith(u8, user_input, ":kill")) {
@@ -425,7 +337,7 @@ fn read_cmd(
                             ptc.StatusCode.OK,
                             "server",
                             addr_str,
-                            peer.comm_address_as_str(),
+                            peer.commAddressAsStr(),
                             "OK",
                         );
                         endp.dump(LOG_LEVEL);
@@ -433,9 +345,9 @@ fn read_cmd(
                     }
                     sd.peer_kill_all();
                 } else {
-                    const peer_ref = peer_find_id(sd.peer_pool, karrg);
-                    if (peer_ref) |pf| {
-                        try sd.peer_kill(pf.ref_id);
+                    const ref = pr.findRef(sd.peer_pool, karrg);
+                    if (ref) |peer_ref| {
+                        try sd.peer_kill(peer_ref.ref_id);
                     }
                 }
             } else if (mem.startsWith(u8, user_input, ":ping")) {
@@ -443,26 +355,26 @@ fn read_cmd(
                 if (mem.eql(u8, peer_un, "all")) {
                     sd.peer_ping_all(address_str);
                 } else {
-                    const ref = peer_find_username(sd.peer_pool, peer_un);
-                    if (ref) |pr| {
+                    const ref = pr.findUsername(sd.peer_pool, peer_un);
+                    if (ref) |peer_ref| {
                         const reqp = ptc.Protocol{
                             .type = ptc.Typ.REQ, // type
                             .action = ptc.Act.COMM, // action
                             .status_code = ptc.StatusCode.OK, // status_code
                             .sender_id = "server", // sender_id
                             .src = address_str, // src_address
-                            .dst = pr.peer.comm_address_as_str(), // dst_addres
+                            .dst = peer_ref.peer.commAddressAsStr(), // dst_addres
                             .body = "check?", // body
                         };
 
                         reqp.dump(LOG_LEVEL);
                         // TODO: I don't know why but i must send 2 requests to determine the status of the stream
-                        _ = ptc.prot_transmit(pr.peer.stream(), reqp);
-                        const status = ptc.prot_transmit(pr.peer.stream(), reqp);
+                        _ = ptc.prot_transmit(peer_ref.peer.stream(), reqp);
+                        const status = ptc.prot_transmit(peer_ref.peer.stream(), reqp);
                         if (status == 1) {
-                            print("peer `{s}` is dead\n", .{pr.peer.username});
+                            print("peer `{s}` is dead\n", .{peer_ref.peer.username});
                             // TODO: replace with peer_kill
-                            sd.peer_remove(pr.ref_id);
+                            sd.peer_remove(peer_ref.ref_id);
                         }  
                     } else {
                         std.log.warn("Peer with username `{s}` does not exist!\n", .{peer_un});
@@ -531,7 +443,7 @@ pub fn start(server_addr: []const u8, server_port: u16) !void {
     //var messages = std.ArrayList(u8).init(gpa_allocator);
     //defer messages.deinit();
 
-    var peer_pool = std.ArrayList(Peer).init(gpa_allocator);
+    var peer_pool = std.ArrayList(pr.Peer).init(gpa_allocator);
     defer peer_pool.deinit();
     var sd = SharedData{
         .m = std.Thread.Mutex{},

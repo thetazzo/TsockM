@@ -307,6 +307,14 @@ fn loadExternalFont(font_name: [:0]const u8) rl.Font {
 return font;
 }
 
+fn request_connection_from_input(input_box: *ib.InputBox, server_addr: []const u8, server_port: u16) !Client {
+    // request connection
+    const username = mem.sliceTo(&input_box.value, 0);
+    const client = try request_connection(server_addr, server_port, username);
+    _ = input_box.setEnabled(false);
+    return client;
+}
+
 const F = 160;
 pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
     const SW = 16*F;
@@ -316,7 +324,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
 
     const font = loadExternalFont("./src/assets/font/IosevkaTermSS02-SemiBold.ttf");
 
-    const FPS = 5;
+    const FPS = 20;
     rl.setTargetFPS(FPS);
 
     var client: Client = undefined;
@@ -361,9 +369,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             if (user_login_btn.isMouseOver()) {
                 user_login_btn.color = rl.Color.dark_gray;
                 if (user_login_btn.isClicked()) {
-                    // send communication request
-                    const username = mem.sliceTo(&user_login_box.value, 0);
-                    client = try request_connection(server_addr, server_port, username);
+                    client = try request_connection_from_input(&user_login_box, server_addr, server_port);
                     connected = true;
                     _ = message_box.setEnabled(true);
                 }
@@ -372,7 +378,6 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             }
         }
         var key = rl.getCharPressed();
-        // Check if more characters have been pressed on the same frame
         while (key > 0) {
             if ((key >= 32) and (key <= 125)) {
                 const s = @as(u8, @intCast(key));
@@ -384,18 +389,15 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                 }
             }
 
-            key = rl.getCharPressed();  // Check next character in the queue
+            key = rl.getCharPressed();
         }
-
         if (user_login_box.enabled) {
             if (rl.isKeyDown(.key_backspace)) {
                 _ = user_login_box.pop();
             } 
             if (rl.isKeyDown(.key_enter)) {
-                const username = mem.sliceTo(&user_login_box.value, 0);
-                client = try request_connection(server_addr, server_port, username);
+                client = try request_connection_from_input(&user_login_box, server_addr, server_port);
                 connected = true;
-                _ = user_login_box.setEnabled(false);
             }
         }
         if (message_box.enabled) {
@@ -423,6 +425,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
         }
         rl.clearBackground(rl.Color.init(18, 18, 18, 255));
         if (connected) {
+            // Messaging screen
             // Draw successful connection
             var buf: [256]u8 = undefined;
             const succ_str = try std.fmt.bufPrintZ(&buf, "Client connected successfully to `{s}:{d}` :)\n", .{server_addr, server_port});
@@ -432,11 +435,12 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                 response_counter -= 1;
             } else {
                 // Draw client information
-                const client_str  = try std.fmt.bufPrintZ(&buf, "{s}{any}\n", .{try clientStats(client), message_box.enabled});
-                rl.drawTextEx(font, client_str, rl.Vector2{.x=90, .y=90}, font_size, 0, rl.Color.light_gray);
-                try message_box.render(window_extended, font, font_size, frame_counter);
+                const client_str  = try std.fmt.bufPrintZ(&buf, "{s}\n", .{try clientStats(client)});
+                rl.drawTextEx(font, client_str, rl.Vector2{.x=40, .y=40}, font_size, 0, rl.Color.light_gray);
+                try message_box.render(window_extended, font, font_size/8, frame_counter);
             }
         } else {
+            // Login screen
             var buf: [256]u8 = undefined;
             const title_str = try std.fmt.bufPrintZ(&buf, "TsockM", .{});
             rl.drawTextEx(

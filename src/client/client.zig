@@ -318,7 +318,6 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
     var response_counter: usize = 0;
     var frame_counter: usize = 0;
 
-    var message: [256]u8 = undefined;
     var letter_count: usize = 0;
     var message_box = ib.InputBox{};
     while (!rl.windowShouldClose()) {
@@ -372,7 +371,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
         }
 
         if (rl.isKeyPressed(.key_enter)) {
-            const mcln = mem.sliceTo(&message, 170);
+            const mcln = mem.sliceTo(&message_box.value, 170);
             if (mcln.len > 0) {
                 const addr_str = cmn.address_as_str(client.server_addr);
                 const reqp = ptc.Protocol.init(
@@ -385,10 +384,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                     mcln,
                 );
                 try send_request(client.server_addr, reqp);
-                // TODO: cleanStringBuffer(message)
-                for (0..mcln.len) |i| {
-                    message[i] = 170;
-                }
+                _ = message_box.clean();
             }
         }
 

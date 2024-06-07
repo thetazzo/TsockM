@@ -4,6 +4,7 @@ const cmn = @import("cmn");
 const tclr = @import("text_color");
 const ib = @import("input-box.zig");
 const rlb = @import("button.zig");
+const rld = @import("display.zig");
 const rl = @import("raylib");
 const mem = std.mem;
 const net = std.net;
@@ -332,9 +333,14 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
     var response_counter: usize = FPS*1;
     var frame_counter: usize = 0;
 
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const gpa_allocator = gpa.allocator();
+
     var message_box = ib.InputBox{};
     var user_login_box = ib.InputBox{};
     var user_login_btn = rlb.Button{ .text="Enter", .color = rl.Color.light_gray };
+    var message_display = rld.Display{};
+    message_display.allocMessages(gpa_allocator);
     while (!rl.windowShouldClose()) {
         const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
         const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
@@ -349,6 +355,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
         // Enable writing to the input box
         if (connected) {
             _ = message_box.setRec(20, sh - 100 - font_size/2, sw - 40, 50 + font_size/2); 
+            _ = message_display.setRec(20, 200, sw - 40, sh - 400); 
             if (message_box.isClicked()) {
                 _ = message_box.setEnabled(true);
             } else {
@@ -419,6 +426,12 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                         mcln,
                     );
                     try send_request(client.server_addr, reqp);
+                    const q = try std.fmt.allocPrint(str_allocator, "{s}", .{mcln});
+                    const message = rld.Message{
+                        .author=client.username,
+                        .text=q,
+                    };
+                    _ = try message_display.messages.append(message);
                     _ = message_box.clean();
                 }
             }
@@ -436,8 +449,9 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             } else {
                 // Draw client information
                 const client_str  = try std.fmt.bufPrintZ(&buf, "{s}\n", .{try clientStats(client)});
-                rl.drawTextEx(font, client_str, rl.Vector2{.x=40, .y=40}, font_size, 0, rl.Color.light_gray);
-                try message_box.render(window_extended, font, font_size/8, frame_counter);
+                try message_display.render(str_allocator, font, font_size, frame_counter);
+                rl.drawTextEx(font, client_str, rl.Vector2{.x=40, .y=40}, font_size/2, 0, rl.Color.light_gray);
+                try message_box.render(window_extended, font, font_size, frame_counter);
             }
         } else {
             // Login screen

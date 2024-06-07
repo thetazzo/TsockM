@@ -408,26 +408,26 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                 }
                 message_box.value[message_box.letter_count] = 170;
             } 
+            // TODO: message_box::handle_commands
+            if (rl.isKeyPressed(.key_enter)) {
+                const mcln = mem.sliceTo(&message_box.value, 170);
+                if (mcln.len > 0) {
+                    const addr_str = cmn.address_as_str(client.server_addr);
+                    const reqp = ptc.Protocol.init(
+                        ptc.Typ.REQ,
+                        ptc.Act.MSG,
+                        ptc.StatusCode.OK,
+                        client.id,
+                        "client",
+                        addr_str,
+                        mcln,
+                    );
+                    try send_request(client.server_addr, reqp);
+                    _ = message_box.clean();
+                }
+            }
         }
 
-        // TODO: message_box::handle_commands
-        //if (rl.isKeyPressed(.key_enter)) {
-        //    const mcln = mem.sliceTo(&message_box.value, 170);
-        //    if (mcln.len > 0) {
-        //        const addr_str = cmn.address_as_str(client.server_addr);
-        //        const reqp = ptc.Protocol.init(
-        //            ptc.Typ.REQ,
-        //            ptc.Act.MSG,
-        //            ptc.StatusCode.OK,
-        //            client.id,
-        //            "client",
-        //            addr_str,
-        //            mcln,
-        //        );
-        //        try send_request(client.server_addr, reqp);
-        //        _ = message_box.clean();
-        //    }
-        //}
 
         rl.clearBackground(rl.Color.init(18, 18, 18, 255));
         if (connected) {

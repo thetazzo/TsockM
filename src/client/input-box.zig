@@ -5,6 +5,7 @@ pub const InputBox = struct {
     rec: rl.Rectangle = undefined,
     enabled: bool = false,
     value: [256]u8 = undefined,
+    letter_count: usize = 0,
     pub fn setRec(self: *@This(), x: f32, y: f32, w: f32, h: f32) rl.Rectangle {
         self.rec = rl.Rectangle.init(x, y, w, h);
         return self.rec;

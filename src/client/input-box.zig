@@ -47,7 +47,7 @@ pub const InputBox = struct {
                 .y = pos.y,
             };
             // Draw blinking cursor
-            if ((frame_counter/20) % 2 == 0) rl.drawTextEx(font, "_",  pos2, font_size, 0, rl.Color.black);
+            if ((frame_counter/8) % 2 == 0) rl.drawTextEx(font, "_",  pos2, font_size, 0, rl.Color.black);
             // Draw input text
         }
         rl.drawTextEx(font, mssg2, pos, font_size, 0, rl.Color.black);

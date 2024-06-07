@@ -316,7 +316,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
 
     const font = loadExternalFont("./src/assets/font/IosevkaTermSS02-SemiBold.ttf");
 
-    const FPS = 18;
+    const FPS = 5;
     rl.setTargetFPS(FPS);
 
     var client: Client = undefined;
@@ -376,14 +376,11 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
         while (key > 0) {
             if ((key >= 32) and (key <= 125)) {
                 const s = @as(u8, @intCast(key));
-                // TODO: input-box::push
                 if (user_login_box.enabled) {
-                    user_login_box.value[user_login_box.letter_count] = s;
-                    user_login_box.letter_count += 1;
+                    user_login_box.push(s);
                 } 
                 if (message_box.enabled) {
-                    message_box.value[message_box.letter_count] = s;
-                    message_box.letter_count += 1;
+                    message_box.push(s);
                 }
             }
 
@@ -391,12 +388,8 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
         }
 
         if (user_login_box.enabled) {
-            // TODO: input-box::pop
             if (rl.isKeyDown(.key_backspace)) {
-                if (user_login_box.letter_count > 0) {
-                    user_login_box.letter_count = user_login_box.letter_count - 1;
-                }
-                user_login_box.value[user_login_box.letter_count] = 170;
+                _ = user_login_box.pop();
             } 
             if (rl.isKeyDown(.key_enter)) {
                 const username = mem.sliceTo(&user_login_box.value, 0);
@@ -406,12 +399,8 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             }
         }
         if (message_box.enabled) {
-            // TODO: input-box::pop
             if (rl.isKeyDown(.key_backspace)) {
-                if (message_box.letter_count > 0) {
-                    message_box.letter_count = message_box.letter_count - 1;
-                }
-                message_box.value[message_box.letter_count] = 170;
+                _ = message_box.pop();
             } 
             // TODO: message_box::handle_commands
             if (rl.isKeyPressed(.key_enter)) {

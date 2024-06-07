@@ -2,6 +2,7 @@ const std = @import("std");
 const ptc = @import("ptc");
 const cmn = @import("cmn");
 const tclr = @import("text_color");
+const ib = @import("input-box.zig");
 const rl = @import("raylib");
 const mem = std.mem;
 const net = std.net;
@@ -307,64 +308,101 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
     rl.initWindow(SW, SH, "TsockM");
     defer rl.closeWindow();
 
-    const font = rl.loadFont("./src/assets/font/iosevka-term-ss02-regular.ttf");
+    var tmp = [129]i32{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 219 };
+    const font = rl.loadFontEx("./src/assets/font/IosevkaTermSS02-SemiBold.ttf", 60, &tmp);
 
     rl.setTargetFPS(30);
 
     var client: Client = undefined;
     var connected = false;
-    var tmp: usize = 0;
+    var response_counter: usize = 0;
     var frame_counter: usize = 0;
 
     var message: [256]u8 = undefined;
     var letter_count: usize = 0;
+    var message_box = ib.InputBox{};
     while (!rl.windowShouldClose()) {
         const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
         const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
+        const font_size = 60;
+        const window_extended = sh > SH;
 
         rl.beginDrawing();
         defer rl.endDrawing();
+
+        frame_counter += 1;
+        _ = message_box.setRec(20, sh - 100 - font_size/2, sw - 40, 50 + font_size/2); 
+
+        // Enable writing to the input box
+        if (connected) {
+            if (message_box.isClicked()) {
+                _ = message_box.setEnabled(true);
+            } else {
+                if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                    _ = message_box.setEnabled(false);
+                }
+            }
+        }
+
+        if (message_box.enabled) {
+            var key = rl.getCharPressed();
+
+            // Check if more characters have been pressed on the same frame
+            while (key > 0) {
+                if ((key >= 32) and (key <= 125)) {
+                    const s = @as(u8, @intCast(key));
+                    message_box.value[letter_count] = s;
+                    letter_count += 1;
+                }
+
+                key = rl.getCharPressed();  // Check next character in the queue
+            }
+            if (rl.isKeyDown(.key_backspace)) {
+                if (letter_count > 0) {
+                    letter_count = letter_count - 1;
+                }
+                message_box.value[letter_count] = 170;
+            } 
+        }
+
 
         if (rl.isKeyPressed(.key_r) and !connected) {
             client = try request_connection(server_addr, server_port, "milko");
             connected = true;
         }
 
-        var key = rl.getCharPressed();
-
-        // Check if more characters have been pressed on the same frame
-        while (key > 0) {
-            if ((key >= 32) and (key <= 125)) {
-                const s = @as(u8, @intCast(key));
-                message[letter_count] = s;
-                letter_count += 1;
+        if (rl.isKeyPressed(.key_enter)) {
+            const mcln = mem.sliceTo(&message, 170);
+            if (mcln.len > 0) {
+                const addr_str = cmn.address_as_str(client.server_addr);
+                const reqp = ptc.Protocol.init(
+                    ptc.Typ.REQ,
+                    ptc.Act.MSG,
+                    ptc.StatusCode.OK,
+                    client.id,
+                    "client",
+                    addr_str,
+                    mcln,
+                );
+                try send_request(client.server_addr, reqp);
+                // TODO: cleanStringBuffer(message)
+                for (0..mcln.len) |i| {
+                    message[i] = 170;
+                }
             }
-
-            key = rl.getCharPressed();  // Check next character in the queue
         }
 
-
-        frame_counter += 1;
-        if (rl.isKeyDown(.key_backspace)) {
-            if (frame_counter % 3 == 0) {
-                if (letter_count > 0) {
-                    letter_count = letter_count - 1;
-                }
-                message[letter_count] = 170;
-            }
-        } 
-
         rl.clearBackground(rl.Color.init(18, 18, 18, 255));
-        //const f = 0.045;
-        const font_size = sh * 0.045;
         if (connected) {
+            // Draw awiting connection request
             var buf: [256]u8 = undefined;
             const succ_str = try std.fmt.bufPrintZ(&buf, "Client connected successfully to `{s}:{d}` :)\n", .{server_addr, server_port});
-            if (tmp < 60*1) {
+            if (response_counter < 60*1) {
                 rl.drawTextEx(font, succ_str, rl.Vector2{.x=sw/2 - sw/4, .y=sh/2 - sh/4}, font_size, 0, rl.Color.green);
-                tmp += 1;
+                response_counter += 1;
             } else {
-                const client_str  = try std.fmt.bufPrintZ(&buf, "Username: {s}\nID: {s}\nserver_addr: {s}\nclient_addr: {s}\n", .{client.username, client.id, cmn.address_as_str(client.server_addr), client.client_addr,});
+                // Draw client information
+                const client_str  = try std.fmt.bufPrintZ(&buf, "{s}{any}\n", .{try clientStats(client), message_box.enabled});
                 rl.drawTextEx(font, client_str, rl.Vector2{.x=90, .y=90}, font_size, 0, rl.Color.light_gray);
             }
         } else {
@@ -373,28 +411,9 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             rl.drawTextEx(font, succ_str, rl.Vector2{.x=sw/2 - sw/6, .y=sh/2 - sh/4}, font_size, 0, rl.Color.light_gray);
         }
 
-        const rec = rl.Rectangle.init(20, sh - 100 - font_size/2, sw - 40, 50 + font_size/2);
-        const mouse_on_text: bool = true;
-        //if (rl.checkCollisionPointRec(rl.getMousePosition(), rec)) {
-        //    mouse_on_text = true;
-        //}
 
-        rl.drawRectangleRounded(rec, 0.35, 0, rl.Color.light_gray);
-        const pos = rl.Vector2{
-            .x = rec.x + 18,
-            .y = rec.y + rec.height/10,
-        };
-        if (mouse_on_text) {
-            var buf2: [512]u8 = undefined;
-            const mcln = mem.sliceTo(&message, 170);
-            const mssg2 = try std.fmt.bufPrintZ(&buf2, "{s}", .{mcln});
-            const pos2 = rl.Vector2{
-                .x = pos.x + font_size/2.46 * @as(f32, @floatFromInt(mssg2.len)),
-                .y = pos.y,
-            };
-            if ((frame_counter/20) % 2 == 0) rl.drawTextEx(font, "_",  pos2, font_size, 0, rl.Color.black);
-            rl.drawTextEx(font, mssg2, pos, font_size, 0, rl.Color.black);
-        }
+        // Draw input box
+        try message_box.render(window_extended, font, font_size, frame_counter);
     }
 
     //var buf: [256]u8 = undefined;

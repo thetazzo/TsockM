@@ -2,6 +2,7 @@ const std = @import("std");
 const ptc = @import("ptc");
 const cmn = @import("cmn");
 const tclr = @import("text_color");
+const rl = @import("raylib");
 const mem = std.mem;
 const net = std.net;
 const print = std.debug.print;
@@ -61,7 +62,6 @@ fn request_connection(address: []const u8, port: u16, username: []const u8) !Cli
     resp.dump(LOG_LEVEL);
 
     if (resp.status_code == ptc.StatusCode.OK) {
-        print("Client connected successfully to `{s}` :)\n", .{cmn.address_as_str(addr)});
         var peer_spl = mem.split(u8, resp.body, "|");
         const id = peer_spl.next().?;
         const username_ = peer_spl.next().?;
@@ -281,27 +281,129 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
     print("exiting read_cmd\n", .{});
 }
 
-pub fn start(server_addr: []const u8, server_port: u16) !void {
-    try cmn.screen_clear();
-    print("Client starated.\n", .{});
-    print("Enter your username: ", .{});
-    var buf: [256]u8 = undefined;
-    const stdin = std.io.getStdIn().reader();
-    if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
-        // communication request
-        var client = try request_connection(server_addr, server_port, user_input);
-        defer print("Client stopped\n", .{});
-        var sd = SharedData{
-            .m = std.Thread.Mutex{},
-            .should_exit = false,
+fn isKeyPressed() bool
+{
+    var keyPressed: bool = false;
+    const key = rl.getKeyPressed();
+
+    if ((@intFromEnum(key) >= 32) and (@intFromEnum(key) <= 126)) keyPressed = true;
+
+    return keyPressed;
+}
+
+const F = 120;
+pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
+    const SW = 16*F;
+    const SH = 9*F;
+    rl.initWindow(SW, SH, "TsockM");
+    defer rl.closeWindow();
+
+    const font = rl.loadFont("./src/assets/font/iosevka-term-ss02-regular.ttf");
+
+    rl.setTargetFPS(30);
+
+    var client: Client = undefined;
+    var connected = false;
+    var tmp: usize = 0;
+    var frame_counter: usize = 0;
+
+    var message: [256]u8 = undefined;
+    var letter_count: usize = 0;
+    while (!rl.windowShouldClose()) {
+        const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
+        const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
+
+        rl.beginDrawing();
+        defer rl.endDrawing();
+
+        if (rl.isKeyPressed(.key_r) and !connected) {
+            client = try request_connection(server_addr, server_port, "milko");
+            connected = true;
+        }
+
+        var key = rl.getCharPressed();
+
+        // Check if more characters have been pressed on the same frame
+        while (key > 0) {
+            if ((key >= 32) and (key <= 125)) {
+                const s = @as(u8, @intCast(key));
+                message[letter_count] = s;
+                letter_count += 1;
+            }
+
+            key = rl.getCharPressed();  // Check next character in the queue
+        }
+
+
+        frame_counter += 1;
+        if (rl.isKeyDown(.key_backspace)) {
+            if (frame_counter % 3 == 0) {
+                if (letter_count > 0) {
+                    letter_count = letter_count - 1;
+                }
+                message[letter_count] = 170;
+            }
+        } 
+
+        rl.clearBackground(rl.Color.init(18, 18, 18, 255));
+        //const f = 0.045;
+        const font_size = sh * 0.045;
+        if (connected) {
+            var buf: [256]u8 = undefined;
+            const succ_str = try std.fmt.bufPrintZ(&buf, "Client connected successfully to `{s}:{d}` :)\n", .{server_addr, server_port});
+            if (tmp < 60*1) {
+                rl.drawTextEx(font, succ_str, rl.Vector2{.x=sw/2 - sw/4, .y=sh/2 - sh/4}, font_size, 0, rl.Color.green);
+                tmp += 1;
+            } else {
+                const client_str  = try std.fmt.bufPrintZ(&buf, "Username: {s}\nID: {s}\nserver_addr: {s}\nclient_addr: {s}\n", .{client.username, client.id, cmn.address_as_str(client.server_addr), client.client_addr,});
+                rl.drawTextEx(font, client_str, rl.Vector2{.x=90, .y=90}, font_size, 0, rl.Color.light_gray);
+            }
+        } else {
+            var buf: [256]u8 = undefined;
+            const succ_str = try std.fmt.bufPrintZ(&buf, "Press `KEY_R` to connect\nWiting for connection ...\n", .{});
+            rl.drawTextEx(font, succ_str, rl.Vector2{.x=sw/2 - sw/6, .y=sh/2 - sh/4}, font_size, 0, rl.Color.light_gray);
+        }
+
+        const rec = rl.Rectangle.init(20, sh - 100 - font_size/2, sw - 40, 50 + font_size/2);
+        const mouse_on_text: bool = true;
+        //if (rl.checkCollisionPointRec(rl.getMousePosition(), rec)) {
+        //    mouse_on_text = true;
+        //}
+
+        rl.drawRectangleRounded(rec, 0.35, 0, rl.Color.light_gray);
+        const pos = rl.Vector2{
+            .x = rec.x + 18,
+            .y = rec.y + rec.height/10,
         };
-        {
-            const t1 = try std.Thread.spawn(.{}, listen_for_comms, .{ &sd, &client });
-            defer t1.join();
-            errdefer t1.join();
-            const t2 = try std.Thread.spawn(.{}, read_cmd, .{ &sd, &client });
-            defer t2.join();
-            errdefer t2.join();
+        if (mouse_on_text) {
+            var buf2: [512]u8 = undefined;
+            const mcln = mem.sliceTo(&message, 170);
+            const mssg2 = try std.fmt.bufPrintZ(&buf2, "{s}", .{mcln});
+            const pos2 = rl.Vector2{
+                .x = pos.x + font_size/2.46 * @as(f32, @floatFromInt(mssg2.len)),
+                .y = pos.y,
+            };
+            if ((frame_counter/20) % 2 == 0) rl.drawTextEx(font, "_",  pos2, font_size, 0, rl.Color.black);
+            rl.drawTextEx(font, mssg2, pos, font_size, 0, rl.Color.black);
         }
     }
+
+    //var buf: [256]u8 = undefined;
+    //const stdin = std.io.getStdIn().reader();
+    //if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
+    //    // communication request
+    //    defer print("Client stopped\n", .{});
+    //    var sd = SharedData{
+    //        .m = std.Thread.Mutex{},
+    //        .should_exit = false,
+    //    };
+    //    {
+    //        const t1 = try std.Thread.spawn(.{}, listen_for_comms, .{ &sd, &client });
+    //        defer t1.join();
+    //        errdefer t1.join();
+    //        const t2 = try std.Thread.spawn(.{}, read_cmd, .{ &sd, &client });
+    //        defer t2.join();
+    //        errdefer t2.join();
+    //    }
+    //}
 }

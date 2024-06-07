@@ -19,6 +19,10 @@
             .url = "https://github.com/sqids/sqids-zig/archive/d2c00500.tar.gz",
             .hash = "12206eb8f6d144fcf375df86e85162737068bb8cf8cb5f487ffae2e253892cf07642",
         },
+        .@"raylib-zig" = .{
+            .url = "https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz",
+            .hash = "12204a223b19043e17b79300413d02f60fc8004c0d9629b8d8072831e352a78bf212", // put the actual hash here
+        },
     },
 
     // Specifies the set of files and directories that are included in this package.

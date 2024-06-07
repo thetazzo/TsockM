@@ -26,6 +26,7 @@ pub const InputBox = struct {
         for (0..255) |i| {
             self.value[i] = 170;
         }
+        self.letter_count = 0;
         return self.value;
     }
     pub fn render(self: @This(), window_extended: bool, font: rl.Font, font_size: f32, frame_counter: usize) !void {

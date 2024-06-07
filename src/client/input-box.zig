@@ -29,6 +29,18 @@ pub const InputBox = struct {
         self.letter_count = 0;
         return self.value;
     }
+    pub fn push(self: *@This(), char: u8) void {
+        self.value[self.letter_count] = char;
+        self.letter_count += 1;
+    }
+    pub fn pop(self: *@This()) u8 {
+        if (self.letter_count > 0) {
+            self.letter_count -= 1;
+        }
+        const chr = self.value[self.letter_count];
+        self.value[self.letter_count] = 170;
+        return chr;
+    }
     pub fn render(self: @This(), window_extended: bool, font: rl.Font, font_size: f32, frame_counter: usize) !void {
         rl.drawRectangleRounded(self.rec, 0.35, 0, rl.Color.light_gray);
         var pos = rl.Vector2{

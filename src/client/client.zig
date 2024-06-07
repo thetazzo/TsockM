@@ -30,6 +30,15 @@ const Client = struct {
     }
 };
 
+fn clientStats(client: Client) ![]const u8 {
+    const username    = try std.fmt.allocPrint(str_allocator, "username: {s}\n", .{client.username});
+    const id          = try std.fmt.allocPrint(str_allocator, "id: {s}\n", .{client.id});
+    const server_addr = try std.fmt.allocPrint(str_allocator, "server_address: {s}\n", .{cmn.address_as_str(client.server_addr)});
+    const client_addr = try std.fmt.allocPrint(str_allocator, "client address: {s}\n", .{client.client_addr});
+    const stats = try std.fmt.allocPrint(str_allocator, "{s}{s}{s}{s}", .{username, id, server_addr, client_addr});
+    return stats;
+}
+
 fn print_usage() void {
     print("COMMANDS:\n", .{});
     print("    * :msg <message> .... boradcast the message to all users\n", .{});

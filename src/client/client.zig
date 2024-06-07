@@ -54,7 +54,6 @@ fn request_connection(address: []const u8, port: u16, username: []const u8) !Cli
     print("Requesting connection to `{s}`\n", .{cmn.address_as_str(addr)});
     const stream = try net.tcpConnectToAddress(addr);
     const dst_addr = cmn.address_as_str(addr);
-    print("{any}\n", .{stream});
     // request connection
     const reqp = ptc.Protocol.init(
         ptc.Typ.REQ,
@@ -320,6 +319,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
 
     var letter_count: usize = 0;
     var message_box = ib.InputBox{};
+    var user_login_box = ib.InputBox{};
     while (!rl.windowShouldClose()) {
         const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
         const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
@@ -330,10 +330,10 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
         defer rl.endDrawing();
 
         frame_counter += 1;
-        _ = message_box.setRec(20, sh - 100 - font_size/2, sw - 40, 50 + font_size/2); 
 
         // Enable writing to the input box
         if (connected) {
+            _ = message_box.setRec(20, sh - 100 - font_size/2, sw - 40, 50 + font_size/2); 
             if (message_box.isClicked()) {
                 _ = message_box.setEnabled(true);
             } else {
@@ -341,11 +341,20 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                     _ = message_box.setEnabled(false);
                 }
             }
+        } else {
+            _ = user_login_box.setRec(sw/2 - 200, 200 + font_size/2, 800, 50 + font_size/2); 
+            if (user_login_box.isClicked()) {
+                _ = user_login_box.setEnabled(true);
+            } else {
+                if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                    _ = user_login_box.setEnabled(false);
+                }
+            }
         }
 
+        // TODO: input-box::recordInput
         if (message_box.enabled) {
             var key = rl.getCharPressed();
-
             // Check if more characters have been pressed on the same frame
             while (key > 0) {
                 if ((key >= 32) and (key <= 125)) {
@@ -363,6 +372,30 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                 message_box.value[letter_count] = 170;
             } 
         }
+        if (user_login_box.enabled) {
+            var key = rl.getCharPressed();
+            // Check if more characters have been pressed on the same frame
+            while (key > 0) {
+                if ((key >= 32) and (key <= 125)) {
+                    const s = @as(u8, @intCast(key));
+                    user_login_box.value[letter_count] = s;
+                    letter_count += 1;
+                }
+
+                key = rl.getCharPressed();  // Check next character in the queue
+            }
+            if (rl.isKeyDown(.key_backspace)) {
+                if (letter_count > 0) {
+                    letter_count = letter_count - 1;
+                }
+                user_login_box.value[letter_count] = 170;
+            } 
+            if (rl.isKeyDown(.key_enter)) {
+                const username = mem.sliceTo(&user_login_box.value, 0);
+                client = try request_connection(server_addr, server_port, username);
+                connected = true;
+            }
+        }
 
 
         if (rl.isKeyPressed(.key_r) and !connected) {
@@ -370,23 +403,24 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             connected = true;
         }
 
-        if (rl.isKeyPressed(.key_enter)) {
-            const mcln = mem.sliceTo(&message_box.value, 170);
-            if (mcln.len > 0) {
-                const addr_str = cmn.address_as_str(client.server_addr);
-                const reqp = ptc.Protocol.init(
-                    ptc.Typ.REQ,
-                    ptc.Act.MSG,
-                    ptc.StatusCode.OK,
-                    client.id,
-                    "client",
-                    addr_str,
-                    mcln,
-                );
-                try send_request(client.server_addr, reqp);
-                _ = message_box.clean();
-            }
-        }
+        // TODO: message_box::handle_commands
+        //if (rl.isKeyPressed(.key_enter)) {
+        //    const mcln = mem.sliceTo(&message_box.value, 170);
+        //    if (mcln.len > 0) {
+        //        const addr_str = cmn.address_as_str(client.server_addr);
+        //        const reqp = ptc.Protocol.init(
+        //            ptc.Typ.REQ,
+        //            ptc.Act.MSG,
+        //            ptc.StatusCode.OK,
+        //            client.id,
+        //            "client",
+        //            addr_str,
+        //            mcln,
+        //        );
+        //        try send_request(client.server_addr, reqp);
+        //        _ = message_box.clean();
+        //    }
+        //}
 
         rl.clearBackground(rl.Color.init(18, 18, 18, 255));
         if (connected) {
@@ -401,15 +435,20 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                 const client_str  = try std.fmt.bufPrintZ(&buf, "{s}{any}\n", .{try clientStats(client), message_box.enabled});
                 rl.drawTextEx(font, client_str, rl.Vector2{.x=90, .y=90}, font_size, 0, rl.Color.light_gray);
             }
+            try message_box.render(window_extended, font, font_size, frame_counter);
         } else {
             var buf: [256]u8 = undefined;
-            const succ_str = try std.fmt.bufPrintZ(&buf, "Press `KEY_R` to connect\nWiting for connection ...\n", .{});
-            rl.drawTextEx(font, succ_str, rl.Vector2{.x=sw/2 - sw/6, .y=sh/2 - sh/4}, font_size, 0, rl.Color.light_gray);
+            const succ_str = try std.fmt.bufPrintZ(&buf, "Enter your username:", .{});
+            rl.drawTextEx(
+                font,
+                succ_str,
+                rl.Vector2{.x=user_login_box.rec.x - 520, .y=user_login_box.rec.y + user_login_box.rec.height/9},
+                font_size,
+                0,
+                rl.Color.light_gray
+            );
+            try user_login_box.render(window_extended, font, font_size, frame_counter);
         }
-
-
-        // Draw input box
-        try message_box.render(window_extended, font, font_size, frame_counter);
     }
 
     //var buf: [256]u8 = undefined;

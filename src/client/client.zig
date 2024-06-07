@@ -321,7 +321,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
 
     var message_box = ib.InputBox{};
     var user_login_box = ib.InputBox{};
-    var user_login_btn = rlb.Button{ .text="Login", .color = rl.Color.light_gray };
+    var user_login_btn = rlb.Button{ .text="Enter", .color = rl.Color.light_gray };
     while (!rl.windowShouldClose()) {
         const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
         const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
@@ -446,6 +446,15 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             }
         } else {
             var buf: [256]u8 = undefined;
+            const title_str = try std.fmt.bufPrintZ(&buf, "TsockM", .{});
+            rl.drawTextEx(
+                font,
+                title_str,
+                rl.Vector2{.x=user_login_box.rec.x - 65, .y=50},
+                font_size * 1.75,
+                0,
+                rl.Color.light_gray
+            );
             const succ_str = try std.fmt.bufPrintZ(&buf, "Enter your username:", .{});
             rl.drawTextEx(
                 font,

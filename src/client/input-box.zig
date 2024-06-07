@@ -21,6 +21,12 @@ pub const InputBox = struct {
         }
         return false;
     }
+    pub fn clean(self: *@This()) [256]u8 {
+        for (0..255) |i| {
+            self.value[i] = 170;
+        }
+        return self.value;
+    }
     pub fn render(self: @This(), window_extended: bool, font: rl.Font, font_size: f32, frame_counter: usize) !void {
         rl.drawRectangleRounded(self.rec, 0.35, 0, rl.Color.light_gray);
         var pos = rl.Vector2{

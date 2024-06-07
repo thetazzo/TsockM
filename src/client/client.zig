@@ -3,6 +3,7 @@ const ptc = @import("ptc");
 const cmn = @import("cmn");
 const tclr = @import("text_color");
 const ib = @import("input-box.zig");
+const rlb = @import("button.zig");
 const rl = @import("raylib");
 const mem = std.mem;
 const net = std.net;
@@ -317,9 +318,9 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
     var response_counter: usize = 0;
     var frame_counter: usize = 0;
 
-    var letter_count: usize = 0;
     var message_box = ib.InputBox{};
     var user_login_box = ib.InputBox{};
+    var user_login_btn = rlb.Button{ .text="Login", .color = rl.Color.light_gray };
     while (!rl.windowShouldClose()) {
         const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
         const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
@@ -343,6 +344,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             }
         } else {
             _ = user_login_box.setRec(sw/2 - 200, 200 + font_size/2, 800, 50 + font_size/2); 
+            user_login_btn.setRec(user_login_box.rec.x, user_login_box.rec.y+140, 200, 90);
             if (user_login_box.isClicked()) {
                 _ = user_login_box.setEnabled(true);
             } else {
@@ -350,57 +352,61 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                     _ = user_login_box.setEnabled(false);
                 }
             }
-        }
-
-        // TODO: input-box::recordInput
-        if (message_box.enabled) {
-            var key = rl.getCharPressed();
-            // Check if more characters have been pressed on the same frame
-            while (key > 0) {
-                if ((key >= 32) and (key <= 125)) {
-                    const s = @as(u8, @intCast(key));
-                    message_box.value[letter_count] = s;
-                    letter_count += 1;
+            if (user_login_btn.isMouseOver()) {
+                user_login_btn.color = rl.Color.dark_gray;
+                if (user_login_btn.isClicked()) {
+                    // send communication request
+                    const username = mem.sliceTo(&user_login_box.value, 0);
+                    client = try request_connection(server_addr, server_port, username);
+                    connected = true;
+                    _ = message_box.setEnabled(true);
                 }
-
-                key = rl.getCharPressed();  // Check next character in the queue
+            } else {
+                user_login_btn.color = rl.Color.light_gray;
             }
-            if (rl.isKeyDown(.key_backspace)) {
-                if (letter_count > 0) {
-                    letter_count = letter_count - 1;
-                }
-                message_box.value[letter_count] = 170;
-            } 
         }
+        var key = rl.getCharPressed();
+        // Check if more characters have been pressed on the same frame
+        while (key > 0) {
+            if ((key >= 32) and (key <= 125)) {
+                const s = @as(u8, @intCast(key));
+                // TODO: input-box::push
+                if (user_login_box.enabled) {
+                    user_login_box.value[user_login_box.letter_count] = s;
+                    user_login_box.letter_count += 1;
+                } 
+                if (message_box.enabled) {
+                    message_box.value[message_box.letter_count] = s;
+                    message_box.letter_count += 1;
+                }
+            }
+
+            key = rl.getCharPressed();  // Check next character in the queue
+        }
+
         if (user_login_box.enabled) {
-            var key = rl.getCharPressed();
-            // Check if more characters have been pressed on the same frame
-            while (key > 0) {
-                if ((key >= 32) and (key <= 125)) {
-                    const s = @as(u8, @intCast(key));
-                    user_login_box.value[letter_count] = s;
-                    letter_count += 1;
-                }
-
-                key = rl.getCharPressed();  // Check next character in the queue
-            }
+            // TODO: input-box::pop
             if (rl.isKeyDown(.key_backspace)) {
-                if (letter_count > 0) {
-                    letter_count = letter_count - 1;
+                if (user_login_box.letter_count > 0) {
+                    user_login_box.letter_count = user_login_box.letter_count - 1;
                 }
-                user_login_box.value[letter_count] = 170;
+                user_login_box.value[user_login_box.letter_count] = 170;
             } 
             if (rl.isKeyDown(.key_enter)) {
                 const username = mem.sliceTo(&user_login_box.value, 0);
                 client = try request_connection(server_addr, server_port, username);
                 connected = true;
+                _ = user_login_box.setEnabled(false);
             }
         }
-
-
-        if (rl.isKeyPressed(.key_r) and !connected) {
-            client = try request_connection(server_addr, server_port, "milko");
-            connected = true;
+        if (message_box.enabled) {
+            // TODO: input-box::pop
+            if (rl.isKeyDown(.key_backspace)) {
+                if (message_box.letter_count > 0) {
+                    message_box.letter_count = message_box.letter_count - 1;
+                }
+                message_box.value[message_box.letter_count] = 170;
+            } 
         }
 
         // TODO: message_box::handle_commands
@@ -448,6 +454,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                 rl.Color.light_gray
             );
             try user_login_box.render(window_extended, font, font_size, frame_counter);
+            try user_login_btn.render(font, font_size);
         }
     }
 

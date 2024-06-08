@@ -8,9 +8,14 @@ pub fn build(b: *std.Build) void {
 
     const optimize = b.standardOptimizeOption(.{});
 
+    const raylib_optimize = b.option(
+        std.builtin.OptimizeMode,
+        "raylib-optimize",
+        "Prioritize performance, safety, or binary size (-O flag), defaults to value of optimize option",
+    ) orelse optimize;
     const raylib_dep = b.dependency("raylib-zig", .{
         .target = target,
-        .optimize = optimize,
+        .optimize = raylib_optimize,
     });
 
     const common_mod = b.addModule("cmn", .{
@@ -49,12 +54,10 @@ pub fn build(b: *std.Build) void {
     run_server_step.dependOn(&run_server_exe.step);
 
     // this target does not work with raylib
-    // const linux_target = .{ .cpu_arch = .x87b.resolveTargetQuery(linux_target)_64, .os_tag = .linux, .abi = .gnu };
     const client_exe = b.addExecutable(.{
         .name = "tsockm-client",
         .root_source_file = b.path("src/client/main.zig"),
         .target = target,
-        .strip = true,
         .optimize = optimize,
     });
     client_exe.linkLibrary(raylib_artifact);

@@ -12,7 +12,7 @@ const print = std.debug.print;
 
 const str_allocator = std.heap.page_allocator;
 
-const LOG_LEVEL = ptc.LogLevel.SILENT;
+const LOG_LEVEL = ptc.LogLevel.DEV;
 
 const Client = struct {
     id: []const u8,
@@ -105,12 +105,19 @@ fn send_request(addr: net.Address, req: ptc.Protocol) !void {
 const SharedData = struct {
     m: std.Thread.Mutex,
     should_exit: bool,
+    messages: std.ArrayList(rld.Message),
 
     pub fn update_value(self: *@This(), should: bool) void {
         self.m.lock();
         defer self.m.unlock();
 
         self.should_exit = should;
+    }
+
+    pub fn pushMessage(self: *@This(), msg: rld.Message) !void {
+        self.m.lock();
+        defer self.m.unlock();
+        try self.messages.append(msg);
     }
 };
 
@@ -316,6 +323,83 @@ fn request_connection_from_input(input_box: *ib.InputBox, server_addr: []const u
     return client;
 }
 
+fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList(rld.Message)) !void {
+    const addr_str = cmn.address_as_str(client.server_addr);
+    while (true) {
+        const resp = try ptc.prot_collect(str_allocator, client.stream);
+        resp.dump(LOG_LEVEL);
+        if (resp.is_response()) {
+            if (resp.is_action(ptc.Act.COMM_END)) {
+                if (resp.status_code == ptc.StatusCode.OK) {
+                    std.log.err("not implemented", .{});
+                }
+            } else if (resp.is_action(ptc.Act.GET_PEER)) {
+                if (resp.status_code == ptc.StatusCode.OK) {
+                    std.log.err("not implemented", .{});
+                }
+            } else if (resp.is_action(ptc.Act.MSG)) {
+                if (resp.status_code == ptc.StatusCode.OK) {
+                    // construct protocol to get peer data
+                    const reqp = ptc.Protocol.init(
+                        ptc.Typ.REQ, // type
+                        ptc.Act.GET_PEER, // action
+                        ptc.StatusCode.OK, // status code
+                        client.id, // sender id
+                        "client", // src address
+                        addr_str, // destination address
+                        resp.sender_id, //body
+                    );
+                    try send_request(client.server_addr, reqp);
+
+                    // collect GET_PEER response
+                    const np = try ptc.prot_collect(str_allocator, client.stream);
+                    np.dump(LOG_LEVEL);
+
+                    var un_spl = mem.split(u8, np.body, "#");
+                    const unn = un_spl.next().?; // user name
+                    //const unh = un_spl.next().?; // username hash
+
+                    // print recieved message
+                    //const msg_text = try std.fmt.allocPrint(
+                    //    str_allocator,
+                    //    "{s}" ++ tclr.paint_hex("#555555", "#{s}") ++ ": {s}\n",
+                    //    .{ unn, unh, resp.body }
+                    //);
+                    const msg_text = try std.fmt.allocPrint(
+                        str_allocator,
+                        "{s}",
+                        .{ resp.body }
+                    );
+                    const message = rld.Message{ .author=unn, .text = msg_text };
+                    _ = try messages.append(message);
+                    print("pushing message ({d})\n", .{sd.messages.items.len});
+                } else {
+                    resp.dump(LOG_LEVEL);
+                }
+            }
+        } else if (resp.is_request()) {
+            if (resp.is_action(ptc.Act.COMM)) {
+                if (resp.status_code == ptc.StatusCode.OK) {
+                    std.log.err("not implemented", .{});
+                }
+            } else if (resp.is_action(ptc.Act.NTFY_KILL)) {
+                if (resp.status_code == ptc.StatusCode.OK) {
+                    std.log.err("not implemented", .{});
+                }
+            } else if (resp.is_action(ptc.Act.COMM_END)) {
+                if (resp.status_code == ptc.StatusCode.OK) {
+                     std.log.err("not implemented", .{});
+               }
+            } 
+        } else if (resp.type == ptc.Typ.ERR) {
+            //client.stream.close();
+            resp.dump(LOG_LEVEL);
+            break;
+        }
+    }
+    sd.update_value(true);
+}
+
 const F = 160;
 pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
     const SW = 16*F;
@@ -325,7 +409,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
 
     const font = loadExternalFont("./src/assets/font/IosevkaTermSS02-SemiBold.ttf");
 
-    const FPS = 20;
+    const FPS = 30;
     rl.setTargetFPS(FPS);
 
     var client: Client = undefined;
@@ -341,6 +425,13 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
     var user_login_btn = rlb.Button{ .text="Enter", .color = rl.Color.light_gray };
     var message_display = rld.Display{};
     message_display.allocMessages(gpa_allocator);
+    
+    var sd = SharedData{
+        .m = std.Thread.Mutex{},
+        .should_exit = false,
+        .messages = message_display.messages,
+    };
+
     while (!rl.windowShouldClose()) {
         const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
         const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
@@ -364,8 +455,8 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                 }
             }
         } else {
-            _ = user_login_box.setRec(sw/2 - 200, 200 + font_size/2, 800, 50 + font_size/2); 
-            user_login_btn.setRec(user_login_box.rec.x, user_login_box.rec.y+140, 200, 90);
+            _ = user_login_box.setRec(sw/2 - sw/4, 200 + font_size/2, sw/2, 50 + font_size/2); 
+            user_login_btn.setRec(user_login_box.rec.x + sw/5.5, user_login_box.rec.y+140, sw/8, 90);
             if (user_login_box.isClicked()) {
                 _ = user_login_box.setEnabled(true);
             } else {
@@ -399,16 +490,18 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             key = rl.getCharPressed();
         }
         if (user_login_box.enabled) {
-            if (rl.isKeyDown(.key_backspace)) {
+            if (rl.isKeyPressed(.key_backspace)) {
                 _ = user_login_box.pop();
             } 
             if (rl.isKeyDown(.key_enter)) {
                 client = try request_connection_from_input(&user_login_box, server_addr, server_port);
                 connected = true;
+                const t1 = try std.Thread.spawn(.{}, accept_connections, .{ &sd, &client, &message_display.messages });
+                t1.detach();
             }
         }
         if (message_box.enabled) {
-            if (rl.isKeyDown(.key_backspace)) {
+            if (rl.isKeyPressed(.key_backspace)) {
                 _ = message_box.pop();
             } 
             // TODO: message_box::handle_commands
@@ -427,8 +520,11 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                     );
                     try send_request(client.server_addr, reqp);
                     const q = try std.fmt.allocPrint(str_allocator, "{s}", .{mcln});
+                    var un_spl = mem.split(u8, client.username, "#");
+                    const unn = un_spl.next().?; // user name
+                    //const unh = un_spl.next().?; // username hash
                     const message = rld.Message{
-                        .author=client.username,
+                        .author=unn,
                         .text=q,
                     };
                     _ = try message_display.messages.append(message);
@@ -460,7 +556,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             rl.drawTextEx(
                 font,
                 title_str,
-                rl.Vector2{.x=user_login_box.rec.x - 65, .y=50},
+                rl.Vector2{.x=20, .y=25},
                 font_size * 1.75,
                 0,
                 rl.Color.light_gray
@@ -469,7 +565,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             rl.drawTextEx(
                 font,
                 succ_str,
-                rl.Vector2{.x=user_login_box.rec.x - 520, .y=user_login_box.rec.y + user_login_box.rec.height/9},
+                rl.Vector2{.x=user_login_box.rec.x, .y=user_login_box.rec.y - user_login_box.rec.height},
                 font_size,
                 0,
                 rl.Color.light_gray

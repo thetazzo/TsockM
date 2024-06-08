@@ -35,6 +35,7 @@ pub const Button = struct {
         );
         var buf: [256] u8 = undefined;
         const btext = try std.fmt.bufPrintZ(&buf, "{s}", .{self.text});
-        rl.drawTextEx(font, btext, rl.Vector2{.x=self.rec.x+self.rec.width/4 - 20, .y=self.rec.y+self.rec.height/4 - 5}, font_size, 0, rl.Color.black);
+        const txt_width = rl.measureTextEx(font, btext, font_size, 0).x;
+        rl.drawTextEx(font, btext, rl.Vector2{.x=self.rec.x+self.rec.width/2 - txt_width/2, .y=self.rec.y+self.rec.height/4 - 5}, font_size, 0, rl.Color.black);
     }
 };

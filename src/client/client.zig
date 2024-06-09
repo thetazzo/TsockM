@@ -150,7 +150,7 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                         ptc.Act.GET_PEER, // action
                         ptc.StatusCode.OK, // status code
                         client.id, // sender id
-                        "client", // src address
+                        client.client_addr, // src address
                         addr_str, // destination address
                         resp.sender_id, //body
                     );
@@ -179,7 +179,7 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                         ptc.Act.COMM,
                         ptc.StatusCode.OK,
                         client.id,
-                        "client",
+                        client.client_addr,
                         addr_str,
                         "OK"
                     );
@@ -193,7 +193,7 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                         ptc.Act.GET_PEER, // action
                         ptc.StatusCode.OK, // status code
                         client.id, // sender id
-                        "client", // src address
+                        client.client_addr, // src address
                         addr_str, // destination address
                         resp.body, //body
                     );
@@ -255,7 +255,7 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
                     ptc.Act.MSG,
                     ptc.StatusCode.OK,
                     client.id,
-                    "client",
+                    client.client_addr,
                     addr_str,
                     msg,
                 );
@@ -268,7 +268,7 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
                     ptc.Act.GET_PEER,
                     ptc.StatusCode.OK,
                     client.id,
-                    "client",
+                    client.client_addr,
                     addr_str,
                     pid,
                 );
@@ -281,7 +281,7 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
                     ptc.Act.COMM_END,
                     ptc.StatusCode.OK,
                     client.id,
-                    "client",
+                    client.client_addr,
                     addr_str,
                     "",
                 );
@@ -349,7 +349,7 @@ fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList
                         ptc.Act.GET_PEER, // action
                         ptc.StatusCode.OK, // status code
                         client.id, // sender id
-                        "client", // src address
+                        client.client_addr, // src address
                         addr_str, // destination address
                         resp.sender_id, //body
                     );
@@ -536,22 +536,21 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                             ptc.Act.COMM_END,
                             ptc.StatusCode.OK,
                             client.id,
-                            "client", // TODO: replace with proper client address
-                            "client", // TODO: replace with proper server address
+                            client.client_addr,
+                            cmn.address_as_str(client.server_addr),
                             "OK",
                         );
                         sd.update_value(true);
                         try send_request(client.server_addr, reqp);
                     } else {
                         // handle sending a message
-                        const addr_str = cmn.address_as_str(client.server_addr);
                         const reqp = ptc.Protocol.init(
                             ptc.Typ.REQ,
                             ptc.Act.MSG,
                             ptc.StatusCode.OK,
                             client.id,
-                            "client", // TODO: replace with proper client address
-                            addr_str,
+                            client.client_addr,
+                            cmn.address_as_str(client.server_addr),
                             mcln,
                         );
                         try send_request(client.server_addr, reqp);
@@ -585,7 +584,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 defer str_allocator.free(client_stats);
                 const client_str  = try std.fmt.bufPrintZ(&buf, "{s}\n", .{client_stats});
                 try message_display.render(str_allocator, font, font_size, frame_counter);
-                rl.drawTextEx(font, client_str, rl.Vector2{.x=40, .y=20}, font_size/1.5, 0, rl.Color.light_gray);
+                rl.drawTextEx(font, client_str, rl.Vector2{.x=40, .y=20}, font_size/2, 0, rl.Color.light_gray);
                 try message_box.render(window_extended, font, font_size, frame_counter);
             }
         } else {

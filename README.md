@@ -134,14 +134,17 @@ start <?flag>` .................. start the program
 * [ ] {FEAT} decrypt body of the protocol
 * [ ] {FEAT} clipboard paste support
 * [ ] {UPADTE} removed depricated code
-#### 0.2.2
+#### 0.2.3
+* [ ] better centering of text on input boxes
+    * Use `msasuseTextEx(text).y`
 * {FEAT} Client actions
     * [ ] Exiting the application
     * [ ] Sending messages
+#### 0.2.2
 * [x] {FIX} when exiting duuring `connection succesful` the program deadlocks
 * [x] {FEAT} consume `-fp` for setting location to the font 
 * [x] {FEAT} consume `-F` start parameter to set scaling factor of the window
-* [ ] when server sends a response set the source of the response to server ip
+* [x] set client address source when sending things to the server
 #### 0.2.x
 * [ ] {UPDATE} transform functions to be camel case as per zig standrad
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad

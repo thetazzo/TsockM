@@ -2,6 +2,25 @@
 
 * A TCP socket based chatting application
 
+## Prerequisits
+
+* xorg-X11
+    * `libX11-dlevel`
+    * `libXcursor-dlevel`
+    * `libXrandr-dlevel`
+    * `libXinerama-dlevel`
+* wayland
+    * `wayland-dev` or `wayland-deval`
+
+* OpenGL
+    * `mesa-libGL-dlevel`
+
+## Fedora 40 [RedHat]
+* Install required libraries
+```bash
+sudo yum install wayland-devel.x86_64 libxkbcommon-devel.x86_64 mesa-libGL-devel.x86_64
+```
+
 ## Quick Start
 * This shoudl work on zig version `0.12.0`
 * Build and run
@@ -107,6 +126,7 @@ start <?flag>` .................. start the program
     
 ### TODO
 
+* [ ] {FEAT} clipboard paste support
 * [ ] {UPDATE} transform functions to be camel case as per zig standrad
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad
 * [ ] {FEAT} read server adddress as program argument

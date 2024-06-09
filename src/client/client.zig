@@ -404,10 +404,9 @@ fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList
     sd.update_value(true);
 }
 
-const F = 160;
-pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
-    const SW = 16*F;
-    const SH = 9*F;
+pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8) !void {
+    const SW = @as(i32, @intCast(16*screen_scale));
+    const SH = @as(i32, @intCast(9*screen_scale));
     rl.initWindow(SW, SH, "TsockM");
     defer rl.closeWindow();
 
@@ -420,10 +419,12 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
     const opt_self_dirname = std.fs.path.dirname(self_path);
 
     var font: rl.Font = undefined;
-    if (opt_self_dirname) |exe_dir| {
-        print("{s}\n", .{exe_dir});
-        const font_path = try std.fmt.allocPrintZ(str_allocator, "{s}/{s}", .{exe_dir, "fonts/IosevkaTermSS02-SemiBold.ttf"}); 
-        font = loadExternalFont(font_path);
+    if (font_path.len > 0) {
+        const font_pathZ = try std.fmt.allocPrintZ(str_allocator, "{s}", .{font_path}); 
+        font = loadExternalFont(font_pathZ);
+    } else if (opt_self_dirname) |exe_dir| {
+        const font_pathZ = try std.fmt.allocPrintZ(str_allocator, "{s}/{s}", .{exe_dir, "fonts/IosevkaTermSS02-SemiBold.ttf"}); 
+        font = loadExternalFont(font_pathZ);
     }
 
     const FPS = 30;
@@ -453,8 +454,8 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
     while (!rl.windowShouldClose()) {
         const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
         const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
-        const font_size = 60;
-        const window_extended = sh > SH;
+        const font_size = sh * 0.05;
+        const window_extended = sh > @as(f32, @floatFromInt(SH));
 
         rl.beginDrawing();
         defer rl.endDrawing();

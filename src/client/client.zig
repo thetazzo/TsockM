@@ -585,7 +585,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 defer str_allocator.free(client_stats);
                 const client_str  = try std.fmt.bufPrintZ(&buf, "{s}\n", .{client_stats});
                 try message_display.render(str_allocator, font, font_size, frame_counter);
-                rl.drawTextEx(font, client_str, rl.Vector2{.x=40, .y=40}, font_size/2, 0, rl.Color.light_gray);
+                rl.drawTextEx(font, client_str, rl.Vector2{.x=40, .y=20}, font_size/1.5, 0, rl.Color.light_gray);
                 try message_box.render(window_extended, font, font_size, frame_counter);
             }
         } else {

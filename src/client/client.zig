@@ -454,8 +454,9 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     while (!rl.windowShouldClose()) {
         const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
         const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
-        const font_size = sh * 0.05;
         const window_extended = sh > @as(f32, @floatFromInt(SH));
+        const window_extended_vert = sh > sw;
+        const font_size = if (window_extended_vert) sw * 0.03 else sh * 0.05;
 
         rl.beginDrawing();
         defer rl.endDrawing();

@@ -135,24 +135,21 @@ start <?flag>` .................. start the program
 * [ ] {FEAT} clipboard paste support
 * [ ] {UPADTE} removed depricated code
 #### 0.2.3
+* [ ] {UPDATE} transform functions to be camel case as per zig standrad
+* [ ] {UPDATE} transform variables to be snake case as per zig standrad
 * [ ] better centering of text on input boxes
     * Use `msasuseTextEx(text).y`
 * {FEAT} Client actions
     * [ ] Exiting the application
     * [ ] Sending messages
+    * [ ] Ping user by username and print user info
 #### 0.2.2
 * [x] {FIX} when exiting duuring `connection succesful` the program deadlocks
 * [x] {FEAT} consume `-fp` for setting location to the font 
 * [x] {FEAT} consume `-F` start parameter to set scaling factor of the window
 * [x] set client address source when sending things to the server
 #### 0.2.x
-* [ ] {UPDATE} transform functions to be camel case as per zig standrad
-* [ ] {UPDATE} transform variables to be snake case as per zig standrad
-* [ ] {FEAT} read server adddress as program argument
-* [ ] {BUG} a message is printed on top of a command being written
-    * I don't know how to fix this
-    * Probably it will be an issue until we move to raylib
-* [ ] `:ping <peer_username` action for pinging the status of a peer
+* [x] {FEAT} read server adddress as program argument
 * [ ] don't crash the the client wait for a connection to the server be available
 * [ ] Allow user to specify the color of the text
 #### 0.1.0

@@ -2,9 +2,9 @@ const std = @import("std");
 const ptc = @import("ptc");
 const cmn = @import("cmn");
 const tclr = @import("text_color");
-const ib = @import("ui/input-box.zig");
+const InputBox = @import("ui/input-box.zig");
 const rlb = @import("ui/button.zig");
-const rld = @import("ui/display.zig");
+const Display = @import("ui/display.zig");
 const rl = @import("raylib");
 const mem = std.mem;
 const net = std.net;
@@ -109,7 +109,7 @@ fn send_request(addr: net.Address, req: ptc.Protocol) !void {
 const SharedData = struct {
     m: std.Thread.Mutex,
     should_exit: bool,
-    messages: std.ArrayList(rld.Message),
+    messages: std.ArrayList(Display.Message),
 
     pub fn update_value(self: *@This(), should: bool) void {
         self.m.lock();
@@ -118,7 +118,7 @@ const SharedData = struct {
         self.should_exit = should;
     }
 
-    pub fn pushMessage(self: *@This(), msg: rld.Message) !void {
+    pub fn pushMessage(self: *@This(), msg: Display.Message) !void {
         self.m.lock();
         defer self.m.unlock();
         try self.messages.append(msg);
@@ -319,7 +319,7 @@ fn loadExternalFont(font_name: [:0]const u8) rl.Font {
 return font;
 }
 
-fn request_connection_from_input(input_box: *ib.InputBox, server_addr: []const u8, server_port: u16) !Client {
+fn request_connection_from_input(input_box: *InputBox, server_addr: []const u8, server_port: u16) !Client {
     // request connection
     const username = mem.sliceTo(&input_box.value, 0);
     const client = try request_connection(server_addr, server_port, username);
@@ -327,7 +327,7 @@ fn request_connection_from_input(input_box: *ib.InputBox, server_addr: []const u
     return client;
 }
 
-fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList(rld.Message)) !void {
+fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList(Display.Message)) !void {
     const addr_str = cmn.address_as_str(client.server_addr);
     while (!sd.should_exit) {
         const resp = try ptc.prot_collect(str_allocator, client.stream);
@@ -374,7 +374,7 @@ fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList
                         "{s}",
                         .{ resp.body }
                     );
-                    const message = rld.Message{ .author=unn, .text = msg_text };
+                    const message = Display.Message{ .author=unn, .text = msg_text };
                     _ = try messages.append(message);
                     print("pushing message ({d})\n", .{sd.messages.items.len});
                 } else {
@@ -434,10 +434,10 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     var response_counter: usize = FPS*1;
     var frame_counter: usize = 0;
 
-    var message_box = ib.InputBox{};
-    var user_login_box = ib.InputBox{};
+    var message_box = InputBox{};
+    var user_login_box = InputBox{};
     var user_login_btn = rlb.Button{ .text="Enter", .color = rl.Color.light_gray };
-    var message_display = rld.Display{};
+    var message_display = Display{};
     message_display.allocMessages(gpa_allocator);
     defer message_display.messages.deinit();
 

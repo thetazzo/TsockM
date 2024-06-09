@@ -325,7 +325,7 @@ fn request_connection_from_input(input_box: *ib.InputBox, server_addr: []const u
 
 fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList(rld.Message)) !void {
     const addr_str = cmn.address_as_str(client.server_addr);
-    while (true) {
+    while (!sd.should_exit) {
         const resp = try ptc.prot_collect(str_allocator, client.stream);
         resp.dump(LOG_LEVEL);
         if (resp.is_response()) {
@@ -406,8 +406,19 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
     const SH = 9*F;
     rl.initWindow(SW, SH, "TsockM");
     defer rl.closeWindow();
+    defer print("wtf?\n", .{});
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const gpa_allocator = gpa.allocator();
 
-    const font = loadExternalFont("./src/assets/font/IosevkaTermSS02-SemiBold.ttf");
+    const self_path = try std.fs.selfExePathAlloc(gpa_allocator);
+    defer gpa_allocator.free(self_path);
+    const opt_self_dirname = std.fs.path.dirname(self_path);
+    var font: rl.Font = undefined;
+    if (opt_self_dirname) |exe_dir| {
+        print("{s}\n", .{exe_dir});
+        const font_path = try std.fmt.allocPrintZ(str_allocator, "{s}/{s}", .{exe_dir, "fonts/IosevkaTermSS02-SemiBold.ttf"}); 
+        font = loadExternalFont(font_path);
+    }
 
     const FPS = 30;
     rl.setTargetFPS(FPS);
@@ -417,15 +428,15 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
     var response_counter: usize = FPS*1;
     var frame_counter: usize = 0;
 
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const gpa_allocator = gpa.allocator();
 
     var message_box = ib.InputBox{};
     var user_login_box = ib.InputBox{};
     var user_login_btn = rlb.Button{ .text="Enter", .color = rl.Color.light_gray };
     var message_display = rld.Display{};
     message_display.allocMessages(gpa_allocator);
-    
+
+    var thread_pool: [1]std.Thread = undefined;
+
     var sd = SharedData{
         .m = std.Thread.Mutex{},
         .should_exit = false,
@@ -496,8 +507,8 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             if (rl.isKeyDown(.key_enter)) {
                 client = try request_connection_from_input(&user_login_box, server_addr, server_port);
                 connected = true;
-                const t1 = try std.Thread.spawn(.{}, accept_connections, .{ &sd, &client, &message_display.messages });
-                t1.detach();
+                thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd, &client, &message_display.messages });
+                errdefer thread_pool[0].join();
             }
         }
         if (message_box.enabled) {
@@ -508,27 +519,34 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             if (rl.isKeyPressed(.key_enter)) {
                 const mcln = mem.sliceTo(&message_box.value, 170);
                 if (mcln.len > 0) {
-                    const addr_str = cmn.address_as_str(client.server_addr);
-                    const reqp = ptc.Protocol.init(
-                        ptc.Typ.REQ,
-                        ptc.Act.MSG,
-                        ptc.StatusCode.OK,
-                        client.id,
-                        "client",
-                        addr_str,
-                        mcln,
-                    );
-                    try send_request(client.server_addr, reqp);
-                    const q = try std.fmt.allocPrint(str_allocator, "{s}", .{mcln});
-                    var un_spl = mem.split(u8, client.username, "#");
-                    const unn = un_spl.next().?; // user name
-                    //const unh = un_spl.next().?; // username hash
-                    const message = rld.Message{
-                        .author=unn,
-                        .text=q,
-                    };
-                    _ = try message_display.messages.append(message);
-                    _ = message_box.clean();
+                    // handle commands
+                    if (mem.startsWith(u8, mcln, ":exit")) {
+                        sd.update_value(true);
+                        return;
+                    } else {
+                        // handle sending a message
+                        const addr_str = cmn.address_as_str(client.server_addr);
+                        const reqp = ptc.Protocol.init(
+                            ptc.Typ.REQ,
+                            ptc.Act.MSG,
+                            ptc.StatusCode.OK,
+                            client.id,
+                            "client",
+                            addr_str,
+                            mcln,
+                        );
+                        try send_request(client.server_addr, reqp);
+                        const q = try std.fmt.allocPrint(str_allocator, "{s}", .{mcln});
+                        var un_spl = mem.split(u8, client.username, "#");
+                        const unn = un_spl.next().?; // user name
+                        //const unh = un_spl.next().?; // username hash
+                        const message = rld.Message{
+                            .author=unn,
+                            .text=q,
+                        };
+                        _ = try message_display.messages.append(message);
+                        _ = message_box.clean();
+                    }
                 }
             }
         }
@@ -574,6 +592,8 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             try user_login_btn.render(font, font_size);
         }
     }
+    errdefer for (&thread_pool) |t| t.join();
+    defer for (&thread_pool) |t| t.join();
 
     //var buf: [256]u8 = undefined;
     //const stdin = std.io.getStdIn().reader();

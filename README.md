@@ -2,6 +2,25 @@
 
 * A TCP socket based chatting application
 
+## Prerequisits
+
+* xorg-X11
+    * `libX11-dlevel`
+    * `libXcursor-dlevel`
+    * `libXrandr-dlevel`
+    * `libXinerama-dlevel`
+* wayland
+    * `wayland-dev` or `wayland-deval`
+
+* OpenGL
+    * `mesa-libGL-dlevel`
+
+## Fedora 40 [RedHat]
+* Install required libraries
+```bash
+sudo yum install wayland-devel.x86_64 libxkbcommon-devel.x86_64 mesa-libGL-devel.x86_64
+```
+
 ## Quick Start
 * This shoudl work on zig version `0.12.0`
 * Build and run
@@ -72,11 +91,13 @@ start <?flag>` .................. start the program
 
 ### TODO
 
+#### 0.3.0
+* [ ] {FEAT} encrypt body of the protocol
+
+#### 0.2.x
 * [ ] {UPDATE} transform functions to be camel case as per zig standrad
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad
-* [ ] {FEAT} encrypt body of the protocol
 * [ ] {BUG} notifying peer death does not work every time
-* [x] send a notification to client when a peer gets terminated
 * [ ] `peer_find_all_username` find all peers with specific username
 * [ ] `peer_bridge_ref` function that constructs a structre containing the sender peer and the peer the sender is trying to find
 * [ ] when server sends a response set the source of the response to server ip
@@ -85,6 +106,8 @@ start <?flag>` .................. start the program
         * `-s` .... silent mode
         * `-t` .... tiny mode
         * default `DEV`
+#### 0.1.x
+* [x] send a notification to client when a peer gets terminated
 * [x] Test message coloring
 * [x] `:info` action for printing server stats (amount of peers connected, uptime, server-address, etc.)
 * [x] `:ping <peer_username>` action for pinging the status of a peer
@@ -107,16 +130,24 @@ start <?flag>` .................. start the program
     
 ### TODO
 
+#### 0.3.0
+* [ ] {FEAT} decrypt body of the protocol
+* [ ] {FEAT} clipboard paste support
+#### 0.2.x
+* [ ] {UPADTE} removed depricated code
+* {FEAT} Client actions
+    * [ ] Exiting the application
+    * [ ] Sending messages
 * [ ] {UPDATE} transform functions to be camel case as per zig standrad
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad
 * [ ] {FEAT} read server adddress as program argument
 * [ ] {BUG} a message is printed on top of a command being written
     * I don't know how to fix this
     * Probably it will be an issue until we move to raylib
-* [ ] {FEAT} decrypt body of the protocol
 * [ ] `:ping <peer_username` action for pinging the status of a peer
 * [ ] don't crash the the client wait for a connection to the server be available
 * [ ] Allow user to specify the color of the text
+#### 0.1.0
 * [x] Consume peer termination notification and print it on screen
 * [x] Test message coloring
 * [x] Accept address as a variable when connecting a server

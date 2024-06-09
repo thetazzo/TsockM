@@ -8,6 +8,17 @@ pub fn build(b: *std.Build) void {
 
     const optimize = b.standardOptimizeOption(.{});
 
+    const raylib_optimize = b.option(
+        std.builtin.OptimizeMode,
+        "raylib-optimize",
+        "Prioritize performance, safety, or binary size (-O flag), defaults to value of optimize option",
+    ) orelse optimize;
+    const raylib_dep = b.dependency("raylib-zig", .{
+        .target = target,
+        .optimize = raylib_optimize,
+        .linux_display_backend = .X11,
+    });
+
     const common_mod = b.addModule("cmn", .{
         .root_source_file = b.path("src/lib/common.zig"),
     });
@@ -18,6 +29,9 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/lib/text_color.zig"),
     });
     const sqids_mod = sqids_dep.module("sqids");
+    const raylib = raylib_dep.module("raylib"); // main raylib module
+    const raygui = raylib_dep.module("raygui"); // raygui module
+    const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
 
     const server_exe = b.addExecutable(.{
         .name = "tsockm-server",
@@ -40,14 +54,16 @@ pub fn build(b: *std.Build) void {
     }
     run_server_step.dependOn(&run_server_exe.step);
 
-    const linux_target = .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu };
+    // this target does not work with raylib
     const client_exe = b.addExecutable(.{
         .name = "tsockm-client",
         .root_source_file = b.path("src/client/main.zig"),
-        .target = b.resolveTargetQuery(linux_target),
-        .strip = true,
+        .target = target,
         .optimize = optimize,
     });
+    client_exe.linkLibrary(raylib_artifact);
+    client_exe.root_module.addImport("raylib", raylib);
+    client_exe.root_module.addImport("raygui", raygui);
     client_exe.root_module.addImport("ptc", protocol_mod);
     client_exe.root_module.addImport("cmn", common_mod);
     client_exe.root_module.addImport("text_color", text_clr_mod);

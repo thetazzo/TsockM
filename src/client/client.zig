@@ -35,9 +35,13 @@ const Client = struct {
 
 fn clientStats(client: Client) ![]const u8 {
     const username    = try std.fmt.allocPrint(str_allocator, "username: {s}\n", .{client.username});
+    defer str_allocator.free(username);
     const id          = try std.fmt.allocPrint(str_allocator, "id: {s}\n", .{client.id});
+    defer str_allocator.free(id);
     const server_addr = try std.fmt.allocPrint(str_allocator, "server_address: {s}\n", .{cmn.address_as_str(client.server_addr)});
+    defer str_allocator.free(server_addr);
     const client_addr = try std.fmt.allocPrint(str_allocator, "client address: {s}\n", .{client.client_addr});
+    defer str_allocator.free(client_addr);
     const stats = try std.fmt.allocPrint(str_allocator, "{s}{s}{s}{s}", .{username, id, server_addr, client_addr});
     return stats;
 }
@@ -428,14 +432,15 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
     var response_counter: usize = FPS*1;
     var frame_counter: usize = 0;
 
-
     var message_box = ib.InputBox{};
     var user_login_box = ib.InputBox{};
     var user_login_btn = rlb.Button{ .text="Enter", .color = rl.Color.light_gray };
     var message_display = rld.Display{};
     message_display.allocMessages(gpa_allocator);
+    defer message_display.messages.deinit();
 
     var thread_pool: [1]std.Thread = undefined;
+    defer for (&thread_pool) |t| t.join();
 
     var sd = SharedData{
         .m = std.Thread.Mutex{},
@@ -562,7 +567,9 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                 response_counter -= 1;
             } else {
                 // Draw client information
-                const client_str  = try std.fmt.bufPrintZ(&buf, "{s}\n", .{try clientStats(client)});
+                const client_stats = try clientStats(client);
+                defer str_allocator.free(client_stats);
+                const client_str  = try std.fmt.bufPrintZ(&buf, "{s}\n", .{client_stats});
                 try message_display.render(str_allocator, font, font_size, frame_counter);
                 rl.drawTextEx(font, client_str, rl.Vector2{.x=40, .y=40}, font_size/2, 0, rl.Color.light_gray);
                 try message_box.render(window_extended, font, font_size, frame_counter);
@@ -592,8 +599,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             try user_login_btn.render(font, font_size);
         }
     }
-    errdefer for (&thread_pool) |t| t.join();
-    defer for (&thread_pool) |t| t.join();
+    print("Ending the client\n", .{});
 
     //var buf: [256]u8 = undefined;
     //const stdin = std.io.getStdIn().reader();

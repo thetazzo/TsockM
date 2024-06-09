@@ -133,16 +133,16 @@ start <?flag>` .................. start the program
 #### 0.3.0
 * [ ] {FEAT} decrypt body of the protocol
 * [ ] {FEAT} clipboard paste support
-#### 0.2.3
+* [ ] {UPADTE} removed depricated code
+#### 0.2.2
+* {FEAT} Client actions
+    * [ ] Exiting the application
+    * [ ] Sending messages
 * [x] {FIX} when exiting duuring `connection succesful` the program deadlocks
 * [x] {FEAT} consume `-fp` for setting location to the font 
 * [x] {FEAT} consume `-F` start parameter to set scaling factor of the window
 * [ ] when server sends a response set the source of the response to server ip
 #### 0.2.x
-* [ ] {UPADTE} removed depricated code
-* {FEAT} Client actions
-    * [ ] Exiting the application
-    * [ ] Sending messages
 * [ ] {UPDATE} transform functions to be camel case as per zig standrad
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad
 * [ ] {FEAT} read server adddress as program argument

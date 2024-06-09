@@ -403,7 +403,7 @@ fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList
     }
 }
 
-fn exitClient(sd: *SharedData, client: Client, message_box: *InputBox, message_display: *Display) void {
+fn exitClient(client: Client, message_box: *InputBox, message_display: *Display) void {
     _ = message_box;
     _ = message_display;
     const reqp = ptc.Protocol.init(
@@ -415,15 +415,13 @@ fn exitClient(sd: *SharedData, client: Client, message_box: *InputBox, message_d
         cmn.address_as_str(client.server_addr),
         "OK",
     );
-    sd.update_value(true);
     send_request(client.server_addr, reqp) catch |err| {
         std.log.err("`send_request`: {any}", .{err});
         std.posix.exit(1);
     };
 }
 
-fn sendMessage(sd: *SharedData, client: Client, message_box: *InputBox, message_display: *Display) void {
-    _ = sd;
+fn sendMessage(client: Client, message_box: *InputBox, message_display: *Display) void {
     const msg = mem.sliceTo(&message_box.value, 170);
     // handle sending a message
     const reqp = ptc.Protocol.init(
@@ -458,8 +456,7 @@ fn sendMessage(sd: *SharedData, client: Client, message_box: *InputBox, message_
     _ = message_box.clean();
 }
 
-fn pingClient(sd: *SharedData, client: Client, message_box: *InputBox, message_display: *Display) void {
-    _ = sd;
+fn pingClient(client: Client, message_box: *InputBox, message_display: *Display) void {
     _ = client;
     _ = message_display;
     var splits = mem.split(u8, &message_box.value, " ");
@@ -496,7 +493,7 @@ fn pingClient(sd: *SharedData, client: Client, message_box: *InputBox, message_d
     }
 }
 
-const Action = *const fn (*SharedData, Client, *InputBox, *Display) void;
+const Action = *const fn (Client, *InputBox, *Display) void;
 
 pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8) !void {
     const SW = @as(i32, @intCast(16*screen_scale));
@@ -637,11 +634,11 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                         if (opt_caller) |caller| {
                             const opt_act = acts.get(caller);
                             if (opt_act) |client_action| {
-                                client_action(&sd, client, &message_box, &message_display);
+                                client_action(client, &message_box, &message_display);
                             } else {
                                 // TODO: Print warning popup 
                                 std.log.warn("Unknown action caller `{s}`", .{caller});
-                                sendMessage(&sd, client, &message_box, &message_display);
+                                sendMessage(client, &message_box, &message_display);
                             }
                         } else {
                             std.log.err("Invalid action caller `{s}`", .{mcln});
@@ -649,7 +646,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                         }
                     } else {
                         // if no action caller specifiied then handle it as message
-                        sendMessage(&sd, client, &message_box, &message_display);
+                        sendMessage(client, &message_box, &message_display);
                     }
                 }
             }

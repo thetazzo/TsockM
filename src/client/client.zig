@@ -524,7 +524,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                 // remove char from message box
                 _ = message_box.pop();
             } 
-            // TODO: message_box::handle_commands
+            // TODO: message_box::handle_actions
             if (message_box.isKeyPressed(.key_enter)) {
                 const mcln = mem.sliceTo(&message_box.value, 170);
                 if (mcln.len > 0) {

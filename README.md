@@ -134,6 +134,10 @@ start <?flag>` .................. start the program
 * [ ] {FEAT} decrypt body of the protocol
 * [ ] {FEAT} clipboard paste support
 #### 0.2.x
+* [ ] {UPADTE} removed depricated code
+* {FEAT} Client actions
+    * [ ] Exiting the application
+    * [ ] Sending messages
 * [ ] {UPDATE} transform functions to be camel case as per zig standrad
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad
 * [ ] {FEAT} read server adddress as program argument

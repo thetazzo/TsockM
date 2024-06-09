@@ -403,6 +403,101 @@ fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList
     }
 }
 
+fn exitClient(sd: *SharedData, client: Client, message_box: *InputBox, message_display: *Display) void {
+    _ = message_box;
+    _ = message_display;
+    const reqp = ptc.Protocol.init(
+        ptc.Typ.REQ,
+        ptc.Act.COMM_END,
+        ptc.StatusCode.OK,
+        client.id,
+        client.client_addr,
+        cmn.address_as_str(client.server_addr),
+        "OK",
+    );
+    sd.update_value(true);
+    send_request(client.server_addr, reqp) catch |err| {
+        std.log.err("`send_request`: {any}", .{err});
+        std.posix.exit(1);
+    };
+}
+
+fn sendMessage(sd: *SharedData, client: Client, message_box: *InputBox, message_display: *Display) void {
+    _ = sd;
+    const msg = mem.sliceTo(&message_box.value, 170);
+    // handle sending a message
+    const reqp = ptc.Protocol.init(
+        ptc.Typ.REQ,
+        ptc.Act.MSG,
+        ptc.StatusCode.OK,
+        client.id,
+        client.client_addr,
+        cmn.address_as_str(client.server_addr),
+        msg,
+    );
+    send_request(client.server_addr, reqp) catch |err| {
+        std.log.err("`send_request`: {any}", .{err});
+        std.posix.exit(1);
+    };
+    const q = std.fmt.allocPrint(str_allocator, "{s}", .{msg}) catch |err| {
+        std.log.err("`allocPrint`: {any}", .{err});
+        std.posix.exit(1);
+    };
+
+    var un_spl = mem.split(u8, client.username, "#");
+    const unn = un_spl.next().?; // user name
+    //const unh = un_spl.next().?; // username hash
+    const message = Display.Message{
+        .author=unn,
+        .text=q,
+    };
+    _ = message_display.messages.append(message) catch |err| {
+        std.log.err("`message_display`: {any}", .{err});
+        std.posix.exit(1);
+    };
+    _ = message_box.clean();
+}
+
+fn pingClient(sd: *SharedData, client: Client, message_box: *InputBox, message_display: *Display) void {
+    _ = sd;
+    _ = client;
+    _ = message_display;
+    var splits = mem.split(u8, &message_box.value, " ");
+    _ = splits.next(); // action caller
+    const opt_username = splits.next();
+    if (opt_username) |username| {
+        _ = username;
+        std.log.err("not implemented", .{});
+        std.posix.exit(1);
+        //const reqp = ptc.Protocol.init(
+        //    ptc.Typ.REQ,
+        //    ptc.Act.PING,
+        //    ptc.StatusCode.OK,
+        //    client.id,
+        //    client.client_addr,
+        //    cmn.address_as_str(client.server_addr),
+        //    username,
+        //);
+        //send_request(client.server_addr, reqp) catch |err| {
+        //    std.log.err("`send_request`: {any}", .{err});
+        //    std.posix.exit(1);
+        //};
+        // TODO: collect response
+        // TODO: print peer data to message_display
+        //const message = rld.Message{
+        //    .author=unn,
+        //    .text=q,
+        //};
+        //_ = message_display.messages.append(message) catch |err| {
+        //    std.log.err("`message_display`: {any}", .{err});
+        //    std.posix.exit(1);
+        //};
+        //_ = message_box.clean();
+    }
+}
+
+const Action = *const fn (*SharedData, Client, *InputBox, *Display) void;
+
 pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8) !void {
     const SW = @as(i32, @intCast(16*screen_scale));
     const SH = @as(i32, @intCast(9*screen_scale));
@@ -411,6 +506,13 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
+
+    var acts = std.StringHashMap(Action).init(gpa_allocator);
+    defer acts.deinit();
+
+    _ = try acts.put(":msg", sendMessage);
+    _ = try acts.put(":ping", pingClient);
+    _ = try acts.put(":exit", exitClient);
 
     // Loading font
     const self_path = try std.fs.selfExePathAlloc(gpa_allocator);
@@ -529,41 +631,25 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             if (message_box.isKeyPressed(.key_enter)) {
                 const mcln = mem.sliceTo(&message_box.value, 170);
                 if (mcln.len > 0) {
-                    // handle commands
-                    if (mem.startsWith(u8, mcln, ":exit")) {
-                        const reqp = ptc.Protocol.init(
-                            ptc.Typ.REQ,
-                            ptc.Act.COMM_END,
-                            ptc.StatusCode.OK,
-                            client.id,
-                            client.client_addr,
-                            cmn.address_as_str(client.server_addr),
-                            "OK",
-                        );
-                        sd.update_value(true);
-                        try send_request(client.server_addr, reqp);
+                    if (mcln[0] == ':') {
+                        var splits = mem.split(u8, mcln, " ");
+                        const opt_caller = splits.next();
+                        if (opt_caller) |caller| {
+                            const opt_act = acts.get(caller);
+                            if (opt_act) |client_action| {
+                                client_action(&sd, client, &message_box, &message_display);
+                            } else {
+                                // TODO: Print warning popup 
+                                std.log.warn("Unknown action caller `{s}`", .{caller});
+                                sendMessage(&sd, client, &message_box, &message_display);
+                            }
+                        } else {
+                            std.log.err("Invalid action caller `{s}`", .{mcln});
+                            std.posix.exit(1);
+                        }
                     } else {
-                        // handle sending a message
-                        const reqp = ptc.Protocol.init(
-                            ptc.Typ.REQ,
-                            ptc.Act.MSG,
-                            ptc.StatusCode.OK,
-                            client.id,
-                            client.client_addr,
-                            cmn.address_as_str(client.server_addr),
-                            mcln,
-                        );
-                        try send_request(client.server_addr, reqp);
-                        const q = try std.fmt.allocPrint(str_allocator, "{s}", .{mcln});
-                        var un_spl = mem.split(u8, client.username, "#");
-                        const unn = un_spl.next().?; // user name
-                        //const unh = un_spl.next().?; // username hash
-                        const message = rld.Message{
-                            .author=unn,
-                            .text=q,
-                        };
-                        _ = try message_display.messages.append(message);
-                        _ = message_box.clean();
+                        // if no action caller specifiied then handle it as message
+                        sendMessage(&sd, client, &message_box, &message_display);
                     }
                 }
             }

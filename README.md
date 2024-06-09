@@ -95,14 +95,12 @@ start <?flag>` .................. start the program
 
 #### 0.3.0
 * [ ] {FEAT} encrypt body of the protocol
-
 #### 0.2.x
 * [ ] {UPDATE} transform functions to be camel case as per zig standrad
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad
 * [ ] {BUG} notifying peer death does not work every time
 * [ ] `peer_find_all_username` find all peers with specific username
 * [ ] `peer_bridge_ref` function that constructs a structre containing the sender peer and the peer the sender is trying to find
-* [ ] when server sends a response set the source of the response to server ip
 * [ ] Consume program arguments:
     * `LOG_LEVEL`:
         * `-s` .... silent mode
@@ -135,6 +133,11 @@ start <?flag>` .................. start the program
 #### 0.3.0
 * [ ] {FEAT} decrypt body of the protocol
 * [ ] {FEAT} clipboard paste support
+#### 0.2.3
+* [x] {FIX} when exiting duuring `connection succesful` the program deadlocks
+* [x] {FEAT} consume `-fp` for setting location to the font 
+* [x] {FEAT} consume `-F` start parameter to set scaling factor of the window
+* [ ] when server sends a response set the source of the response to server ip
 #### 0.2.x
 * [ ] {UPADTE} removed depricated code
 * {FEAT} Client actions

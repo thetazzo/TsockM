@@ -401,7 +401,6 @@ fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList
             break;
         }
     }
-    sd.update_value(true);
 }
 
 pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8) !void {
@@ -442,8 +441,8 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     message_display.allocMessages(gpa_allocator);
     defer message_display.messages.deinit();
 
+    // I think detaching and or joining threads is not needed becuse I handle ending of threads with SharedData.should_exit
     var thread_pool: [1]std.Thread = undefined;
-    defer for (&thread_pool) |t| t.join();
 
     var sd = SharedData{
         .m = std.Thread.Mutex{},
@@ -518,7 +517,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 client = try request_connection_from_input(&user_login_box, server_addr, server_port);
                 connected = true;
                 thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd, &client, &message_display.messages });
-                errdefer thread_pool[0].join();
+                //errdefer thread_pool[0].join();
             }
         }
         if (message_box.enabled) {
@@ -543,7 +542,6 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                         );
                         sd.update_value(true);
                         try send_request(client.server_addr, reqp);
-                        return;
                     } else {
                         // handle sending a message
                         const addr_str = cmn.address_as_str(client.server_addr);

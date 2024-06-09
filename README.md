@@ -130,10 +130,15 @@ start <?flag>` .................. start the program
     
 ### TODO
 
-#### 0.3.0
+#### 0.3.x
 * [ ] {FEAT} decrypt body of the protocol
 * [ ] {FEAT} clipboard paste support
 * [ ] {UPADTE} removed depricated code
+* [ ] {FEAT} custom string tokens like `\c{RED};HELLO\` that applies special properties to text
+#### 0.2.4
+* [ ] don't crash the the client wait for a connection to the server be available
+* [ ] print client termination
+* [ ] Multicolor support for message display
 #### 0.2.3
 * [ ] {UPDATE} transform functions to be camel case as per zig standrad
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad
@@ -150,7 +155,6 @@ start <?flag>` .................. start the program
 * [x] set client address source when sending things to the server
 #### 0.2.x
 * [x] {FEAT} read server adddress as program argument
-* [ ] don't crash the the client wait for a connection to the server be available
 * [ ] Allow user to specify the color of the text
 #### 0.1.0
 * [x] Consume peer termination notification and print it on screen

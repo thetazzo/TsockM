@@ -285,7 +285,7 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
                     addr_str,
                     "",
                 );
-                sd.update_value(true);
+                //sd.update_value(true);
                 try send_request(client.server_addr, reqp);
             } else if (mem.eql(u8, user_input, ":cc")) {
                 try cmn.screen_clear();
@@ -410,13 +410,15 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
     const SH = 9*F;
     rl.initWindow(SW, SH, "TsockM");
     defer rl.closeWindow();
-    defer print("wtf?\n", .{});
+
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
 
+    // Loading font
     const self_path = try std.fs.selfExePathAlloc(gpa_allocator);
     defer gpa_allocator.free(self_path);
     const opt_self_dirname = std.fs.path.dirname(self_path);
+
     var font: rl.Font = undefined;
     if (opt_self_dirname) |exe_dir| {
         print("{s}\n", .{exe_dir});
@@ -510,6 +512,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                 _ = user_login_box.pop();
             } 
             if (rl.isKeyDown(.key_enter)) {
+                // Start the a separate thread that listens for inncomming messages from the server
                 client = try request_connection_from_input(&user_login_box, server_addr, server_port);
                 connected = true;
                 thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd, &client, &message_display.messages });
@@ -517,16 +520,27 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
             }
         }
         if (message_box.enabled) {
-            if (rl.isKeyPressed(.key_backspace)) {
+            if (message_box.isKeyPressed(.key_backspace)) {
+                // remove char from message box
                 _ = message_box.pop();
             } 
             // TODO: message_box::handle_commands
-            if (rl.isKeyPressed(.key_enter)) {
+            if (message_box.isKeyPressed(.key_enter)) {
                 const mcln = mem.sliceTo(&message_box.value, 170);
                 if (mcln.len > 0) {
                     // handle commands
                     if (mem.startsWith(u8, mcln, ":exit")) {
+                        const reqp = ptc.Protocol.init(
+                            ptc.Typ.REQ,
+                            ptc.Act.COMM_END,
+                            ptc.StatusCode.OK,
+                            client.id,
+                            "client", // TODO: replace with proper client address
+                            "client", // TODO: replace with proper server address
+                            "OK",
+                        );
                         sd.update_value(true);
+                        try send_request(client.server_addr, reqp);
                         return;
                     } else {
                         // handle sending a message
@@ -536,7 +550,7 @@ pub fn start(server_addr: [:0]const u8, server_port: u16) !void {
                             ptc.Act.MSG,
                             ptc.StatusCode.OK,
                             client.id,
-                            "client",
+                            "client", // TODO: replace with proper client address
                             addr_str,
                             mcln,
                         );

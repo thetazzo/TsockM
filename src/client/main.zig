@@ -21,32 +21,57 @@ pub fn main() !void {
     const program = argv.next().?;
     const subc = argv.next(); // subcommand
 
+    var server_addr: []const u8 = SERVER_ADDRESS;
+    var server_port: u16 = SERVER_PORT;
+    var screen_scale: usize = 80;
+    var font_path: []const u8 = "";
+
     if (subc) |subcommand| {
         if (std.mem.eql(u8, subcommand, "help")) {
             print_usage(program);
         } else if (std.mem.eql(u8, subcommand, "start")) {
-            const subcommand_flag = argv.next(); 
-            if (subcommand_flag) |sflag| {
-            if (std.mem.eql(u8, sflag, "--addr")) {
-                    const flag_addr_address = argv.next(); 
-                    const flag_addr_port = argv.next(); 
-                    if (flag_addr_address) |addr| {
-                        if (flag_addr_port) |port| {
-                            const port_u16 = try std.fmt.parseInt(u16, port, 10);
-                            _ = try client.start(addr, port_u16);
+            while (argv.next()) |sflag| {
+                if (std.mem.eql(u8, sflag, "-F")) {
+                    const opt_scale = argv.next(); 
+                    if (opt_scale) |scale| {
+                        screen_scale = try std.fmt.parseInt(usize, scale, 10);
+                    }
+                } else if (std.mem.eql(u8, sflag, "-fp")) {
+                    const opt_fp = argv.next(); 
+                    if (opt_fp) |fp| {
+                        font_path = fp;
+                    } else {
+                        std.log.err("Missing path to font file!", .{});
+                        print_usage(program);
+                        return;
+                    }
+                } else if (std.mem.eql(u8, sflag, "--addr")) {
+                    const opt_addr = argv.next(); 
+                    if (opt_addr) |addr| {
+                        var splits = std.mem.split(u8, addr, ":");
+                        const opt_address = splits.next();
+                        if (opt_address) |address| {
+                            if (splits.next()) |port| {
+                                const port_u16 = try std.fmt.parseInt(u16, port, 10);
+                                server_port = port_u16;
+                            }
+                            server_addr = address;
                         } else {
-                            _ = try client.start(addr, SERVER_PORT);
+                            std.log.err("Missing server address!", .{});
+                            print_usage(program);
+                            return;
                         }
                     }
                 } else {
                     std.log.err("unknown flag `{s}`", .{sflag});
                     print_usage(program);
                 }
-            } else {
-                // use default values when no `--addr` is provided
-                _ = try client.start(SERVER_ADDRESS, SERVER_PORT);
-            }
-        } 
+            } 
+            _ = try client.start(server_addr, server_port, screen_scale, font_path);
+        } else {
+            std.log.err("missing subcommand!", .{});
+            print_usage(program);
+        }
     } else {
         std.log.err("missing subcommand!", .{});
         print_usage(program);

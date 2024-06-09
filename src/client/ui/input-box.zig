@@ -22,6 +22,10 @@ pub const InputBox = struct {
         }
         return false;
     }
+    pub fn isKeyPressed(self: @This(), key: rl.KeyboardKey) bool {
+        _ = self;
+        return rl.isKeyPressed(key);
+    }
     pub fn clean(self: *@This()) [256]u8 {
         for (0..255) |i| {
             self.value[i] = 170;

@@ -1,5 +1,6 @@
 const std = @import("std");
 const aids = @import("aids");
+const Server = @import("core/core.zig").Server;
 const Protocol = aids.Protocol;
 const cmn = aids.cmn;
 const TextColor = aids.TextColor;
@@ -33,45 +34,13 @@ pub fn peerRefFromUsername(peer_pool: *std.ArrayList(Peer), username: []const u8
     return null;
 }
 
-///====================================================================================
-///
-///====================================================================================
-const Server = struct {
-    hostname: []const u8,
-    port: u16,
-    log_level: Logging.Level, 
-    start_time: std.time.Instant,
-    net_server: net.Server,
-    address_str: []const u8,
-    thread_pool: []std.Thread = undefined,
-};
 
-fn serverStart(hostname: []const u8, port: u16, log_level: Logging.Level) !Server {
-    const addr = try net.Address.resolveIp(hostname, port);
-    print("Server running on `" ++ TextColor.paint_green("{s}:{d}") ++ "`\n", .{hostname, port});
-    const start_time = try std.time.Instant.now();
-
-    var thread_pool: [3]std.Thread = undefined;
-
-    const net_server = try addr.listen(.{
-        .reuse_address = true,
-    });
-
-    return Server{
-        .hostname = hostname,
-        .port = port,
-        .start_time = start_time,
-        .log_level = log_level,
-        .thread_pool = &thread_pool,
-        .net_server = net_server,
-        .address_str = cmn.address_as_str(net_server.listen_address),
-    };
+fn serverStart(hostname: []const u8, port: u16, log_level: Logging.Level) Server {
+    var server = Server.init(hostname, port, log_level);
+    return server.start();
 }
 
-///====================================================================================
-/// Send message to all connected peers
-///     - Server action
-///====================================================================================
+/// TODO: convert to server action
 fn messageBroadcast(
     sd: *SharedData,
     sender_id: []const u8,
@@ -99,10 +68,7 @@ fn messageBroadcast(
     }
 }
 
-///====================================================================================
-/// Establish connection between client and server
-///     - Server action
-///====================================================================================
+/// TODO: convert to server action
 fn connectionAccept(
     sd: *SharedData,
     conn: net.Server.Connection,
@@ -128,7 +94,7 @@ fn connectionAccept(
     _ = Protocol.transmit(stream, resp);
 }
 
-// TODO: convert to server action
+/// TODO: convert to server action
 fn connectionTerminate(sd: *SharedData, protocol: Protocol) !void {
     const opt_peer_ref = peerRefFromId(sd.peer_pool, protocol.sender_id);
     if (opt_peer_ref) |peer_ref| {
@@ -136,11 +102,8 @@ fn connectionTerminate(sd: *SharedData, protocol: Protocol) !void {
     }
 }
 
-///====================================================================================
-/// Read incomming requests from the client
-///     - Server action
-///====================================================================================
-fn readIncomming(
+/// I am thread
+fn listener(
     sd: *SharedData,
 ) !void {
     while (!sd.should_exit) {
@@ -230,7 +193,7 @@ fn readIncomming(
             std.log.err("unreachable code", .{});
         }
     }
-    print("Ending `readIncomming`\n", .{});
+    print("Ending `listener`\n", .{});
 }
 
 fn printUsage() void {
@@ -309,7 +272,6 @@ const SharedData = struct {
     pub fn peerPoolAppend(self: *@This(), peer: Peer) !void {
         self.m.lock();
         defer self.m.unlock();
-
         try self.peer_pool.append(peer);
     }
 };
@@ -327,7 +289,7 @@ pub fn peerPoolClean(sd: *SharedData) void {
 }
 
 /// i am a thread
-fn readCmd(
+fn commander(
     sd: *SharedData,
     server_cmds: *std.StringHashMap(Command),
 ) !void {
@@ -568,7 +530,8 @@ const ServerCommand = struct {
 };
 
 pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
-    try cmn.screenClear();
+    var server = Server.init(hostname, port, log_level);
+    defer server.deinit();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
@@ -589,11 +552,11 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     _ = try server_cmds.put(":c"         , ServerCommand.clearScreen);
     _ = try server_cmds.put(":clean-pool", ServerCommand.cleanPool);
     _ = try server_cmds.put(":help"      , ServerCommand.printProgramUsage);
-    
-    var server = try serverStart(hostname, port, log_level);
-    errdefer server.net_server.deinit();
-    defer server.net_server.deinit();
 
+    try cmn.screenClear();
+    server.start();
+
+    var thread_pool: [3]std.Thread = undefined;
     var sd = SharedData{
         .m = std.Thread.Mutex{},
         .should_exit = false,
@@ -601,9 +564,9 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
         .server = server,
     };
     {
-        server.thread_pool[0] = try std.Thread.spawn(.{}, readIncomming, .{ &sd });
-        server.thread_pool[1] = try std.Thread.spawn(.{}, readCmd, .{ &sd, &server_cmds });
-        server.thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{ &sd, server });
+        thread_pool[0] = try std.Thread.spawn(.{}, listener, .{ &sd });
+        thread_pool[1] = try std.Thread.spawn(.{}, commander, .{ &sd, &server_cmds });
+        thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{ &sd, server });
     }
-    defer for(server.thread_pool) |thr| thr.join();
+    defer for(thread_pool) |thr| thr.join();
 }

@@ -313,12 +313,10 @@ const SharedData = struct {
     }
 };
 
-// TODO: introduce ServerCommand
 fn readCmd(
     sd: *SharedData,
-    server_cmds: *std.StringHashMap(ServerCommand),
+    server_cmds: *std.StringHashMap(Command),
 ) !void {
-    const address_str = std.fmt.allocPrint(str_allocator, "{s}:{d}", .{ sd.server.hostname, sd.server.port }) catch "format failed";
     while (!sd.should_exit) {
         // read for command
         var buf: [256]u8 = undefined;
@@ -330,44 +328,9 @@ fn readCmd(
                 if (server_cmds.get(ui)) |cmd| {
                     cmd(user_input, sd.server, sd);
                 }
-            } else if (mem.startsWith(u8, user_input, ":ping")) {
-                // TODO: ping server command
-                const cmd_arg = extractCommandValue(user_input, ":ping");
-                if (mem.eql(u8, cmd_arg, "all")) {
-                    std.log.err("`ping all` should be unreachable", .{});
-                   // pingAllPeers(server.*, address_str);
-                } else {
-                    const opt_peer_ref = peerRefFromUsername(sd.peer_pool, cmd_arg);
-                    if (opt_peer_ref) |peer_ref| {
-                        const reqp = Protocol{
-                            .type = Protocol.Typ.REQ, // type
-                            .action = Protocol.Act.COMM, // action
-                            .status_code = Protocol.StatusCode.OK, // status_code
-                            .sender_id = "server", // sender_id
-                            .src = address_str, // src_address
-                            .dst = peer_ref.peer.commAddressAsStr(), // dst_addres
-                            .body = "check?", // body
-                        };
-
-                        reqp.dump(sd.server.log_level);
-                        // TODO: I don't know why but i must send 2 requests to determine the status of the stream
-                        _ = Protocol.transmit(peer_ref.peer.stream(), reqp);
-                        const status = Protocol.transmit(peer_ref.peer.stream(), reqp);
-                        if (status == 1) {
-                            print("peer `{s}` is dead\n", .{peer_ref.peer.username});
-                            sd.removePeerFromPool(peer_ref);
-                        }  
-                    } else {
-                        std.log.warn("Peer with username `{s}` does not exist!\n", .{cmd_arg});
-                    }
-                }
             } else if (mem.eql(u8, user_input, ":clean")) {
                 // TODO: clean pool server command
                 //server.sd.peerPoolClean();
-            } else if (mem.eql(u8, user_input, ":cc")) {
-                // TODO: clear screen server command
-                try cmn.screen_clear();
-                print("Server running on `" ++ TextColor.paint_green("{s}:{d}") ++ "`\n", .{sd.server.hostname, sd.server.port});
             } else if (mem.eql(u8, user_input, ":info")) {
                 // TODO: print server stats server command
             } else if (mem.eql(u8, user_input, ":help")) {
@@ -408,42 +371,6 @@ fn polizei(sd: *SharedData, server: Server) !void {
     }
 }
 
-fn exitServer(cmd: []const u8, server: Server, sd: *SharedData) void {
-    _ = server;
-    _ = cmd;
-    _ = sd;
-    print("Exiting server ...\n", .{});
-    std.posix.exit(0);
-}
-
-fn printServerStats(cmd: []const u8, server: Server, sd: *SharedData) void {
-    _ = cmd;
-    const now = std.time.Instant.now() catch |err| {
-        std.log.err("`printServerStats`: {any}", .{err});
-        std.posix.exit(1);
-    };
-    const dt = now.since(server.start_time) / std.time.ns_per_ms / 1000;
-    print("==================================================\n", .{});
-    print("Server status\n", .{});
-    print("--------------------------------------------------\n", .{});
-    print("peers connected: {d}\n", .{sd.peer_pool.items.len});
-    print("uptime: {d:.3}s\n", .{dt});
-    print("address: {s}:{d}\n", .{ server.hostname, server.port });
-    print("==================================================\n", .{});
-}
-
-fn listActivePeers(cmd: []const u8, server: Server, sd: *SharedData) void {
-    _ = cmd;
-    _ = server;
-    if (sd.peer_pool.items.len == 0) {
-        print("Peer list: []\n", .{});
-    } else {
-        print("Peer list ({d}):\n", .{sd.peer_pool.items.len});
-        for (sd.peer_pool.items[0..]) |peer| {
-            peer.dump();
-        }
-    }
-}
 // TODO: convert to a server action
 //          - only peer.alive = false should be mutex locked
 //          - introduce markPeerForDeath or straight peer remove
@@ -468,37 +395,6 @@ fn pingAllPeers(sd: *SharedData) void {
         } 
     }
 }
-
-fn killPeers(cmd: []const u8, server: Server, sd: *SharedData) void {
-    var split = mem.splitBackwardsScalar(u8, cmd, ' ');
-    print("{s}\n", .{cmd});
-    if (split.next()) |arg| {
-        if (mem.eql(u8, arg, "all")) {
-            for (sd.peer_pool.items[0..]) |peer| {
-                const endp = Protocol.init(
-                Protocol.Typ.REQ,
-                Protocol.Act.COMM_END,
-                Protocol.StatusCode.OK,
-                "server",
-                server.address_str,
-                peer.commAddressAsStr(),
-                "OK",
-            );
-                endp.dump(server.log_level);
-                _ = Protocol.transmit(peer.stream(), endp);
-            }
-            sd.clearPeerPool();
-        }
-    }
-    //if (mem.eql(u8, cmd_arg, "all")) {
-    //} else {
-    //    const opt_peer_ref = peerRefFromId(sd.peer_pool, cmd_arg);
-    //    if (opt_peer_ref) |peer_ref| {
-    //        try sd.peerKill(server.*, peer_ref.ref_id);
-    //    }
-    //}
-}
-
 // TODO: convert to server action
 fn peerNtfyDeath(sd: *SharedData, server: Server) void {
     _ = server;
@@ -536,27 +432,152 @@ fn peerPoolClean(sd: *SharedData, server: Server) void {
     }
 }
 
-const ServerCommand = *const fn ([]const u8, Server, *SharedData) void;
+const Command = *const fn ([]const u8, Server, *SharedData) void;
+
+const ServerCommand = struct {
+    pub fn exitServer(cmd: []const u8, server: Server, sd: *SharedData) void {
+        _ = server;
+        _ = cmd;
+        _ = sd;
+        print("Exiting server ...\n", .{});
+        std.posix.exit(0);
+    }
+    pub fn printServerStats(cmd: []const u8, server: Server, sd: *SharedData) void {
+        _ = cmd;
+        const now = std.time.Instant.now() catch |err| {
+            std.log.err("`printServerStats`: {any}", .{err});
+            std.posix.exit(1);
+        };
+        const dt = now.since(server.start_time) / std.time.ns_per_ms / 1000;
+        print("==================================================\n", .{});
+        print("Server status\n", .{});
+        print("--------------------------------------------------\n", .{});
+        print("peers connected: {d}\n", .{sd.peer_pool.items.len});
+        print("uptime: {d:.3}s\n", .{dt});
+        print("address: {s}:{d}\n", .{ server.hostname, server.port });
+        print("==================================================\n", .{});
+    }
+    pub fn listActivePeers(cmd: []const u8, server: Server, sd: *SharedData) void {
+        _ = cmd;
+        _ = server;
+        if (sd.peer_pool.items.len == 0) {
+            print("Peer list: []\n", .{});
+        } else {
+            print("Peer list ({d}):\n", .{sd.peer_pool.items.len});
+            for (sd.peer_pool.items[0..]) |peer| {
+                peer.dump();
+            }
+        }
+    }
+    pub fn killPeers(cmd: []const u8, server: Server, sd: *SharedData) void {
+        var split = mem.splitBackwardsScalar(u8, cmd, ' ');
+        if (split.next()) |arg| {
+            if (mem.eql(u8, arg, "all")) {
+                for (sd.peer_pool.items[0..]) |peer| {
+                    const endp = Protocol.init(
+                    Protocol.Typ.REQ,
+                    Protocol.Act.COMM_END,
+                    Protocol.StatusCode.OK,
+                    "server",
+                    server.address_str,
+                    peer.commAddressAsStr(),
+                    "OK",
+                );
+                    endp.dump(server.log_level);
+                    _ = Protocol.transmit(peer.stream(), endp);
+                }
+                sd.clearPeerPool();
+            } else {
+                const opt_peer_ref = peerRefFromId(sd.peer_pool, arg);
+                if (opt_peer_ref) |peer_ref| {
+                    try sd.peerKill(server, peer_ref.ref_id);
+                }
+            }
+        }
+    }
+    fn ping(cmd: []const u8, server: Server, sd: *SharedData) void {
+        _ = server;
+        var split = mem.splitBackwardsScalar(u8, cmd, ' ');
+        if (split.next()) |arg| {
+            if (mem.eql(u8, arg, "all")) {
+                for (sd.peer_pool.items, 0..) |peer, pid| {
+                    const reqp = Protocol{
+                        .type = Protocol.Typ.REQ, // type
+                        .action = Protocol.Act.COMM, // action
+                        .status_code = Protocol.StatusCode.OK, // status_code
+                        .sender_id = "server", // sender_id
+                        .src = sd.server.address_str, // src_address
+                        .dst = peer.commAddressAsStr(), // dst address
+                        .body = "check?", // body
+                    };
+                    reqp.dump(Logging.Level.DEV);
+                    // TODO: I don't know why but i must send 2 requests to determine the status of the stream
+                    _ = Protocol.transmit(peer.stream(), reqp);
+                    const status = Protocol.transmit(peer.stream(), reqp);
+                    if (status == 1) {
+                        // TODO: Put htis into sd ??
+                        sd.peer_pool.items[pid].alive = false;
+                    } 
+                }
+            } else {
+                var found: bool = false;
+                for (sd.peer_pool.items, 0..) |peer, pid| {
+                    if (mem.eql(u8, peer.id, arg)) {
+                        const reqp = Protocol{
+                            .type = Protocol.Typ.REQ, // type
+                            .action = Protocol.Act.COMM, // action
+                            .status_code = Protocol.StatusCode.OK, // status_code
+                            .sender_id = "server", // sender_id
+                            .src = sd.server.address_str, // src_address
+                            .dst = peer.commAddressAsStr(), // dst address
+                            .body = "check?", // body
+                        };
+                        reqp.dump(Logging.Level.DEV);
+                        // TODO: I don't know why but i must send 2 requests to determine the status of the stream
+                        _ = Protocol.transmit(peer.stream(), reqp);
+                        const status = Protocol.transmit(peer.stream(), reqp);
+                        if (status == 1) {
+                            // TODO: Put htis into sd ??
+                            sd.peer_pool.items[pid].alive = false;
+                        } 
+                        found = true;
+                    }
+                }
+                if (!found) {
+                    print("Peer with id `{s}` was not found!\n", .{arg});
+                }
+            }
+        }
+    }
+    pub fn clearScreen(cmd: []const u8, server: Server, sd: *SharedData) void {
+        _ = cmd;
+        _ = server;
+        cmn.screenClear() catch |err| {
+            print("`clearScreen`: {any}\n", .{err});
+        };
+        print("Server running on `" ++ TextColor.paint_green("{s}") ++ "`\n", .{sd.server.address_str});
+    }
+};
 
 pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
-    try cmn.screen_clear();
+    try cmn.screenClear();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
 
-    var server_cmds = std.StringHashMap(ServerCommand).init(gpa_allocator);
+    var server_cmds = std.StringHashMap(Command).init(gpa_allocator);
     errdefer server_cmds.deinit();
     defer server_cmds.deinit();
 
     var peer_pool = std.ArrayList(Peer).init(gpa_allocator);
     defer peer_pool.deinit();
 
-    _ = try server_cmds.put(":exit", exitServer);
-    _ = try server_cmds.put(":info", printServerStats);
-    _ = try server_cmds.put(":list", listActivePeers);
-    _ = try server_cmds.put(":kill", killPeers);
-    // TODO: create a server command equvalent
-    //_ = try server_cmds.put(":ping", pingAllPeers);
+    _ = try server_cmds.put(":exit", ServerCommand.exitServer);
+    _ = try server_cmds.put(":info", ServerCommand.printServerStats);
+    _ = try server_cmds.put(":list", ServerCommand.listActivePeers);
+    _ = try server_cmds.put(":kill", ServerCommand.killPeers);
+    _ = try server_cmds.put(":ping", ServerCommand.ping);
+    _ = try server_cmds.put(":cc", ServerCommand.clearScreen);
     
     var server = try serverStart(hostname, port, log_level);
     errdefer server.net_server.deinit();

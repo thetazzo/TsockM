@@ -354,8 +354,6 @@ fn readCmd(
     print("Thread `run_cmd` finished\n", .{});
 }
 
-///
-///
 /// this is a thread
 fn polizei(sd: *SharedData, server: Server) !void {
     var start_t = try std.time.Instant.now();

@@ -1,4 +1,5 @@
 const std = @import("std");
+const Logging = @import("logging.zig");
 const mem = std.mem;
 const print = std.debug.print;
 

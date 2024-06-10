@@ -11,7 +11,7 @@ fn print_usage(program: []const u8) void {
     std.debug.print("SUBCOMMANDS:\n", .{});
     std.debug.print("    help ...................,,,,,,,,.. print program usage\n", .{});
     std.debug.print("    start <flag> ..................... start the server\n", .{});
-    std.debug.print("        --log-level <level> .......... specify log level {{DEV|D, SILENT|S, COMPACT|C}} (default: COMPACT)\n", .{});
+    std.debug.print("        --log-level <level> .......... DEV|D or SILENT|S or COMPACT|C (default: COMPACT)\n", .{});
     std.debug.print("        --addr <hostname:port> ....... specify server address (default: 127.0.0.1:6969)\n", .{});
 }
 
@@ -56,6 +56,10 @@ pub fn main() !void {
                             log_level = Logging.Level.SILENT;
                         } else if (std.mem.eql(u8, level, "COMPACT") or std.mem.eql(u8, level, "C")) {
                             log_level = Logging.Level.COMPACT;
+                        } else {
+                            std.log.err("Invalid logging level `{s}`", .{level});
+                            print_usage(program);
+                            return;
                         }
                     } else {
                         std.log.err("Missing logging level", .{});

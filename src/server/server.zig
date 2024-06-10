@@ -11,8 +11,6 @@ const print = std.debug.print;
 
 const str_allocator = std.heap.page_allocator;
 
-const LOG_LEVEL = Protocol.LogLevel.DEV;
-
 const PeerRef = struct {peer: Peer, ref_id: usize };
 
 pub fn peerRefFromId(peer_pool: *std.ArrayList(Peer), id: Peer.PEER_ID) ?PeerRef {
@@ -38,12 +36,28 @@ pub fn peerRefFromUsername(peer_pool: *std.ArrayList(Peer), username: []const u8
 ///====================================================================================
 ///
 ///====================================================================================
-fn serverStart(address: []const u8, port: u16) !net.Server {
-    const addr = try net.Address.resolveIp(address, port);
-    print("Server running on `" ++ TextColor.paint_green("{s}:{d}") ++ "`\n", .{address, port});
-    return addr.listen(.{
-        .reuse_address = true,
-    });
+const Server = struct {
+    hostname: []const u8,
+    port: u16,
+    log_level: Logging.Level, 
+    start_time: std.time.Instant,
+    net_server: net.Server,
+};
+
+fn serverStart(hostname: []const u8, port: u16, log_level: Logging.Level) !Server {
+    const addr = try net.Address.resolveIp(hostname, port);
+    print("Server running on `" ++ TextColor.paint_green("{s}:{d}") ++ "`\n", .{hostname, port});
+    const start_time = try std.time.Instant.now();
+    return Server{
+        .hostname = hostname,
+        .port = port,
+        .start_time = start_time,
+        .log_level = log_level,
+        // TODO: catchh error
+        .net_server = try addr.listen(.{
+            .reuse_address = true,
+        })
+    };
 }
 
 ///====================================================================================
@@ -52,6 +66,7 @@ fn serverStart(address: []const u8, port: u16) !net.Server {
 ///====================================================================================
 fn messageBroadcast(
     sd: *SharedData,
+    server: *Server,
     sender_id: []const u8,
     msg: []const u8,
 ) void {
@@ -70,7 +85,7 @@ fn messageBroadcast(
                     dst_addr,
                     msg,
                 );
-                msgp.dump(LOG_LEVEL);
+                msgp.dump(server.*.log_level);
                 _ = Protocol.transmit(peer.stream(), msgp);
             }
         }
@@ -83,6 +98,7 @@ fn messageBroadcast(
 ///====================================================================================
 fn connectionAccept(
     sd: *SharedData,
+    server: *Server,
     conn: net.Server.Connection,
     server_addr: []const u8,
     protocol: Protocol,
@@ -102,7 +118,7 @@ fn connectionAccept(
         addr_str, // reciever address
         peer_str,
     );
-    resp.dump(LOG_LEVEL);
+    resp.dump(server.log_level);
     _ = Protocol.transmit(stream, resp);
 }
 
@@ -110,10 +126,10 @@ fn connectionAccept(
 /// Terminate connection between client and server
 ///     - Server action
 ///====================================================================================
-fn connectionTerminate(sd: *SharedData, protocol: Protocol) !void {
+fn connectionTerminate(sd: *SharedData, server: *Server, protocol: Protocol) !void {
     const opt_peer_ref = peerRefFromId(sd.peer_pool, protocol.sender_id);
     if (opt_peer_ref) |peer_ref| {
-        try sd.peerKill(peer_ref.ref_id);
+        try sd.peerKill(server.*, peer_ref.ref_id);
     }
 }
 
@@ -123,11 +139,11 @@ fn connectionTerminate(sd: *SharedData, protocol: Protocol) !void {
 ///====================================================================================
 fn readIncomming(
     sd: *SharedData,
-    server: *net.Server,
+    server: *Server,
 ) !void {
     while (!sd.should_exit) {
-        const conn = try server.accept();
-        const server_addr = cmn.address_as_str(server.listen_address);
+        const conn = try server.net_server.accept();
+        const server_addr = cmn.address_as_str(server.net_server.listen_address);
 
         const stream = conn.stream;
 
@@ -137,17 +153,17 @@ fn readIncomming(
 
         // Handle communication request
         var protocol = Protocol.protocolFromStr(recv); // parse protocol from recieved bytes
-        protocol.dump(LOG_LEVEL);
+        protocol.dump(server.log_level);
 
         const addr_str = cmn.address_as_str(conn.address);
         if (protocol.is_request()) {
             // Handle COMM request
             if (protocol.is_action(Protocol.Act.COMM)) {
-                try connectionAccept(sd, conn, server_addr, protocol);
+                try connectionAccept(sd, server, conn, server_addr, protocol);
             } else if (protocol.is_action(Protocol.Act.COMM_END)) {
-                try connectionTerminate(sd, protocol);
+                try connectionTerminate(sd, server, protocol);
             } else if (protocol.is_action(Protocol.Act.MSG)) {
-                messageBroadcast(sd, protocol.sender_id, protocol.body);
+                messageBroadcast(sd, server, protocol.sender_id, protocol.body);
             } else if (protocol.is_action(Protocol.Act.GET_PEER)) {
                 // TODO: get peer server action
                 // TODO: make a peer_find_bridge_ref
@@ -167,7 +183,7 @@ fn readIncomming(
                         dst_addr, // dst
                         peer_ref.peer.username, // body
                     );
-                        resp.dump(LOG_LEVEL);
+                        resp.dump(server.log_level);
                         _ = Protocol.transmit(server_peer_ref.peer.stream(), resp);
                     }
                 }
@@ -182,7 +198,7 @@ fn readIncomming(
                 addr_str,
                 @tagName(Protocol.StatusCode.BAD_REQUEST),
             );
-                errp.dump(LOG_LEVEL);
+                errp.dump(server.log_level);
                 _ = Protocol.transmit(stream, errp);
             }
         } else if (protocol.is_response()) {
@@ -206,7 +222,7 @@ fn readIncomming(
             addr_str,
             "bad request",
         );
-            errp.dump(LOG_LEVEL);
+            errp.dump(server.log_level);
             _ = Protocol.transmit(stream, errp);
         } else {
             std.log.err("unreachable code", .{});
@@ -254,7 +270,7 @@ const SharedData = struct {
     }
 
     // TODO: peerRequestDeath server action
-    fn peerKill(self: *@This(), ref_id: usize) !void {
+    fn peerKill(self: *@This(), server: Server, ref_id: usize) !void {
         self.m.lock();
         defer self.m.unlock();
         const peer_ = self.peer_pool.items[ref_id];
@@ -267,7 +283,7 @@ const SharedData = struct {
             "client",
             "OK",
         );
-        endp.dump(LOG_LEVEL);
+        endp.dump(server.log_level);
         _ = Protocol.transmit(peer_.stream(), endp);
     }
 
@@ -281,7 +297,7 @@ const SharedData = struct {
     // TODO: convert to a server action
     //          - only peer.alive = false should be mutex locked
     //          - introduce markPeerForDeath or straight peer remove
-    pub fn pingAllPeers(self: *@This(), address_str: []const u8) void {
+    pub fn pingAllPeers(self: *@This(), server: Server, address_str: []const u8) void {
         self.m.lock();
         defer self.m.unlock();
         for (self.peer_pool.items, 0..) |peer, pid| {
@@ -294,7 +310,7 @@ const SharedData = struct {
                 .dst = peer.commAddressAsStr(), // dst address
                 .body = "check?", // body
             };
-            reqp.dump(LOG_LEVEL);
+            reqp.dump(server.log_level);
             // TODO: I don't know why but i must send 2 requests to determine the status of the stream
             _ = Protocol.transmit(peer.stream(), reqp);
             const status = Protocol.transmit(peer.stream(), reqp);
@@ -350,11 +366,9 @@ const SharedData = struct {
 // TODO: introduce ServerCommand
 fn readCmd(
     sd: *SharedData,
-    addr_str: []const u8,
-    port: u16,
-    start_time: std.time.Instant,
+    server: *Server,
 ) !void {
-    const address_str = std.fmt.allocPrint(str_allocator, "{s}:{d}", .{ addr_str, port }) catch "format failed";
+    const address_str = std.fmt.allocPrint(str_allocator, "{s}:{d}", .{ server.hostname, server.port }) catch "format failed";
     while (!sd.should_exit) {
         // read for command
         var buf: [256]u8 = undefined;
@@ -383,25 +397,25 @@ fn readCmd(
                             Protocol.Act.COMM_END,
                             Protocol.StatusCode.OK,
                             "server",
-                            addr_str,
+                            address_str,
                             peer.commAddressAsStr(),
                             "OK",
                         );
-                        endp.dump(LOG_LEVEL);
+                        endp.dump(server.log_level);
                         _ = Protocol.transmit(peer.stream(), endp);
                     }
                     sd.clearPeerPool();
                 } else {
                     const opt_peer_ref = peerRefFromId(sd.peer_pool, cmd_arg);
                     if (opt_peer_ref) |peer_ref| {
-                        try sd.peerKill(peer_ref.ref_id);
+                        try sd.peerKill(server.*, peer_ref.ref_id);
                     }
                 }
             } else if (mem.startsWith(u8, user_input, ":ping")) {
                 // TODO: ping server command
                 const cmd_arg = extractCommandValue(user_input, ":ping");
                 if (mem.eql(u8, cmd_arg, "all")) {
-                    sd.pingAllPeers(address_str);
+                    sd.pingAllPeers(server.*, address_str);
                 } else {
                     const opt_peer_ref = peerRefFromUsername(sd.peer_pool, cmd_arg);
                     if (opt_peer_ref) |peer_ref| {
@@ -415,7 +429,7 @@ fn readCmd(
                             .body = "check?", // body
                         };
 
-                        reqp.dump(LOG_LEVEL);
+                        reqp.dump(server.log_level);
                         // TODO: I don't know why but i must send 2 requests to determine the status of the stream
                         _ = Protocol.transmit(peer_ref.peer.stream(), reqp);
                         const status = Protocol.transmit(peer_ref.peer.stream(), reqp);
@@ -433,11 +447,11 @@ fn readCmd(
             } else if (mem.eql(u8, user_input, ":cc")) {
                 // TODO: clear screen server command
                 try cmn.screen_clear();
-                print("Server running on `" ++ TextColor.paint_green("{s}:{d}") ++ "`\n", .{addr_str, port});
+                print("Server running on `" ++ TextColor.paint_green("{s}:{d}") ++ "`\n", .{server.hostname, server.port});
             } else if (mem.eql(u8, user_input, ":info")) {
                 // TODO: print server stats server command
                 const now = try std.time.Instant.now();
-                const dt = now.since(start_time) / std.time.ns_per_ms / 1000;
+                const dt = now.since(server.start_time) / std.time.ns_per_ms / 1000;
                 print("==================================================\n", .{});
                 print("Server status\n", .{});
                 print("--------------------------------------------------\n", .{});
@@ -461,14 +475,14 @@ fn readCmd(
 ///
 ///
 ///
-fn polizei(sd: *SharedData) !void {
+fn polizei(sd: *SharedData, server: Server) !void {
     var start_t = try std.time.Instant.now();
     var lock = false;
     while (!sd.should_exit) {
         const now_t = try std.time.Instant.now();
         const dt  = now_t.since(start_t) / std.time.ns_per_ms;
         if (dt == 2000 and !lock) {
-            sd.pingAllPeers("server");
+            sd.pingAllPeers(server, "server");
             lock = true;
         }
         if (dt == 3000 and lock) {
@@ -483,12 +497,12 @@ fn polizei(sd: *SharedData) !void {
     }
 }
 
-pub fn start(server_addr: []const u8, server_port: u16) !void {
+pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     try cmn.screen_clear();
-    var server = try serverStart(server_addr, server_port);
-    errdefer server.deinit();
-    defer server.deinit();
-    const start_time = try std.time.Instant.now();
+
+    var server = try serverStart(hostname, port, log_level);
+    errdefer server.net_server.deinit();
+    defer server.net_server.deinit();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
@@ -508,8 +522,8 @@ pub fn start(server_addr: []const u8, server_port: u16) !void {
     };
     {
         thread_pool[0] = try std.Thread.spawn(.{}, readIncomming, .{ &sd, &server });
-        thread_pool[1] = try std.Thread.spawn(.{}, readCmd, .{ &sd, server_addr, server_port, start_time });
-        thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{ &sd });
+        thread_pool[1] = try std.Thread.spawn(.{}, readCmd, .{ &sd, &server });
+        thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{ &sd, server });
         defer for(&thread_pool) |thr| thr.join();
     }
 }

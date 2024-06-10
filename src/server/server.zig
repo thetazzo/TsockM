@@ -286,14 +286,14 @@ const SharedData = struct {
         defer self.m.unlock();
         const peer_ = self.peer_pool.items[ref_id];
         const endp = Protocol.init(
-            Protocol.Typ.REQ,
-            Protocol.Act.COMM_END,
-            Protocol.StatusCode.OK,
-            "server",
-            "server",
-            "client",
-            "OK",
-        );
+        Protocol.Typ.REQ,
+        Protocol.Act.COMM_END,
+        Protocol.StatusCode.OK,
+        "server",
+        "server",
+        "client",
+        "OK",
+    );
         endp.dump(server.log_level);
         _ = Protocol.transmit(peer_.stream(), endp);
     }
@@ -313,6 +313,18 @@ const SharedData = struct {
     }
 };
 
+// TODO: convert to server action
+pub fn peerPoolClean(sd: *SharedData) void {
+    var pp_len: usize = sd.peer_pool.items.len;
+    while (pp_len > 0) {
+        pp_len -= 1;
+        const p = sd.peer_pool.items[pp_len];
+        if (p.alive == false) {
+            _ = sd.peerRemove(pp_len);
+        }
+    }
+}
+
 fn readCmd(
     sd: *SharedData,
     server_cmds: *std.StringHashMap(Command),
@@ -328,9 +340,6 @@ fn readCmd(
                 if (server_cmds.get(ui)) |cmd| {
                     cmd(user_input, sd.server, sd);
                 }
-            } else if (mem.eql(u8, user_input, ":clean")) {
-                // TODO: clean pool server command
-                //server.sd.peerPoolClean();
             } else if (mem.eql(u8, user_input, ":info")) {
                 // TODO: print server stats server command
             } else if (mem.eql(u8, user_input, ":help")) {
@@ -364,7 +373,7 @@ fn polizei(sd: *SharedData, server: Server) !void {
             lock = false;
         }
         if (dt == 4000 and !lock) {
-            peerPoolClean(sd, server);
+            peerPoolClean(sd);
             lock = false;
             start_t = try std.time.Instant.now();
         }
@@ -415,19 +424,6 @@ fn peerNtfyDeath(sd: *SharedData, server: Server) void {
                     _ = Protocol.transmit(ap.stream(), ntfy);
                 }
             }
-        }
-    }
-}
-
-// convert to server action
-fn peerPoolClean(sd: *SharedData, server: Server) void {
-    _ = server;
-    var pp_len: usize = sd.peer_pool.items.len;
-    while (pp_len > 0) {
-        pp_len -= 1;
-        const p = sd.peer_pool.items[pp_len];
-        if (p.alive == false) {
-            _ = sd.peerRemove(pp_len);
         }
     }
 }
@@ -557,6 +553,11 @@ const ServerCommand = struct {
         };
         print("Server running on `" ++ TextColor.paint_green("{s}") ++ "`\n", .{sd.server.address_str});
     }
+    pub fn cleanPool(cmd: []const u8, server: Server, sd: *SharedData) void {
+        _ = cmd;
+        _ = server;
+        peerPoolClean(sd);
+    }
 };
 
 pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
@@ -572,12 +573,14 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     var peer_pool = std.ArrayList(Peer).init(gpa_allocator);
     defer peer_pool.deinit();
 
-    _ = try server_cmds.put(":exit", ServerCommand.exitServer);
-    _ = try server_cmds.put(":info", ServerCommand.printServerStats);
-    _ = try server_cmds.put(":list", ServerCommand.listActivePeers);
-    _ = try server_cmds.put(":kill", ServerCommand.killPeers);
-    _ = try server_cmds.put(":ping", ServerCommand.ping);
-    _ = try server_cmds.put(":cc", ServerCommand.clearScreen);
+    _ = try server_cmds.put(":exit"      , ServerCommand.exitServer);
+    _ = try server_cmds.put(":info"      , ServerCommand.printServerStats);
+    _ = try server_cmds.put(":list"      , ServerCommand.listActivePeers);
+    _ = try server_cmds.put(":ls"        , ServerCommand.listActivePeers);
+    _ = try server_cmds.put(":kill"      , ServerCommand.killPeers);
+    _ = try server_cmds.put(":ping"      , ServerCommand.ping);
+    _ = try server_cmds.put(":cc"        , ServerCommand.clearScreen);
+    _ = try server_cmds.put(":clean-pool", ServerCommand.cleanPool);
     
     var server = try serverStart(hostname, port, log_level);
     errdefer server.net_server.deinit();

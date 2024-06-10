@@ -111,7 +111,7 @@ const SharedData = struct {
     should_exit: bool,
     messages: std.ArrayList(Display.Message),
 
-    pub fn update_value(self: *@This(), should: bool) void {
+    pub fn setShouldExit(self: *@This(), should: bool) void {
         self.m.lock();
         defer self.m.unlock();
 
@@ -221,7 +221,7 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
             break;
         }
     }
-    sd.update_value(true);
+    sd.setShouldExit(true);
 }
 
 fn extract_command_val(cs: []const u8, cmd: []const u8) []const u8 {
@@ -285,7 +285,7 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
                     addr_str,
                     "",
                 );
-                //sd.update_value(true);
+                //sd.setShouldExit(true);
                 try send_request(client.server_addr, reqp);
             } else if (mem.eql(u8, user_input, ":cc")) {
                 try cmn.screen_clear();
@@ -335,7 +335,7 @@ fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList
         if (resp.is_response()) {
             if (resp.is_action(ptc.Act.COMM_END)) {
                 if (resp.status_code == ptc.StatusCode.OK) {
-                    std.log.err("not implemented", .{});
+                    sd.setShouldExit(true);
                 }
             } else if (resp.is_action(ptc.Act.GET_PEER)) {
                 if (resp.status_code == ptc.StatusCode.OK) {
@@ -376,7 +376,6 @@ fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList
                     );
                     const message = Display.Message{ .author=unn, .text = msg_text };
                     _ = try messages.append(message);
-                    print("pushing message ({d})\n", .{sd.messages.items.len});
                 } else {
                     resp.dump(LOG_LEVEL);
                 }
@@ -392,7 +391,8 @@ fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList
                 }
             } else if (resp.is_action(ptc.Act.COMM_END)) {
                 if (resp.status_code == ptc.StatusCode.OK) {
-                     std.log.err("not implemented", .{});
+                    sd.setShouldExit(true);
+                    return;
                }
             } 
         } else if (resp.type == ptc.Typ.ERR) {
@@ -422,7 +422,7 @@ fn exitClient(client: Client, message_box: *InputBox, message_display: *Display)
 }
 
 fn sendMessage(client: Client, message_box: *InputBox, message_display: *Display) void {
-    const msg = mem.sliceTo(&message_box.value, 170);
+    const msg = mem.sliceTo(message_box.getCleanValue(), 170);
     // handle sending a message
     const reqp = ptc.Protocol.init(
         ptc.Typ.REQ,
@@ -459,13 +459,17 @@ fn sendMessage(client: Client, message_box: *InputBox, message_display: *Display
 fn pingClient(client: Client, message_box: *InputBox, message_display: *Display) void {
     _ = client;
     _ = message_display;
-    var splits = mem.split(u8, &message_box.value, " ");
+    var splits = mem.split(u8, message_box.getCleanValue(), " ");
     _ = splits.next(); // action caller
     const opt_username = splits.next();
     if (opt_username) |username| {
-        _ = username;
-        std.log.err("not implemented", .{});
-        std.posix.exit(1);
+        if (username.len > 0) {
+            std.log.warn("un: `{s}`", .{username});
+            std.log.err("`pingClient` not implemented", .{});
+            std.posix.exit(1);
+        } else {
+            std.log.warn("missing peer username", .{});
+        }
         //const reqp = ptc.Protocol.init(
         //    ptc.Typ.REQ,
         //    ptc.Act.PING,
@@ -490,10 +494,27 @@ fn pingClient(client: Client, message_box: *InputBox, message_display: *Display)
         //    std.posix.exit(1);
         //};
         //_ = message_box.clean();
+    } else {
+        std.log.warn("missing peer username", .{});
     }
 }
 
 const Action = *const fn (Client, *InputBox, *Display) void;
+
+const ActionCaller = enum {
+    MSG,
+    EXIT,
+};
+
+fn str_as_action_caller(str: []const u8) ?ActionCaller {
+    if (mem.eql(u8, str, ":exit")) {
+        return ActionCaller.EXIT;
+    } else if (mem.eql(u8, str, ":msg")) {
+        return ActionCaller.MSG;
+    }
+    return null;
+}
+
 
 pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8) !void {
     const SW = @as(i32, @intCast(16*screen_scale));
@@ -504,12 +525,12 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
 
-    var acts = std.StringHashMap(Action).init(gpa_allocator);
+    var acts = std.AutoHashMap(ActionCaller, Action).init(gpa_allocator);
     defer acts.deinit();
 
-    _ = try acts.put(":msg", sendMessage);
-    _ = try acts.put(":ping", pingClient);
-    _ = try acts.put(":exit", exitClient);
+    _ = try acts.put(ActionCaller.MSG, sendMessage);
+    //_ = try acts.put(ActionCaller.PING, pingClient);
+    _ = try acts.put(ActionCaller.EXIT, exitClient);
 
     // Loading font
     const self_path = try std.fs.selfExePathAlloc(gpa_allocator);
@@ -549,7 +570,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
         .messages = message_display.messages,
     };
 
-    while (!rl.windowShouldClose()) {
+    while (!rl.windowShouldClose() and !sd.should_exit) {
         const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
         const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
         const window_extended = sh > @as(f32, @floatFromInt(SH));
@@ -626,27 +647,17 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             } 
             // TODO: message_box::handle_actions
             if (message_box.isKeyPressed(.key_enter)) {
-                const mcln = mem.sliceTo(&message_box.value, 170);
+                const mcln = mem.sliceTo(message_box.getCleanValue(), 170);
                 if (mcln.len > 0) {
-                    if (mcln[0] == ':') {
-                        var splits = mem.split(u8, mcln, " ");
-                        const opt_caller = splits.next();
-                        if (opt_caller) |caller| {
-                            const opt_act = acts.get(caller);
-                            if (opt_act) |client_action| {
-                                client_action(client, &message_box, &message_display);
-                            } else {
-                                // TODO: Print warning popup 
-                                std.log.warn("Unknown action caller `{s}`", .{caller});
-                                sendMessage(client, &message_box, &message_display);
-                            }
+                    var splits = mem.splitScalar(u8, mcln, ' ');
+                    if (splits.next()) |frst| {
+                        if (str_as_action_caller(frst)) |action_caller| {
+                            const action = acts.get(action_caller).?;
+                            action(client, &message_box, &message_display);
                         } else {
-                            std.log.err("Invalid action caller `{s}`", .{mcln});
-                            std.posix.exit(1);
+                            // default action
+                            sendMessage(client, &message_box, &message_display);
                         }
-                    } else {
-                        // if no action caller specifiied then handle it as message
-                        sendMessage(client, &message_box, &message_display);
                     }
                 }
             }

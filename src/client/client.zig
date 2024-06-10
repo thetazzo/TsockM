@@ -422,7 +422,7 @@ fn exitClient(client: Client, message_box: *InputBox, message_display: *Display)
 }
 
 fn sendMessage(client: Client, message_box: *InputBox, message_display: *Display) void {
-    const msg = mem.sliceTo(message_box.getCleanValue(), 170);
+    const msg = message_box.getCleanValue();
     // handle sending a message
     const reqp = ptc.Protocol.init(
         ptc.Typ.REQ,
@@ -459,7 +459,7 @@ fn sendMessage(client: Client, message_box: *InputBox, message_display: *Display
 fn pingClient(client: Client, message_box: *InputBox, message_display: *Display) void {
     _ = client;
     _ = message_display;
-    var splits = mem.split(u8, message_box.getCleanValue(), " ");
+    var splits = mem.splitScalar(u8, message_box.getCleanValue(), ' ');
     _ = splits.next(); // action caller
     const opt_username = splits.next();
     if (opt_username) |username| {
@@ -501,21 +501,6 @@ fn pingClient(client: Client, message_box: *InputBox, message_display: *Display)
 
 const Action = *const fn (Client, *InputBox, *Display) void;
 
-const ActionCaller = enum {
-    MSG,
-    EXIT,
-};
-
-fn str_as_action_caller(str: []const u8) ?ActionCaller {
-    if (mem.eql(u8, str, ":exit")) {
-        return ActionCaller.EXIT;
-    } else if (mem.eql(u8, str, ":msg")) {
-        return ActionCaller.MSG;
-    }
-    return null;
-}
-
-
 pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8) !void {
     const SW = @as(i32, @intCast(16*screen_scale));
     const SH = @as(i32, @intCast(9*screen_scale));
@@ -525,12 +510,12 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
 
-    var acts = std.AutoHashMap(ActionCaller, Action).init(gpa_allocator);
+    var acts = std.StringHashMap(Action).init(gpa_allocator);
     defer acts.deinit();
 
-    _ = try acts.put(ActionCaller.MSG, sendMessage);
-    //_ = try acts.put(ActionCaller.PING, pingClient);
-    _ = try acts.put(ActionCaller.EXIT, exitClient);
+    _ = try acts.put(":msg", sendMessage);
+    _ = try acts.put(":ping", pingClient);
+    _ = try acts.put(":exit", exitClient);
 
     // Loading font
     const self_path = try std.fs.selfExePathAlloc(gpa_allocator);
@@ -647,12 +632,11 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             } 
             // TODO: message_box::handle_actions
             if (message_box.isKeyPressed(.key_enter)) {
-                const mcln = mem.sliceTo(message_box.getCleanValue(), 170);
+                const mcln = message_box.getCleanValue();
                 if (mcln.len > 0) {
                     var splits = mem.splitScalar(u8, mcln, ' ');
                     if (splits.next()) |frst| {
-                        if (str_as_action_caller(frst)) |action_caller| {
-                            const action = acts.get(action_caller).?;
+                        if (acts.get(frst)) |action| {
                             action(client, &message_box, &message_display);
                         } else {
                             // default action

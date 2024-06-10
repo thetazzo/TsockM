@@ -1,19 +1,20 @@
 const std = @import("std");
 const aids = @import("aids");
-const Server = @import("core/core.zig").Server;
+const core = @import("core/core.zig");
 const COMM_ACTION = @import("actions/comm-action.zig").COMM_ACTION;
+const Server = core.Server;
+const Peer = core.Peer;
+const PeerRef = core.PeerRef;
+const SharedData = core.SharedData;
 const Protocol = aids.Protocol;
 const cmn = aids.cmn;
 const TextColor = aids.TextColor;
 const Logging = aids.Logging;
-const Peer = @import("peer.zig");
 const net = std.net;
 const mem = std.mem;
 const print = std.debug.print;
 
 const str_allocator = std.heap.page_allocator;
-
-const PeerRef = struct {peer: Peer, ref_id: usize };
 
 pub fn peerRefFromId(peer_pool: *std.ArrayList(Peer), id: Peer.PEER_ID) ?PeerRef {
     // O(n)
@@ -70,23 +71,11 @@ fn connectionAccept(
     server_addr: []const u8,
     protocol: Protocol,
 ) !void {
-    const addr_str = cmn.address_as_str(conn.address);
-    const stream = conn.stream;
-
-    const peer = Peer.construct(str_allocator, conn, protocol);
-    const peer_str = std.fmt.allocPrint(str_allocator, "{s}|{s}", .{ peer.id, peer.username }) catch "format failed";
-    try sd.peerPoolAppend(peer);
-    const resp = Protocol.init(
-        Protocol.Typ.RES, // type
-        Protocol.Act.COMM, // action
-        Protocol.StatusCode.OK, // status code
-        "server", // sender id
-        server_addr, // sender address
-        addr_str, // reciever address
-        peer_str,
-    );
-    resp.dump(sd.server.log_level);
-    _ = Protocol.transmit(stream, resp);
+    _ = sd;
+    _ = conn;
+    _ = server_addr;
+    _ = protocol;
+    std.log.warn("depricated", .{});
 }
 
 /// TODO: convert to server action
@@ -119,7 +108,7 @@ fn listener(
         const opt_action = sd.server.Actioner.get(protocol.action);
         if (opt_action) |act| {
             switch (protocol.type) {
-                .REQ => act.onRequest(),
+                .REQ => act.onRequest(conn, sd, protocol),
                 .RES => act.onResponse(),
                 .ERR => act.onError(),
                 else => {
@@ -226,63 +215,6 @@ fn extractCommandValue(cs: []const u8, cmd: []const u8) []const u8 {
     return val;
 }
 
-const SharedData = struct {
-    m: std.Thread.Mutex,
-    should_exit: bool,
-    peer_pool: *std.ArrayList(Peer),
-    server: Server,
-
-    pub fn setShouldExit(self: *@This(), should: bool) void {
-        self.m.lock();
-        defer self.m.unlock();
-
-        self.should_exit = should;
-    }
-
-    pub fn clearPeerPool(self: *@This()) void {
-        self.m.lock();
-        defer self.m.unlock();
-        self.peer_pool.clearAndFree();
-    }
-
-    pub fn peerRemove(self: *@This(), pid: usize) void {
-        self.m.lock();
-        defer self.m.unlock();
-        _ = self.peer_pool.orderedRemove(pid);
-    }
-
-    // TODO: peerRequestDeath server action
-    fn peerKill(self: *@This(), server: Server, ref_id: usize) !void {
-        self.m.lock();
-        defer self.m.unlock();
-        const peer_ = self.peer_pool.items[ref_id];
-        const endp = Protocol.init(
-        Protocol.Typ.REQ,
-        Protocol.Act.COMM_END,
-        Protocol.StatusCode.OK,
-        "server",
-        "server",
-        "client",
-        "OK",
-    );
-        endp.dump(server.log_level);
-        _ = Protocol.transmit(peer_.stream(), endp);
-    }
-
-    pub fn removePeerFromPool(self: *@This(), peer_ref: PeerRef) void {
-        self.m.lock();
-        defer self.m.unlock();
-        self.peer_pool.items[peer_ref.ref_id].alive = false;
-        _ = self.peer_pool.orderedRemove(peer_ref.ref_id);
-    }
-
-    pub fn peerPoolAppend(self: *@This(), peer: Peer) !void {
-        self.m.lock();
-        defer self.m.unlock();
-        try self.peer_pool.append(peer);
-    }
-};
-
 // TODO: convert to server action
 pub fn peerPoolClean(sd: *SharedData) void {
     var pp_len: usize = sd.peer_pool.items.len;
@@ -358,7 +290,7 @@ fn pingAllPeers(sd: *SharedData) void {
             .sender_id = "server", // sender_id
             .src = sd.server.address_str, // src_address
             .dst = peer.commAddressAsStr(), // dst address
-            .body = "check?", // body
+            .body = "check", // body
         };
         reqp.dump(sd.server.log_level);
         // TODO: I don't know why but i must send 2 requests to determine the status of the stream

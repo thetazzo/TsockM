@@ -510,12 +510,12 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
 
-    var acts = std.StringHashMap(Action).init(gpa_allocator);
-    defer acts.deinit();
+    var client_acts = std.StringHashMap(Action).init(gpa_allocator);
+    defer client_acts.deinit();
 
-    _ = try acts.put(":msg", sendMessage);
-    _ = try acts.put(":ping", pingClient);
-    _ = try acts.put(":exit", exitClient);
+    _ = try client_acts.put(":msg", sendMessage);
+    _ = try client_acts.put(":ping", pingClient);
+    _ = try client_acts.put(":exit", exitClient);
 
     // Loading font
     const self_path = try std.fs.selfExePathAlloc(gpa_allocator);
@@ -630,13 +630,13 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 // remove char from message box
                 _ = message_box.pop();
             } 
-            // TODO: message_box::handle_actions
             if (message_box.isKeyPressed(.key_enter)) {
+                // handle client actions
                 const mcln = message_box.getCleanValue();
                 if (mcln.len > 0) {
                     var splits = mem.splitScalar(u8, mcln, ' ');
                     if (splits.next()) |frst| {
-                        if (acts.get(frst)) |action| {
+                        if (client_acts.get(frst)) |action| {
                             action(client, &message_box, &message_display);
                         } else {
                             // default action

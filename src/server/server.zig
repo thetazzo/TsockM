@@ -36,7 +36,7 @@ pub fn peerRefFromUsername(peer_pool: *std.ArrayList(Peer), un: []const u8) ?Pee
 ///====================================================================================
 ///
 ///====================================================================================
-fn server_start(address: []const u8, port: u16) !net.Server {
+fn serverStart(address: []const u8, port: u16) !net.Server {
     const addr = try net.Address.resolveIp(address, port);
     print("Server running on `" ++ TextColor.paint_green("{s}:{d}") ++ "`\n", .{address, port});
     return addr.listen(.{
@@ -48,7 +48,7 @@ fn server_start(address: []const u8, port: u16) !net.Server {
 /// Send message to all connected peers
 ///     - Server action
 ///====================================================================================
-fn message_broadcast(
+fn messageBroadcast(
     sd: *SharedData,
     sender_id: []const u8,
     msg: []const u8,
@@ -79,7 +79,7 @@ fn message_broadcast(
 /// Establish connection between client and server
 ///     - Server action
 ///====================================================================================
-fn connection_accept(
+fn connectionAccept(
     sd: *SharedData,
     conn: net.Server.Connection,
     server_addr: []const u8,
@@ -108,7 +108,7 @@ fn connection_accept(
 /// Terminate connection between client and server
 ///     - Server action
 ///====================================================================================
-fn connection_terminate(sd: *SharedData, protocol: ptc.Protocol) !void {
+fn connectionTerminate(sd: *SharedData, protocol: ptc.Protocol) !void {
     const ref = peerRefFromId(sd.peer_pool, protocol.sender_id);
     if (ref) |peer_ref| {
         try sd.peerKill(peer_ref.ref_id);
@@ -119,7 +119,7 @@ fn connection_terminate(sd: *SharedData, protocol: ptc.Protocol) !void {
 /// Read incomming requests from the client
 ///     - Server action
 ///====================================================================================
-fn read_incomming(
+fn readIncomming(
     sd: *SharedData,
     server: *net.Server,
 ) !void {
@@ -141,11 +141,11 @@ fn read_incomming(
         if (protocol.is_request()) {
             // Handle COMM request
             if (protocol.is_action(ptc.Act.COMM)) {
-                try connection_accept(sd, conn, server_addr, protocol);
+                try connectionAccept(sd, conn, server_addr, protocol);
             } else if (protocol.is_action(ptc.Act.COMM_END)) {
-                try connection_terminate(sd, protocol);
+                try connectionTerminate(sd, protocol);
             } else if (protocol.is_action(ptc.Act.MSG)) {
-                message_broadcast(sd, protocol.sender_id, protocol.body);
+                messageBroadcast(sd, protocol.sender_id, protocol.body);
             } else if (protocol.is_action(ptc.Act.GET_PEER)) {
                 // TODO: get peer server action
                 // TODO: make a peer_find_bridge_ref
@@ -212,7 +212,7 @@ fn read_incomming(
     }
 }
 
-fn print_usage() void {
+fn printUsage() void {
     print("COMMANDS:\n", .{});
     print("    * :cc ................ clear screen\n", .{});
     print("    * :list .............. list all active peers\n", .{});
@@ -222,13 +222,13 @@ fn print_usage() void {
     print("    * :kill <peer_id> .... kill one peer\n", .{});
 }
 
-fn extract_command_val(cs: []const u8, cmd: []const u8) []const u8 {
+fn extractCommandValue(cs: []const u8, cmd: []const u8) []const u8 {
     var splits = mem.split(u8, cs, cmd);
     _ = splits.next().?; // the `:msg` part
     const val = mem.trimLeft(u8, splits.next().?, " \n");
     if (val.len <= 0) {
         std.log.err("missing action value", .{});
-        print_usage();
+        printUsage();
     }
     return val;
 }
@@ -346,7 +346,7 @@ const SharedData = struct {
 };
 
 // TODO: introduce ServerCommand
-fn read_cmd(
+fn readCmd(
     sd: *SharedData,
     addr_str: []const u8,
     port: u16,
@@ -373,7 +373,7 @@ fn read_cmd(
                 }
             } else if (mem.startsWith(u8, user_input, ":kill")) {
                 // TODO: kill server command
-                const karrg = extract_command_val(user_input, ":kill");
+                const karrg = extractCommandValue(user_input, ":kill");
                 if (mem.eql(u8, karrg, "all")) {
                     for (sd.peer_pool.items[0..]) |peer| {
                         const endp = ptc.Protocol.init(
@@ -397,7 +397,7 @@ fn read_cmd(
                 }
             } else if (mem.startsWith(u8, user_input, ":ping")) {
                 // TODO: ping server command
-                const peer_un = extract_command_val(user_input, ":ping");
+                const peer_un = extractCommandValue(user_input, ":ping");
                 if (mem.eql(u8, peer_un, "all")) {
                     sd.pingAllPeers(address_str);
                 } else {
@@ -444,10 +444,10 @@ fn read_cmd(
                 print("address: {s}\n", .{ address_str });
                 print("==================================================\n", .{});
             } else if (mem.eql(u8, user_input, ":help")) {
-                print_usage();
+                printUsage();
             } else {
                 print("Unknown command: `{s}`\n", .{user_input});
-                print_usage();
+                printUsage();
             }
         } else {
             print("Unreachable, maybe?\n", .{});
@@ -483,7 +483,7 @@ fn polizei(sd: *SharedData) !void {
 
 pub fn start(server_addr: []const u8, server_port: u16) !void {
     try cmn.screen_clear();
-    var server = try server_start(server_addr, server_port);
+    var server = try serverStart(server_addr, server_port);
     errdefer server.deinit();
     defer server.deinit();
     const start_time = try std.time.Instant.now();
@@ -503,9 +503,9 @@ pub fn start(server_addr: []const u8, server_port: u16) !void {
     };
     {
         // TODO: Introduce thread pool
-        const t1 = try std.Thread.spawn(.{}, read_incomming, .{ &sd, &server });
+        const t1 = try std.Thread.spawn(.{}, readIncomming, .{ &sd, &server });
         defer t1.join();
-        const t2 = try std.Thread.spawn(.{}, read_cmd, .{ &sd, server_addr, server_port, start_time });
+        const t2 = try std.Thread.spawn(.{}, readCmd, .{ &sd, server_addr, server_port, start_time });
         defer t2.join();
         const t3 = try std.Thread.spawn(.{}, polizei, .{ &sd });
         defer t3.join();

@@ -235,13 +235,16 @@ fn readIncomming(
 }
 
 fn printUsage() void {
+   // ":help"       
     print("COMMANDS:\n", .{});
-    print("    * :cc ................ clear screen\n", .{});
-    print("    * :list .............. list all active peers\n", .{});
-    print("    * :ping all .......... ping all peers and update their life status\n", .{});
-    print("    * :ping <peer_id> .... ping one peer and update its life status\n", .{});
-    print("    * :kill all .......... kill all peers\n", .{});
-    print("    * :kill <peer_id> .... kill one peer\n", .{});
+    print("    * :cc ............................. clear screen\n", .{});
+    print("    * :info ........................... print server statiistics\n", .{});
+    print("    * :exit ........................... terminate server\n", .{});
+    print("    * :help ........................... print server commands\n", .{});
+    print("    * :clean-pool ..................... removes dead peers\n", .{});
+    print("    * :list | :ls  .................... list all active peers\n", .{});
+    print("    * :ping <peer_id> | all ........... ping peer/s and update its/their life status\n", .{});
+    print("    * :kill <peer_id> | all ........... kill peer/s\n", .{});
 }
 
 fn extractCommandValue(cs: []const u8, cmd: []const u8) []const u8 {
@@ -340,10 +343,6 @@ fn readCmd(
                 if (server_cmds.get(ui)) |cmd| {
                     cmd(user_input, sd.server, sd);
                 }
-            } else if (mem.eql(u8, user_input, ":info")) {
-                // TODO: print server stats server command
-            } else if (mem.eql(u8, user_input, ":help")) {
-                printUsage();
             } else {
                 print("Unknown command: `{s}`\n", .{user_input});
                 printUsage();
@@ -558,6 +557,12 @@ const ServerCommand = struct {
         _ = server;
         peerPoolClean(sd);
     }
+    pub fn printProgramUsage(cmd: []const u8, server: Server, sd: *SharedData) void {
+        _ = cmd;
+        _ = server;
+        _ = sd;
+        printUsage();
+    }
 };
 
 pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
@@ -581,6 +586,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     _ = try server_cmds.put(":ping"      , ServerCommand.ping);
     _ = try server_cmds.put(":cc"        , ServerCommand.clearScreen);
     _ = try server_cmds.put(":clean-pool", ServerCommand.cleanPool);
+    _ = try server_cmds.put(":help"      , ServerCommand.printProgramUsage);
     
     var server = try serverStart(hostname, port, log_level);
     errdefer server.net_server.deinit();

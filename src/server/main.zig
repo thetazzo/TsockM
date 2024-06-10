@@ -11,7 +11,7 @@ fn print_usage(program: []const u8) void {
     std.debug.print("SUBCOMMANDS:\n", .{});
     std.debug.print("    help ...................,,,,,,,,.. print program usage\n", .{});
     std.debug.print("    start <flag> ..................... start the server\n", .{});
-    std.debug.print("        --log-level <level> .......... specify log level {{DEV, SILENT, COMPACT}} (default: COMPACT)\n", .{});
+    std.debug.print("        --log-level <level> .......... specify log level {{DEV|D, SILENT|S, COMPACT|C}} (default: COMPACT)\n", .{});
     std.debug.print("        --addr <hostname:port> ....... specify server address (default: 127.0.0.1:6969)\n", .{});
 }
 
@@ -50,11 +50,11 @@ pub fn main() !void {
                 } else if (std.mem.eql(u8, arg, "--log-level")) {
                     const opt_level = argv.next(); 
                     if (opt_level) |level| {
-                        if (std.mem.eql(u8, level, "DEV")) {
+                        if (std.mem.eql(u8, level, "DEV") or std.mem.eql(u8, level, "D")) {
                             log_level = Logging.Level.DEV;
-                        } else if (std.mem.eql(u8, level, "SILENT")) {
+                        } else if (std.mem.eql(u8, level, "SILENT") or std.mem.eql(u8, level, "S")) {
                             log_level = Logging.Level.SILENT;
-                        } else if (std.mem.eql(u8, level, "COMPACT")) {
+                        } else if (std.mem.eql(u8, level, "COMPACT") or std.mem.eql(u8, level, "C")) {
                             log_level = Logging.Level.COMPACT;
                         }
                     } else {

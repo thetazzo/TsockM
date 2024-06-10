@@ -1,6 +1,7 @@
 const std = @import("std");
 const aids = @import("aids");
 const Server = @import("core/core.zig").Server;
+const COMM_ACTION = @import("actions/comm-action.zig").COMM_ACTION;
 const Protocol = aids.Protocol;
 const cmn = aids.cmn;
 const TextColor = aids.TextColor;
@@ -32,12 +33,6 @@ pub fn peerRefFromUsername(peer_pool: *std.ArrayList(Peer), username: []const u8
         }
     }
     return null;
-}
-
-
-fn serverStart(hostname: []const u8, port: u16, log_level: Logging.Level) Server {
-    var server = Server.init(hostname, port, log_level);
-    return server.start();
 }
 
 /// TODO: convert to server action
@@ -121,6 +116,18 @@ fn listener(
         protocol.dump(sd.server.log_level);
 
         const addr_str = cmn.address_as_str(conn.address);
+        const opt_action = sd.server.Actioner.get(protocol.action);
+        if (opt_action) |act| {
+            switch (protocol.type) {
+                .REQ => act.onRequest(),
+                .RES => act.onResponse(),
+                .ERR => act.onError(),
+                else => {
+                    std.log.err("`therad::listener`: unknown protocol type!", .{});
+                    std.posix.exit(1);
+                }
+            }
+        }
         if (protocol.is_request()) {
             // Handle COMM request
             if (protocol.is_action(Protocol.Act.COMM)) {
@@ -530,18 +537,18 @@ const ServerCommand = struct {
 };
 
 pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
-    var server = Server.init(hostname, port, log_level);
-    defer server.deinit();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
 
+    var server = Server.init(gpa_allocator, hostname, port, log_level);
+    defer server.deinit();
+
+    server.Actioner.add(Protocol.Act.COMM, COMM_ACTION);
+
     var server_cmds = std.StringHashMap(Command).init(gpa_allocator);
     errdefer server_cmds.deinit();
     defer server_cmds.deinit();
-
-    var peer_pool = std.ArrayList(Peer).init(gpa_allocator);
-    defer peer_pool.deinit();
 
     _ = try server_cmds.put(":exit"      , ServerCommand.exitServer);
     _ = try server_cmds.put(":info"      , ServerCommand.printServerStats);
@@ -552,6 +559,9 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     _ = try server_cmds.put(":c"         , ServerCommand.clearScreen);
     _ = try server_cmds.put(":clean-pool", ServerCommand.cleanPool);
     _ = try server_cmds.put(":help"      , ServerCommand.printProgramUsage);
+
+    var peer_pool = std.ArrayList(Peer).init(gpa_allocator);
+    defer peer_pool.deinit();
 
     try cmn.screenClear();
     server.start();

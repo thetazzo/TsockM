@@ -1,5 +1,5 @@
 const std = @import("std");
-const lib = @import("lib");
+const aids = @import("aids");
 const server = @import("server.zig");
 
 const SERVER_ADDRESS = "127.0.0.1"; // default address is local host
@@ -22,7 +22,7 @@ pub fn main() !void {
     
     var server_addr: []const u8 = SERVER_ADDRESS; 
     var server_port: u16 = SERVER_PORT; 
-    const log_level: lib.Logging.Level = lib.Logging.Level.COMPACT; 
+    const log_level: aids.Logging.Level = aids.Logging.Level.COMPACT; 
 
     if (subc) |subcommand| {
         if (std.mem.eql(u8, subcommand, "help")) {

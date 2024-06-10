@@ -19,8 +19,8 @@ pub fn build(b: *std.Build) void {
         .linux_display_backend = .X11,
     });
 
-    const lib_mod = b.addModule("lib", .{
-        .root_source_file = b.path("src/lib/root.zig"),
+    const lib_mod = b.addModule("aids", .{
+        .root_source_file = b.path("src/aids/root.zig"),
     });
     const sqids_mod = sqids_dep.module("sqids");
     const raylib = raylib_dep.module("raylib"); // main raylib module
@@ -33,7 +33,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    server_exe.root_module.addImport("lib", lib_mod);
+    server_exe.root_module.addImport("aids", lib_mod);
     server_exe.root_module.addImport("sqids", sqids_mod);
 
     b.installArtifact(server_exe);
@@ -56,7 +56,7 @@ pub fn build(b: *std.Build) void {
     client_exe.linkLibrary(raylib_artifact);
     client_exe.root_module.addImport("raylib", raylib);
     client_exe.root_module.addImport("raygui", raygui);
-    client_exe.root_module.addImport("lib", lib_mod);
+    client_exe.root_module.addImport("aids", lib_mod);
 
     b.installArtifact(client_exe);
     const run_client_exe = b.addRunArtifact(client_exe);

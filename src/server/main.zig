@@ -18,32 +18,37 @@ pub fn main() !void {
 
     const program = argv.next().?;
     const subc = argv.next(); // subcommand
+    
+    var server_addr: []const u8 = SERVER_ADDRESS; 
+    var server_port: u16 = SERVER_PORT; 
 
     if (subc) |subcommand| {
         if (std.mem.eql(u8, subcommand, "help")) {
             print_usage(program);
         } else if (std.mem.eql(u8, subcommand, "start")) {
-            const subcommand_flag = argv.next(); 
-            if (subcommand_flag) |sflag| {
-            if (std.mem.eql(u8, sflag, "--addr")) {
-                    const flag_addr_address = argv.next(); 
-                    const flag_addr_port = argv.next(); 
-                    if (flag_addr_address) |addr| {
-                        if (flag_addr_port) |port| {
-                            const port_u16 = try std.fmt.parseInt(u16, port, 10);
-                            _ = try server.start(addr, port_u16);
-                        } else {
-                            _ = try server.start(addr, SERVER_PORT);
-                        }
+            if (argv.next()) |arg| {
+                if (std.mem.eql(u8, arg, "--addr")) {
+                    const opt_ip = argv.next(); 
+                    if (opt_ip) |ip| {
+                        var splits = std.mem.splitScalar(u8, ip, ':');
+                        if (splits.next()) |hostname| {
+                            if (splits.next()) |port| {
+                                const port_u16 = try std.fmt.parseInt(u16, port, 10);
+                                server_port = port_u16;
+                            }
+                            server_addr = hostname;
+                        } 
+                    } else {
+                        std.log.err("Missing server ip address", .{});
+                        print_usage(program);
+                        return;
                     }
                 } else {
-                    std.log.err("unknown flag `{s}`", .{sflag});
+                    std.log.err("unknown flag `{s}`", .{arg});
                     print_usage(program);
                 }
-            } else {
-                // use default values when no `--addr` is provided
-                _ = try server.start(SERVER_ADDRESS, SERVER_PORT);
-            }
+            } 
+            _ = try server.start(server_addr, server_port);
         } 
     } else {
         std.log.err("missing subcommand!", .{});

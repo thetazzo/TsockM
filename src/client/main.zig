@@ -46,21 +46,20 @@ pub fn main() !void {
                         return;
                     }
                 } else if (std.mem.eql(u8, sflag, "--addr")) {
-                    const opt_addr = argv.next(); 
-                    if (opt_addr) |addr| {
-                        var splits = std.mem.split(u8, addr, ":");
-                        const opt_address = splits.next();
-                        if (opt_address) |address| {
+                    const opt_ip = argv.next(); 
+                    if (opt_ip) |ip| {
+                        var splits = std.mem.splitScalar(u8, ip, ':');
+                        if (splits.next()) |hostname| {
                             if (splits.next()) |port| {
                                 const port_u16 = try std.fmt.parseInt(u16, port, 10);
                                 server_port = port_u16;
                             }
-                            server_addr = address;
-                        } else {
-                            std.log.err("Missing server address!", .{});
-                            print_usage(program);
-                            return;
-                        }
+                            server_addr = hostname;
+                        } 
+                    } else {
+                        std.log.err("Missing server ip address", .{});
+                        print_usage(program);
+                        return;
                     }
                 } else {
                     std.log.err("unknown flag `{s}`", .{sflag});

@@ -1,7 +1,9 @@
 const std = @import("std");
-const ptc = @import("ptc");
-const cmn = @import("cmn");
-const tclr = @import("text_color");
+const aids = @import("aids");
+const Protocol = aids.Protocol;
+const Logging = aids.Logging;
+const cmn = aids.cmn;
+const tclr = aids.TextColor;
 const InputBox = @import("ui/input-box.zig");
 const rlb = @import("ui/button.zig");
 const Display = @import("ui/display.zig");
@@ -12,14 +14,14 @@ const print = std.debug.print;
 
 const str_allocator = std.heap.page_allocator;
 
-const LOG_LEVEL = ptc.LogLevel.DEV;
+const LOG_LEVEL = Logging.Level.DEV;
 
 const Client = struct {
     id: []const u8,
     username: []const u8,
     stream: net.Stream,
     server_addr: net.Address,
-    client_addr: ptc.Addr,
+    client_addr: Protocol.Addr,
 
     pub fn dump(self: @This()) void {
         print("------------------------------------\n", .{});
@@ -61,22 +63,22 @@ fn request_connection(address: []const u8, port: u16, username: []const u8) !Cli
     const stream = try net.tcpConnectToAddress(addr);
     const dst_addr = cmn.address_as_str(addr);
     // request connection
-    const reqp = ptc.Protocol.init(
-        ptc.Typ.REQ,
-        ptc.Act.COMM,
-        ptc.StatusCode.OK,
+    const reqp = Protocol.init(
+        Protocol.Typ.REQ,
+        Protocol.Act.COMM,
+        Protocol.StatusCode.OK,
         "client",
         "client",
         dst_addr,
         username,
     );
     reqp.dump(LOG_LEVEL);
-    _ = ptc.prot_transmit(stream, reqp);
+    _ = Protocol.transmit(stream, reqp);
 
-    const resp = try ptc.prot_collect(str_allocator, stream);
+    const resp = try Protocol.collect(str_allocator, stream);
     resp.dump(LOG_LEVEL);
 
-    if (resp.status_code == ptc.StatusCode.OK) {
+    if (resp.status_code == Protocol.StatusCode.OK) {
         var peer_spl = mem.split(u8, resp.body, "|");
         const id = peer_spl.next().?;
         const username_ = peer_spl.next().?;
@@ -95,14 +97,14 @@ fn request_connection(address: []const u8, port: u16, username: []const u8) !Cli
     }
 }
 
-fn send_request(addr: net.Address, req: ptc.Protocol) !void {
+fn send_request(addr: net.Address, req: Protocol) !void {
     // Open a sterm to the server
     const req_stream = try net.tcpConnectToAddress(addr);
     defer req_stream.close();
 
     // send protocol to server
     req.dump(LOG_LEVEL);
-    _ = ptc.prot_transmit(req_stream, req);
+    _ = Protocol.transmit(req_stream, req);
 }
 
 // Data to share between threads
@@ -128,27 +130,27 @@ const SharedData = struct {
 fn listen_for_comms(sd: *SharedData, client: *Client) !void {
     const addr_str = cmn.address_as_str(client.server_addr);
     while (true) {
-        const resp = try ptc.prot_collect(str_allocator, client.stream);
+        const resp = try Protocol.collect(str_allocator, client.stream);
         resp.dump(LOG_LEVEL);
         if (resp.is_response()) {
-            if (resp.is_action(ptc.Act.COMM_END)) {
-                if (resp.status_code == ptc.StatusCode.OK) {
+            if (resp.is_action(Protocol.Act.COMM_END)) {
+                if (resp.status_code == Protocol.StatusCode.OK) {
                     client.stream.close();
                     print("Server connection terminated.\n", .{});
                     break;
                 }
-            } else if (resp.is_action(ptc.Act.GET_PEER)) {
-                if (resp.status_code == ptc.StatusCode.OK) {
+            } else if (resp.is_action(Protocol.Act.GET_PEER)) {
+                if (resp.status_code == Protocol.StatusCode.OK) {
                     const peer_name = resp.body;
                     print("Peer name is: {s}\n", .{peer_name});
                 }
-            } else if (resp.is_action(ptc.Act.MSG)) {
-                if (resp.status_code == ptc.StatusCode.OK) {
+            } else if (resp.is_action(Protocol.Act.MSG)) {
+                if (resp.status_code == Protocol.StatusCode.OK) {
                     // construct protocol to get peer data
-                    const reqp = ptc.Protocol.init(
-                        ptc.Typ.REQ, // type
-                        ptc.Act.GET_PEER, // action
-                        ptc.StatusCode.OK, // status code
+                    const reqp = Protocol.init(
+                        Protocol.Typ.REQ, // type
+                        Protocol.Act.GET_PEER, // action
+                        Protocol.StatusCode.OK, // status code
                         client.id, // sender id
                         client.client_addr, // src address
                         addr_str, // destination address
@@ -157,7 +159,7 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                     try send_request(client.server_addr, reqp);
 
                     // collect GET_PEER response
-                    const np = try ptc.prot_collect(str_allocator, client.stream);
+                    const np = try Protocol.collect(str_allocator, client.stream);
                     np.dump(LOG_LEVEL);
 
                     var un_spl = mem.split(u8, np.body, "#");
@@ -171,13 +173,13 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                 }
             }
         } else if (resp.is_request()) {
-            if (resp.is_action(ptc.Act.COMM)) {
-                if (resp.status_code == ptc.StatusCode.OK) {
+            if (resp.is_action(Protocol.Act.COMM)) {
+                if (resp.status_code == Protocol.StatusCode.OK) {
                     // protocol to say communication is OK
-                    const msgp = ptc.Protocol.init(
-                        ptc.Typ.RES,
-                        ptc.Act.COMM,
-                        ptc.StatusCode.OK,
+                    const msgp = Protocol.init(
+                        Protocol.Typ.RES,
+                        Protocol.Act.COMM,
+                        Protocol.StatusCode.OK,
                         client.id,
                         client.client_addr,
                         addr_str,
@@ -185,13 +187,13 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                     );
                     try send_request(client.server_addr, msgp);
                 }
-            } else if (resp.is_action(ptc.Act.NTFY_KILL)) {
-                if (resp.status_code == ptc.StatusCode.OK) {
+            } else if (resp.is_action(Protocol.Act.NTFY_KILL)) {
+                if (resp.status_code == Protocol.StatusCode.OK) {
                     // construct protocol to get peer data
-                    const reqp = ptc.Protocol.init(
-                        ptc.Typ.REQ, // type
-                        ptc.Act.GET_PEER, // action
-                        ptc.StatusCode.OK, // status code
+                    const reqp = Protocol.init(
+                        Protocol.Typ.REQ, // type
+                        Protocol.Act.GET_PEER, // action
+                        Protocol.StatusCode.OK, // status code
                         client.id, // sender id
                         client.client_addr, // src address
                         addr_str, // destination address
@@ -200,7 +202,7 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                     try send_request(client.server_addr, reqp);
 
                     // collect GET_PEER response
-                    const np = try ptc.prot_collect(str_allocator, client.stream);
+                    const np = try Protocol.collect(str_allocator, client.stream);
                     np.dump(LOG_LEVEL);
 
                     var un_spl = mem.split(u8, np.body, "#");
@@ -208,14 +210,14 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                     const unh = un_spl.next().?; // username hash
                     print("Peer `{s}" ++ tclr.paint_hex("#555555", "#{s}") ++ "` has died\n", .{unn, unh});
                 }
-            } else if (resp.is_action(ptc.Act.COMM_END)) {
-                if (resp.status_code == ptc.StatusCode.OK) {
+            } else if (resp.is_action(Protocol.Act.COMM_END)) {
+                if (resp.status_code == Protocol.StatusCode.OK) {
                     client.stream.close();
                     print("Server connection terminated. Press <ENTER> to close the program.\n", .{});
                     break;
                 }
             } 
-        } else if (resp.type == ptc.Typ.ERR) {
+        } else if (resp.type == Protocol.Typ.ERR) {
             //client.stream.close();
             resp.dump(LOG_LEVEL);
             break;
@@ -250,10 +252,10 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
             if (mem.startsWith(u8, user_input, ":msg")) {
                 const msg = extract_command_val(user_input, ":msg");
                 // construct message protocol
-                const reqp = ptc.Protocol.init(
-                    ptc.Typ.REQ,
-                    ptc.Act.MSG,
-                    ptc.StatusCode.OK,
+                const reqp = Protocol.init(
+                    Protocol.Typ.REQ,
+                    Protocol.Act.MSG,
+                    Protocol.StatusCode.OK,
                     client.id,
                     client.client_addr,
                     addr_str,
@@ -263,10 +265,10 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
             } else if (mem.startsWith(u8, user_input, ":gp")) {
                 const pid = extract_command_val(user_input, ":gp");
                 // construct message protocol
-                const reqp = ptc.Protocol.init(
-                    ptc.Typ.REQ,
-                    ptc.Act.GET_PEER,
-                    ptc.StatusCode.OK,
+                const reqp = Protocol.init(
+                    Protocol.Typ.REQ,
+                    Protocol.Act.GET_PEER,
+                    Protocol.StatusCode.OK,
                     client.id,
                     client.client_addr,
                     addr_str,
@@ -276,10 +278,10 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
             } else if (mem.eql(u8, user_input, ":info")) {
                 client.dump();
             } else if (mem.eql(u8, user_input, ":exit")) {
-                const reqp = ptc.Protocol.init(
-                    ptc.Typ.REQ,
-                    ptc.Act.COMM_END,
-                    ptc.StatusCode.OK,
+                const reqp = Protocol.init(
+                    Protocol.Typ.REQ,
+                    Protocol.Act.COMM_END,
+                    Protocol.StatusCode.OK,
                     client.id,
                     client.client_addr,
                     addr_str,
@@ -330,24 +332,24 @@ fn request_connection_from_input(input_box: *InputBox, server_addr: []const u8, 
 fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList(Display.Message)) !void {
     const addr_str = cmn.address_as_str(client.server_addr);
     while (!sd.should_exit) {
-        const resp = try ptc.prot_collect(str_allocator, client.stream);
+        const resp = try Protocol.collect(str_allocator, client.stream);
         resp.dump(LOG_LEVEL);
         if (resp.is_response()) {
-            if (resp.is_action(ptc.Act.COMM_END)) {
-                if (resp.status_code == ptc.StatusCode.OK) {
+            if (resp.is_action(Protocol.Act.COMM_END)) {
+                if (resp.status_code == Protocol.StatusCode.OK) {
                     sd.setShouldExit(true);
                 }
-            } else if (resp.is_action(ptc.Act.GET_PEER)) {
-                if (resp.status_code == ptc.StatusCode.OK) {
+            } else if (resp.is_action(Protocol.Act.GET_PEER)) {
+                if (resp.status_code == Protocol.StatusCode.OK) {
                     std.log.err("not implemented", .{});
                 }
-            } else if (resp.is_action(ptc.Act.MSG)) {
-                if (resp.status_code == ptc.StatusCode.OK) {
+            } else if (resp.is_action(Protocol.Act.MSG)) {
+                if (resp.status_code == Protocol.StatusCode.OK) {
                     // construct protocol to get peer data
-                    const reqp = ptc.Protocol.init(
-                        ptc.Typ.REQ, // type
-                        ptc.Act.GET_PEER, // action
-                        ptc.StatusCode.OK, // status code
+                    const reqp = Protocol.init(
+                        Protocol.Typ.REQ, // type
+                        Protocol.Act.GET_PEER, // action
+                        Protocol.StatusCode.OK, // status code
                         client.id, // sender id
                         client.client_addr, // src address
                         addr_str, // destination address
@@ -356,7 +358,7 @@ fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList
                     try send_request(client.server_addr, reqp);
 
                     // collect GET_PEER response
-                    const np = try ptc.prot_collect(str_allocator, client.stream);
+                    const np = try Protocol.collect(str_allocator, client.stream);
                     np.dump(LOG_LEVEL);
 
                     var un_spl = mem.split(u8, np.body, "#");
@@ -381,21 +383,21 @@ fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList
                 }
             }
         } else if (resp.is_request()) {
-            if (resp.is_action(ptc.Act.COMM)) {
-                if (resp.status_code == ptc.StatusCode.OK) {
+            if (resp.is_action(Protocol.Act.COMM)) {
+                if (resp.status_code == Protocol.StatusCode.OK) {
                     std.log.err("not implemented", .{});
                 }
-            } else if (resp.is_action(ptc.Act.NTFY_KILL)) {
-                if (resp.status_code == ptc.StatusCode.OK) {
+            } else if (resp.is_action(Protocol.Act.NTFY_KILL)) {
+                if (resp.status_code == Protocol.StatusCode.OK) {
                     std.log.err("not implemented", .{});
                 }
-            } else if (resp.is_action(ptc.Act.COMM_END)) {
-                if (resp.status_code == ptc.StatusCode.OK) {
+            } else if (resp.is_action(Protocol.Act.COMM_END)) {
+                if (resp.status_code == Protocol.StatusCode.OK) {
                     sd.setShouldExit(true);
                     return;
                }
             } 
-        } else if (resp.type == ptc.Typ.ERR) {
+        } else if (resp.type == Protocol.Typ.ERR) {
             //client.stream.close();
             resp.dump(LOG_LEVEL);
             break;
@@ -406,10 +408,10 @@ fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList
 fn exitClient(client: Client, message_box: *InputBox, message_display: *Display) void {
     _ = message_box;
     _ = message_display;
-    const reqp = ptc.Protocol.init(
-        ptc.Typ.REQ,
-        ptc.Act.COMM_END,
-        ptc.StatusCode.OK,
+    const reqp = Protocol.init(
+        Protocol.Typ.REQ,
+        Protocol.Act.COMM_END,
+        Protocol.StatusCode.OK,
         client.id,
         client.client_addr,
         cmn.address_as_str(client.server_addr),
@@ -424,10 +426,10 @@ fn exitClient(client: Client, message_box: *InputBox, message_display: *Display)
 fn sendMessage(client: Client, message_box: *InputBox, message_display: *Display) void {
     const msg = message_box.getCleanValue();
     // handle sending a message
-    const reqp = ptc.Protocol.init(
-        ptc.Typ.REQ,
-        ptc.Act.MSG,
-        ptc.StatusCode.OK,
+    const reqp = Protocol.init(
+        Protocol.Typ.REQ,
+        Protocol.Act.MSG,
+        Protocol.StatusCode.OK,
         client.id,
         client.client_addr,
         cmn.address_as_str(client.server_addr),
@@ -470,10 +472,10 @@ fn pingClient(client: Client, message_box: *InputBox, message_display: *Display)
         } else {
             std.log.warn("missing peer username", .{});
         }
-        //const reqp = ptc.Protocol.init(
-        //    ptc.Typ.REQ,
-        //    ptc.Act.PING,
-        //    ptc.StatusCode.OK,
+        //const reqp = Protocol.init(
+        //    Protocol.Typ.REQ,
+        //    Protocol.Act.PING,
+        //    Protocol.StatusCode.OK,
         //    client.id,
         //    client.client_addr,
         //    cmn.address_as_str(client.server_addr),

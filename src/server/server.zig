@@ -62,7 +62,6 @@ fn serverStart(hostname: []const u8, port: u16, log_level: Logging.Level) !Serve
         .port = port,
         .start_time = start_time,
         .log_level = log_level,
-        // TODO: catchh error
         .thread_pool = &thread_pool,
         .net_server = net_server,
         .address_str = cmn.address_as_str(net_server.listen_address),
@@ -235,9 +234,8 @@ fn readIncomming(
 }
 
 fn printUsage() void {
-   // ":help"       
     print("COMMANDS:\n", .{});
-    print("    * :cc ............................. clear screen\n", .{});
+    print("    * :c .............................. clear screen\n", .{});
     print("    * :info ........................... print server statiistics\n", .{});
     print("    * :exit ........................... terminate server\n", .{});
     print("    * :help ........................... print server commands\n", .{});
@@ -328,6 +326,7 @@ pub fn peerPoolClean(sd: *SharedData) void {
     }
 }
 
+/// i am a thread
 fn readCmd(
     sd: *SharedData,
     server_cmds: *std.StringHashMap(Command),
@@ -341,14 +340,15 @@ fn readCmd(
             var splits = mem.splitScalar(u8, user_input, ' ');
             if (splits.next()) |ui| {
                 if (server_cmds.get(ui)) |cmd| {
-                    cmd(user_input, sd.server, sd);
+                    cmd(user_input, sd);
+                } else {
+                    print("Unknown command: `{s}`\n", .{user_input});
+                    printUsage();
                 }
-            } else {
-                print("Unknown command: `{s}`\n", .{user_input});
-                printUsage();
             }
         } else {
-            print("Unreachable, maybe?\n", .{});
+            std.log.err("something went wrong when reading stdin!", .{});
+            std.posix.exit(1);
         }
     }
     print("Thread `run_cmd` finished\n", .{});
@@ -427,34 +427,32 @@ fn peerNtfyDeath(sd: *SharedData, server: Server) void {
     }
 }
 
-const Command = *const fn ([]const u8, Server, *SharedData) void;
+const Command = *const fn ([]const u8, *SharedData) void;
 
 const ServerCommand = struct {
-    pub fn exitServer(cmd: []const u8, server: Server, sd: *SharedData) void {
-        _ = server;
+    pub fn exitServer(cmd: []const u8, sd: *SharedData) void {
         _ = cmd;
         _ = sd;
         print("Exiting server ...\n", .{});
         std.posix.exit(0);
     }
-    pub fn printServerStats(cmd: []const u8, server: Server, sd: *SharedData) void {
+    pub fn printServerStats(cmd: []const u8, sd: *SharedData) void {
         _ = cmd;
         const now = std.time.Instant.now() catch |err| {
             std.log.err("`printServerStats`: {any}", .{err});
             std.posix.exit(1);
         };
-        const dt = now.since(server.start_time) / std.time.ns_per_ms / 1000;
+        const dt = now.since(sd.server.start_time) / std.time.ns_per_ms / 1000;
         print("==================================================\n", .{});
         print("Server status\n", .{});
         print("--------------------------------------------------\n", .{});
         print("peers connected: {d}\n", .{sd.peer_pool.items.len});
         print("uptime: {d:.3}s\n", .{dt});
-        print("address: {s}:{d}\n", .{ server.hostname, server.port });
+        print("address: {s}\n", .{ sd.server.address_str });
         print("==================================================\n", .{});
     }
-    pub fn listActivePeers(cmd: []const u8, server: Server, sd: *SharedData) void {
+    pub fn listActivePeers(cmd: []const u8, sd: *SharedData) void {
         _ = cmd;
-        _ = server;
         if (sd.peer_pool.items.len == 0) {
             print("Peer list: []\n", .{});
         } else {
@@ -464,9 +462,14 @@ const ServerCommand = struct {
             }
         }
     }
-    pub fn killPeers(cmd: []const u8, server: Server, sd: *SharedData) void {
+    pub fn killPeers(cmd: []const u8, sd: *SharedData) void {
         var split = mem.splitBackwardsScalar(u8, cmd, ' ');
         if (split.next()) |arg| {
+            if (mem.eql(u8, arg, cmd)) {
+                std.log.err("missing argument", .{});
+                printUsage();
+                return;
+            }
             if (mem.eql(u8, arg, "all")) {
                 for (sd.peer_pool.items[0..]) |peer| {
                     const endp = Protocol.init(
@@ -474,26 +477,30 @@ const ServerCommand = struct {
                     Protocol.Act.COMM_END,
                     Protocol.StatusCode.OK,
                     "server",
-                    server.address_str,
+                    sd.server.address_str,
                     peer.commAddressAsStr(),
                     "OK",
                 );
-                    endp.dump(server.log_level);
+                    endp.dump(sd.server.log_level);
                     _ = Protocol.transmit(peer.stream(), endp);
                 }
                 sd.clearPeerPool();
             } else {
                 const opt_peer_ref = peerRefFromId(sd.peer_pool, arg);
                 if (opt_peer_ref) |peer_ref| {
-                    try sd.peerKill(server, peer_ref.ref_id);
+                    try sd.peerKill(sd.server, peer_ref.ref_id);
                 }
             }
         }
     }
-    fn ping(cmd: []const u8, server: Server, sd: *SharedData) void {
-        _ = server;
+    fn ping(cmd: []const u8, sd: *SharedData) void {
         var split = mem.splitBackwardsScalar(u8, cmd, ' ');
         if (split.next()) |arg| {
+            if (mem.eql(u8, arg, cmd)) {
+                std.log.err("missing argument", .{});
+                printUsage();
+                return;
+            }
             if (mem.eql(u8, arg, "all")) {
                 for (sd.peer_pool.items, 0..) |peer, pid| {
                     const reqp = Protocol{
@@ -544,22 +551,19 @@ const ServerCommand = struct {
             }
         }
     }
-    pub fn clearScreen(cmd: []const u8, server: Server, sd: *SharedData) void {
+    pub fn clearScreen(cmd: []const u8, sd: *SharedData) void {
         _ = cmd;
-        _ = server;
         cmn.screenClear() catch |err| {
             print("`clearScreen`: {any}\n", .{err});
         };
         print("Server running on `" ++ TextColor.paint_green("{s}") ++ "`\n", .{sd.server.address_str});
     }
-    pub fn cleanPool(cmd: []const u8, server: Server, sd: *SharedData) void {
+    pub fn cleanPool(cmd: []const u8, sd: *SharedData) void {
         _ = cmd;
-        _ = server;
         peerPoolClean(sd);
     }
-    pub fn printProgramUsage(cmd: []const u8, server: Server, sd: *SharedData) void {
+    pub fn printProgramUsage(cmd: []const u8, sd: *SharedData) void {
         _ = cmd;
-        _ = server;
         _ = sd;
         printUsage();
     }
@@ -584,7 +588,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     _ = try server_cmds.put(":ls"        , ServerCommand.listActivePeers);
     _ = try server_cmds.put(":kill"      , ServerCommand.killPeers);
     _ = try server_cmds.put(":ping"      , ServerCommand.ping);
-    _ = try server_cmds.put(":cc"        , ServerCommand.clearScreen);
+    _ = try server_cmds.put(":c"         , ServerCommand.clearScreen);
     _ = try server_cmds.put(":clean-pool", ServerCommand.cleanPool);
     _ = try server_cmds.put(":help"      , ServerCommand.printProgramUsage);
     
@@ -592,8 +596,6 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     errdefer server.net_server.deinit();
     defer server.net_server.deinit();
 
-    //var messages = std.ArrayList(u8).init(gpa_allocator);
-    //defer messages.deinit();
     var sd = SharedData{
         .m = std.Thread.Mutex{},
         .should_exit = false,

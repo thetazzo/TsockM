@@ -2,7 +2,8 @@
 
 # TsockM
 
-* A TCP socket based chatting application
+* The **LIGHTWEIGHT**, **FAST** and **PRIVACY FOCUSED** chatting program
+    * p.s. communications are transmitted as plaintext 
 
 ## Prerequisits
 

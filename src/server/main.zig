@@ -1,5 +1,6 @@
 const std = @import("std");
 const aids = @import("aids");
+const Logging = aids.Logging;
 const server = @import("server.zig");
 
 const SERVER_ADDRESS = "127.0.0.1"; // default address is local host
@@ -10,7 +11,8 @@ fn print_usage(program: []const u8) void {
     std.debug.print("SUBCOMMANDS:\n", .{});
     std.debug.print("    help ...................,,,,,,,,.. print program usage\n", .{});
     std.debug.print("    start <flag> ..................... start the server\n", .{});
-    std.debug.print("        --addr <address> <port> ...... specify a custom address to the TsockM server (default: 127.0.0.1:6969)\n", .{});
+    std.debug.print("        --log-level <level> .......... specify log level {{DEV, SILENT, COMPACT}} (default: COMPACT)\n", .{});
+    std.debug.print("        --addr <hostname:port> ....... specify server address (default: 127.0.0.1:6969)\n", .{});
 }
 
 pub fn main() !void {
@@ -22,7 +24,7 @@ pub fn main() !void {
     
     var server_addr: []const u8 = SERVER_ADDRESS; 
     var server_port: u16 = SERVER_PORT; 
-    const log_level: aids.Logging.Level = aids.Logging.Level.COMPACT; 
+    var log_level: Logging.Level = Logging.Level.COMPACT; 
 
     if (subc) |subcommand| {
         if (std.mem.eql(u8, subcommand, "help")) {
@@ -42,6 +44,21 @@ pub fn main() !void {
                         } 
                     } else {
                         std.log.err("Missing server ip address", .{});
+                        print_usage(program);
+                        return;
+                    }
+                } else if (std.mem.eql(u8, arg, "--log-level")) {
+                    const opt_level = argv.next(); 
+                    if (opt_level) |level| {
+                        if (std.mem.eql(u8, level, "DEV")) {
+                            log_level = Logging.Level.DEV;
+                        } else if (std.mem.eql(u8, level, "SILENT")) {
+                            log_level = Logging.Level.SILENT;
+                        } else if (std.mem.eql(u8, level, "COMPACT")) {
+                            log_level = Logging.Level.COMPACT;
+                        }
+                    } else {
+                        std.log.err("Missing logging level", .{});
                         print_usage(program);
                         return;
                     }

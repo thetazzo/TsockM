@@ -248,7 +248,6 @@ const SharedData = struct {
     pub fn clearPeerPool(self: *@This()) void {
         self.m.lock();
         defer self.m.unlock();
-
         self.peer_pool.clearAndFree();
     }
 
@@ -273,7 +272,6 @@ const SharedData = struct {
     pub fn removePeerFromPool(self: *@This(), peer_ref: PeerRef) void {
         self.m.lock();
         defer self.m.unlock();
-
         self.peer_pool.items[peer_ref.ref_id].alive = false;
         _ = self.peer_pool.orderedRemove(peer_ref.ref_id);
     }
@@ -303,7 +301,6 @@ const SharedData = struct {
             } 
         }
     }
-
     // TODO: convert this to a server action
     pub fn peerNtfyDeath(self: *@This()) void {
         self.m.lock();
@@ -328,7 +325,6 @@ const SharedData = struct {
             }
         }
     }
-
     pub fn peerPoolClean(self: *@This()) void {
         self.m.lock();
         defer self.m.unlock();
@@ -341,7 +337,6 @@ const SharedData = struct {
             }
         }
     }
-
     pub fn peerPoolAppend(self: *@This(), peer: Peer) !void {
         self.m.lock();
         defer self.m.unlock();
@@ -367,6 +362,7 @@ fn read_cmd(
             if (mem.startsWith(u8, user_input, ":exit")) {
                 std.log.warn(":exit not implemented", .{});
             } else if (mem.eql(u8, user_input, ":list")) {
+                // TODO: list server command
                 if (sd.peer_pool.items.len == 0) {
                     print("Peer list: []\n", .{});
                 } else {
@@ -376,6 +372,7 @@ fn read_cmd(
                     }
                 }
             } else if (mem.startsWith(u8, user_input, ":kill")) {
+                // TODO: kill server command
                 const karrg = extract_command_val(user_input, ":kill");
                 if (mem.eql(u8, karrg, "all")) {
                     for (sd.peer_pool.items[0..]) |peer| {
@@ -399,6 +396,7 @@ fn read_cmd(
                     }
                 }
             } else if (mem.startsWith(u8, user_input, ":ping")) {
+                // TODO: ping server command
                 const peer_un = extract_command_val(user_input, ":ping");
                 if (mem.eql(u8, peer_un, "all")) {
                     sd.pingAllPeers(address_str);
@@ -428,11 +426,14 @@ fn read_cmd(
                     }
                 }
             } else if (mem.eql(u8, user_input, ":clean")) {
+                // TODO: clean pool server command
                 sd.peerPoolClean();
             } else if (mem.eql(u8, user_input, ":cc")) {
+                // TODO: clear screen server command
                 try cmn.screen_clear();
                 print("Server running on `" ++ TextColor.paint_green("{s}:{d}") ++ "`\n", .{addr_str, port});
             } else if (mem.eql(u8, user_input, ":info")) {
+                // TODO: print server stats server command
                 const now = try std.time.Instant.now();
                 const dt = now.since(start_time) / std.time.ns_per_ms / 1000;
                 print("==================================================\n", .{});
@@ -455,6 +456,9 @@ fn read_cmd(
     print("Thread `run_cmd` finished\n", .{});
 }
 
+///
+///
+///
 fn polizei(sd: *SharedData) !void {
     var start_t = try std.time.Instant.now();
     var lock = false;
@@ -498,6 +502,7 @@ pub fn start(server_addr: []const u8, server_port: u16) !void {
         .peer_pool = &peer_pool,
     };
     {
+        // TODO: Introduce thread pool
         const t1 = try std.Thread.spawn(.{}, read_incomming, .{ &sd, &server });
         defer t1.join();
         const t2 = try std.Thread.spawn(.{}, read_cmd, .{ &sd, server_addr, server_port, start_time });

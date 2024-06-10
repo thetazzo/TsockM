@@ -95,15 +95,22 @@ start <?flag>` .................. start the program
 
 #### 0.3.0
 * [ ] {FEAT} encrypt body of the protocol
+* [ ] {FEAT} store messages
 #### 0.2.1
-* [ ] Consume program arguments:
+* [ ] {FEAT} Introduce server commands
+* [ ] {FEAT} Introduce server actions
+#### 0.2.0
+* [ ] {FEAT} Consume program arguments:
     * `LOG_LEVEL`:
         * `-s` .... silent mode
         * `-t` .... tiny mode
         * default `DEV`
-#### 0.2.x
+* [ ] {UPDATE} introduce `thread_pool` 
 * [ ] {UPDATE} transform functions to be camel case as per zig standrad
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad
+* [ ] {UPDATE} Unwrap Protocol structure file
+* [x] {UPDATE} Unwrap Peer structure file
+#### 0.2.x
 * [ ] {BUG} notifying peer death does not work every time
 * [ ] `peerFindUsernameMatch` find all peers with specific username
 * [ ] `peerBridgeRef` function that constructs a structre containing the sender peer and the peer the sender is trying to find
@@ -151,7 +158,9 @@ start <?flag>` .................. start the program
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad
 * [ ] better centering of text on input boxes
     * Use `msasuseTextEx(text).y`
-* {FEAT} Client actions
+* [ ] Replace client actions are actually thing that happen on `accept_connection`
+* [ ] Replace client actions as client commands
+* {FEAT} Client command
     * [x] Exiting the application
     * [x] Sending messages
 #### 0.2.2

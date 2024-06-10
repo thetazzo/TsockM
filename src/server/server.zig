@@ -90,7 +90,7 @@ fn connection_accept(
 
     const peer = Peer.construct(str_allocator, conn, protocol);
     const peer_str = std.fmt.allocPrint(str_allocator, "{s}|{s}", .{ peer.id, peer.username }) catch "format failed";
-    try sd.peer_add(peer);
+    try sd.peerPoolAppend(peer);
     const resp = ptc.Protocol.init(
         ptc.Typ.RES, // type
         ptc.Act.COMM, // action
@@ -111,7 +111,7 @@ fn connection_accept(
 fn connection_terminate(sd: *SharedData, protocol: ptc.Protocol) !void {
     const ref = peerRefFromId(sd.peer_pool, protocol.sender_id);
     if (ref) |peer_ref| {
-        try sd.peer_kill(peer_ref.ref_id);
+        try sd.peerKill(peer_ref.ref_id);
     }
 }
 
@@ -245,14 +245,15 @@ const SharedData = struct {
         self.should_exit = should;
     }
 
-    pub fn peer_kill_all(self: *@This()) void {
+    pub fn clearPeerPool(self: *@This()) void {
         self.m.lock();
         defer self.m.unlock();
 
         self.peer_pool.clearAndFree();
     }
 
-    fn peer_kill(self: *@This(), ref_id: usize) !void {
+    // TODO: peerRequestDeath server action
+    fn peerKill(self: *@This(), ref_id: usize) !void {
         self.m.lock();
         defer self.m.unlock();
         const peer_ = self.peer_pool.items[ref_id];
@@ -267,20 +268,20 @@ const SharedData = struct {
         );
         endp.dump(LOG_LEVEL);
         _ = ptc.prot_transmit(peer_.stream(), endp);
-
-        //self.peer_pool.items[ref_id].alive = false;
-        //_ = self.peer_pool.orderedRemove(ref_id);
     }
 
-    pub fn peer_remove(self: *@This(), pid: usize) void {
+    pub fn removePeerFromPool(self: *@This(), peer_ref: PeerRef) void {
         self.m.lock();
         defer self.m.unlock();
 
-        self.peer_pool.items[pid].alive = false;
-        _ = self.peer_pool.orderedRemove(pid);
+        self.peer_pool.items[peer_ref.ref_id].alive = false;
+        _ = self.peer_pool.orderedRemove(peer_ref.ref_id);
     }
 
-    pub fn peer_ping_all(self: *@This(), address_str: []const u8) void {
+    // TODO: convert to a server action
+    //          - only peer.alive = false should be mutex locked
+    //          - introduce markPeerForDeath or straight peer remove
+    pub fn pingAllPeers(self: *@This(), address_str: []const u8) void {
         self.m.lock();
         defer self.m.unlock();
         for (self.peer_pool.items, 0..) |peer_, pid| {
@@ -303,7 +304,8 @@ const SharedData = struct {
         }
     }
 
-    pub fn peer_ntfy_death(self: *@This()) void {
+    // TODO: convert this to a server action
+    pub fn peerNtfyDeath(self: *@This()) void {
         self.m.lock();
         defer self.m.unlock();
         for (self.peer_pool.items) |peer| {
@@ -327,7 +329,7 @@ const SharedData = struct {
         }
     }
 
-    pub fn peer_clean(self: *@This()) void {
+    pub fn peerPoolClean(self: *@This()) void {
         self.m.lock();
         defer self.m.unlock();
         var pplen: usize = self.peer_pool.items.len;
@@ -340,7 +342,7 @@ const SharedData = struct {
         }
     }
 
-    pub fn peer_add(self: *@This(), peer: Peer) !void {
+    pub fn peerPoolAppend(self: *@This(), peer: Peer) !void {
         self.m.lock();
         defer self.m.unlock();
 
@@ -348,6 +350,7 @@ const SharedData = struct {
     }
 };
 
+// TODO: introduce ServerCommand
 fn read_cmd(
     sd: *SharedData,
     addr_str: []const u8,
@@ -388,17 +391,17 @@ fn read_cmd(
                         endp.dump(LOG_LEVEL);
                         _ = ptc.prot_transmit(peer.stream(), endp);
                     }
-                    sd.peer_kill_all();
+                    sd.clearPeerPool();
                 } else {
                     const ref = peerRefFromId(sd.peer_pool, karrg);
                     if (ref) |peer_ref| {
-                        try sd.peer_kill(peer_ref.ref_id);
+                        try sd.peerKill(peer_ref.ref_id);
                     }
                 }
             } else if (mem.startsWith(u8, user_input, ":ping")) {
                 const peer_un = extract_command_val(user_input, ":ping");
                 if (mem.eql(u8, peer_un, "all")) {
-                    sd.peer_ping_all(address_str);
+                    sd.pingAllPeers(address_str);
                 } else {
                     const ref = peerRefFromUsername(sd.peer_pool, peer_un);
                     if (ref) |peer_ref| {
@@ -418,15 +421,14 @@ fn read_cmd(
                         const status = ptc.prot_transmit(peer_ref.peer.stream(), reqp);
                         if (status == 1) {
                             print("peer `{s}` is dead\n", .{peer_ref.peer.username});
-                            // TODO: replace with peer_kill
-                            sd.peer_remove(peer_ref.ref_id);
+                            sd.removePeerFromPool(peer_ref);
                         }  
                     } else {
                         std.log.warn("Peer with username `{s}` does not exist!\n", .{peer_un});
                     }
                 }
             } else if (mem.eql(u8, user_input, ":clean")) {
-                sd.peer_clean();
+                sd.peerPoolClean();
             } else if (mem.eql(u8, user_input, ":cc")) {
                 try cmn.screen_clear();
                 print("Server running on `" ++ TextColor.paint_green("{s}:{d}") ++ "`\n", .{addr_str, port});
@@ -460,15 +462,15 @@ fn polizei(sd: *SharedData) !void {
         const now_t = try std.time.Instant.now();
         const dt  = now_t.since(start_t) / std.time.ns_per_ms;
         if (dt == 2000 and !lock) {
-            sd.peer_ping_all("server");
+            sd.pingAllPeers("server");
             lock = true;
         }
         if (dt == 3000 and lock) {
-            sd.peer_ntfy_death();
+            sd.peerNtfyDeath();
             lock = false;
         }
         if (dt == 4000 and !lock) {
-            sd.peer_clean();
+            sd.peerPoolClean();
             lock = false;
             start_t = try std.time.Instant.now();
         }

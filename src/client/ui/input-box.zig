@@ -7,7 +7,7 @@ value: [256]u8 = undefined,
 letter_count: usize = 0,
 
 pub fn getCleanValue(self: *@This()) []const u8 {
-    const cln = std.mem.sliceTo(&self.value, 0);
+    const cln = std.mem.sliceTo(std.mem.sliceTo(&self.value, 0), 170);
     return cln;
 }
 

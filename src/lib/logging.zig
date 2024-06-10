@@ -2,9 +2,8 @@
 /// Thiing for doing logging
 /// ====================================================================================================
 pub const Level = enum {
-    ALL,
+    DEV,
     COMPACT,
     TINY,
-    DEV,
     SILENT,
 };

@@ -123,7 +123,7 @@ fn readIncomming(
     sd: *SharedData,
     server: *net.Server,
 ) !void {
-    while (true) {
+    while (!sd.should_exit) {
         const conn = try server.accept();
         const server_addr = cmn.address_as_str(server.listen_address);
 
@@ -353,7 +353,7 @@ fn readCmd(
     start_time: std.time.Instant,
 ) !void {
     const address_str = std.fmt.allocPrint(str_allocator, "{s}:{d}", .{ addr_str, port }) catch "format failed";
-    while (true) {
+    while (!sd.should_exit) {
         // read for command
         var buf: [256]u8 = undefined;
         const stdin = std.io.getStdIn().reader();
@@ -462,7 +462,7 @@ fn readCmd(
 fn polizei(sd: *SharedData) !void {
     var start_t = try std.time.Instant.now();
     var lock = false;
-    while (true) {
+    while (!sd.should_exit) {
         const now_t = try std.time.Instant.now();
         const dt  = now_t.since(start_t) / std.time.ns_per_ms;
         if (dt == 2000 and !lock) {
@@ -496,18 +496,18 @@ pub fn start(server_addr: []const u8, server_port: u16) !void {
 
     var peer_pool = std.ArrayList(Peer).init(gpa_allocator);
     defer peer_pool.deinit();
+
+    var thread_pool: [3]std.Thread = undefined;
+
     var sd = SharedData{
         .m = std.Thread.Mutex{},
         .should_exit = false,
         .peer_pool = &peer_pool,
     };
     {
-        // TODO: Introduce thread pool
-        const t1 = try std.Thread.spawn(.{}, readIncomming, .{ &sd, &server });
-        defer t1.join();
-        const t2 = try std.Thread.spawn(.{}, readCmd, .{ &sd, server_addr, server_port, start_time });
-        defer t2.join();
-        const t3 = try std.Thread.spawn(.{}, polizei, .{ &sd });
-        defer t3.join();
+        thread_pool[0] = try std.Thread.spawn(.{}, readIncomming, .{ &sd, &server });
+        thread_pool[1] = try std.Thread.spawn(.{}, readCmd, .{ &sd, server_addr, server_port, start_time });
+        thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{ &sd });
+        defer for(&thread_pool) |thr| thr.join();
     }
 }

@@ -47,17 +47,6 @@ start <?flag>` .................. start the program
 
 * The server portion of the application that handles communication between multiple client instances
 
-### Server Commands
-* These actions can be executed by the server administrator using these commands
-* `:list`
-    * Print information about peers that are currenlty connected to the server
-* `:kill`
-    * Disconnects one or more peers from the server
-    * `:kill all` - disconnect all connected peers
-    * `:kill <peer_id>` - disconnect the peer with the provided id
-* `:help`
-    * Print available commands to the standard output
-
 ### Protocol
 
 * Communication between *server* and *client* is achived through the use of `TsockM.Protocol` 
@@ -89,8 +78,7 @@ start <?flag>` .................. start the program
 * `[dst]` defines the destination address of the protocol
     * *TBA*
 * `[body]` text data
-    * Used when communicating `MSG` ~ holds text of the message
-    * Used when communicating error messages
+    * used for sending a variaty of plaintext(for now) data
 
 ### TODO
 

@@ -95,18 +95,19 @@ start <?flag>` .................. start the program
 
 #### 0.3.0
 * [ ] {FEAT} encrypt body of the protocol
-#### 0.2.x
-* [ ] {UPDATE} transform functions to be camel case as per zig standrad
-* [ ] {UPDATE} transform variables to be snake case as per zig standrad
-* [ ] {BUG} notifying peer death does not work every time
-* [ ] `peer_find_all_username` find all peers with specific username
-* [ ] `peer_bridge_ref` function that constructs a structre containing the sender peer and the peer the sender is trying to find
+#### 0.2.1
 * [ ] Consume program arguments:
     * `LOG_LEVEL`:
         * `-s` .... silent mode
         * `-t` .... tiny mode
         * default `DEV`
-#### 0.1.x
+#### 0.2.x
+* [ ] {UPDATE} transform functions to be camel case as per zig standrad
+* [ ] {UPDATE} transform variables to be snake case as per zig standrad
+* [ ] {BUG} notifying peer death does not work every time
+* [ ] `peerFindUsernameMatch` find all peers with specific username
+* [ ] `peerBridgeRef` function that constructs a structre containing the sender peer and the peer the sender is trying to find
+#### 0.1.0
 * [x] send a notification to client when a peer gets terminated
 * [x] Test message coloring
 * [x] `:info` action for printing server stats (amount of peers connected, uptime, server-address, etc.)
@@ -131,23 +132,28 @@ start <?flag>` .................. start the program
 ### TODO
 
 #### 0.3.x
+* [ ] {FEAT} popups for warnings and errors
 * [ ] {FEAT} decrypt body of the protocol
 * [ ] {FEAT} clipboard paste support
 * [ ] {UPADTE} removed depricated code
 * [ ] {FEAT} custom string tokens like `\c{RED};HELLO\` that applies special properties to text
-#### 0.2.4
+    * `\b;HELLO\` prints bold text
+    * `\u;HELLO\` prints underlined text
+    * `\c{#00FFAA};HELLO\` prints colored text based on hex value 
+* {FEAT} Client actions
+    * [ ] Ping user by username and print user info
+#### 0.2.3
+* [x] finish implementaton of `:exit` action ~ handle COMM_END response
 * [ ] don't crash the the client wait for a connection to the server be available
 * [ ] print client termination
 * [ ] Multicolor support for message display
-#### 0.2.3
 * [ ] {UPDATE} transform functions to be camel case as per zig standrad
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad
 * [ ] better centering of text on input boxes
     * Use `msasuseTextEx(text).y`
 * {FEAT} Client actions
-    * [ ] Exiting the application
-    * [ ] Sending messages
-    * [ ] Ping user by username and print user info
+    * [x] Exiting the application
+    * [x] Sending messages
 #### 0.2.2
 * [x] {FIX} when exiting duuring `connection succesful` the program deadlocks
 * [x] {FEAT} consume `-fp` for setting location to the font 
@@ -155,7 +161,6 @@ start <?flag>` .................. start the program
 * [x] set client address source when sending things to the server
 #### 0.2.x
 * [x] {FEAT} read server adddress as program argument
-* [ ] Allow user to specify the color of the text
 #### 0.1.0
 * [x] Consume peer termination notification and print it on screen
 * [x] Test message coloring

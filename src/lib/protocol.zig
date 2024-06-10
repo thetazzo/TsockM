@@ -63,13 +63,6 @@ pub fn str_as_retcode(code: []const u8) StatusCode {
     }
 }
 
-pub const LogLevel = enum {
-    SILENT,
-    DEV,
-    TINY,
-    REQ,
-};
-
 pub const Id = []const u8;
 pub const Body = []const u8;
 pub const Addr = []const u8;
@@ -105,33 +98,39 @@ pub fn init(
     };
 }
 
-pub fn dump(self: @This(), log_level: LogLevel) void {
-    if (log_level == LogLevel.SILENT) return;
+pub fn dump(self: @This(), log_level: Logging.Level) void {
 
-    if (log_level == LogLevel.REQ and self.type != Typ.REQ) return;
+    if (log_level == Logging.Level.SILENT) return;
 
-    print("====================================\n", .{});
-    print(" {s}: `{s}` {{{s}}}                 \n", .{
-        prot_type_as_str(self.type),
-        @tagName(self.action),
-        self.sender_id,
-    });
-    if (log_level == LogLevel.DEV) {
-        print("------------------------------------\n", .{});
-        print(" Protocol \n", .{});
-        print("     type:      `{s}`\n", .{@tagName(self.type)});
-        print("     action:    `{s}`\n", .{@tagName(self.action)});
-        print("     status_code:  `{s}`\n", .{statuscode_as_str(self.status_code)});
-        print("     sender_id: `{s}`\n", .{self.sender_id});
-        print("     src_addr:  `{s}`\n", .{self.src});
-        print("     dst_addr:  `{s}`\n", .{self.dst});
-        print("     body:      `{s}`\n", .{self.body});
+    if (log_level == Logging.Level.COMPACT) {
+        print("{s}\n", .{self.as_str()});
+    } else {
+        // TODO: Logging.filter
+        //if (log_level == Logging.Level.REQ and self.type != Typ.REQ) return;
+
+        print("====================================\n", .{});
+        print(" {s}: `{s}` {{{s}}}                 \n", .{
+            prot_type_as_str(self.type),
+            @tagName(self.action),
+            self.sender_id,
+        });
+        if (log_level == Logging.Level.DEV) {
+            print("------------------------------------\n", .{});
+            print(" Protocol \n", .{});
+            print("     type:      `{s}`\n", .{@tagName(self.type)});
+            print("     action:    `{s}`\n", .{@tagName(self.action)});
+            print("     status_code:  `{s}`\n", .{statuscode_as_str(self.status_code)});
+            print("     sender_id: `{s}`\n", .{self.sender_id});
+            print("     src_addr:  `{s}`\n", .{self.src});
+            print("     dst_addr:  `{s}`\n", .{self.dst});
+            print("     body:      `{s}`\n", .{self.body});
+        }
+        print("====================================\n", .{});
     }
-    print("====================================\n", .{});
 }
 
 pub fn as_str(self: @This()) []const u8 {
-    var buf: [512]u8 = undefined;
+    var buf: [2048]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&buf);
     var string = std.ArrayList(u8).init(fba.allocator());
     _ = string.appendSlice(@tagName(self.type)) catch "OutOfMemory";

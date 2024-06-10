@@ -97,9 +97,9 @@ start <?flag>` .................. start the program
 * [ ] {FEAT} encrypt body of the protocol
 * [ ] {FEAT} store messages
 #### 0.2.1
-* [ ] {FEAT} Introduce server commands
+* [x] {FEAT} Introduce server commands
+* [x] {FEAT} `:exit` server command
 * [ ] {FEAT} Introduce server actions
-* [ ] {FEAT} `:exit` server command
 #### 0.2.0
 * [x] {FEAT} Server strcture
 * [x] {FEAT} Consume program arguments:

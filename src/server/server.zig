@@ -1,7 +1,7 @@
 const std = @import("std");
 const ptc = @import("ptc");
 const cmn = @import("cmn");
-const tclr = @import("text_color");
+const TextColor = @import("text_color");
 const Peer = @import("peer.zig");
 const net = std.net;
 const mem = std.mem;
@@ -33,24 +33,30 @@ pub fn peerRefFromUsername(peer_pool: *std.ArrayList(Peer), un: []const u8) ?Pee
     return null;
 }
 
+///====================================================================================
+///
+///====================================================================================
 fn server_start(address: []const u8, port: u16) !net.Server {
-    const lh = try net.Address.resolveIp(address, port);
-    print("Server running on `" ++ tclr.paint_green("{s}:{d}") ++ "`\n", .{address, port});
-    return lh.listen(.{
+    const addr = try net.Address.resolveIp(address, port);
+    print("Server running on `" ++ TextColor.paint_green("{s}:{d}") ++ "`\n", .{address, port});
+    return addr.listen(.{
         .reuse_address = true,
     });
 }
 
+///====================================================================================
+/// Send message to all connected peers
+///     - Server action
+///====================================================================================
 fn message_broadcast(
     sd: *SharedData,
     sender_id: []const u8,
     msg: []const u8,
-) !void {
-    var pind: usize = 0;
-    const ref = peerRefFromId(sd.peer_pool, sender_id);
-    if (ref) |peer_ref| {
-        for (sd.peer_pool.items[0..]) |peer| {
-            if (peer_ref.ref_id != pind and peer.alive) {
+) void {
+    const opt_peer_ref = peerRefFromId(sd.peer_pool, sender_id);
+    if (opt_peer_ref) |peer_ref| {
+        for (sd.peer_pool.items, 0..) |peer, pid| {
+            if (peer_ref.ref_id != pid and peer.alive) {
                 const src_addr = peer_ref.peer.commAddressAsStr();
                 const dst_addr = peer.commAddressAsStr();
                 const msgp = ptc.Protocol.init(
@@ -65,11 +71,14 @@ fn message_broadcast(
                 msgp.dump(LOG_LEVEL);
                 _ = ptc.prot_transmit(peer.stream(), msgp);
             }
-            pind += 1;
         }
     }
 }
 
+///====================================================================================
+/// Establish connection between client and server
+///     - Server action
+///====================================================================================
 fn connection_accept(
     sd: *SharedData,
     conn: net.Server.Connection,
@@ -95,6 +104,10 @@ fn connection_accept(
     _ = ptc.prot_transmit(stream, resp);
 }
 
+///====================================================================================
+/// Terminate connection between client and server
+///     - Server action
+///====================================================================================
 fn connection_terminate(sd: *SharedData, protocol: ptc.Protocol) !void {
     const ref = peerRefFromId(sd.peer_pool, protocol.sender_id);
     if (ref) |peer_ref| {
@@ -102,6 +115,10 @@ fn connection_terminate(sd: *SharedData, protocol: ptc.Protocol) !void {
     }
 }
 
+///====================================================================================
+/// Read incomming requests from the client
+///     - Server action
+///====================================================================================
 fn read_incomming(
     sd: *SharedData,
     server: *net.Server,
@@ -128,8 +145,9 @@ fn read_incomming(
             } else if (protocol.is_action(ptc.Act.COMM_END)) {
                 try connection_terminate(sd, protocol);
             } else if (protocol.is_action(ptc.Act.MSG)) {
-                try message_broadcast(sd, protocol.sender_id, protocol.body);
+                message_broadcast(sd, protocol.sender_id, protocol.body);
             } else if (protocol.is_action(ptc.Act.GET_PEER)) {
+                // TODO: get peer server action
                 // TODO: make a peer_find_bridge_ref
                 //      - similar to peerFindRef
                 //      - constructs a structure of sender peer and search peer
@@ -152,6 +170,7 @@ fn read_incomming(
                     }
                 }
             } else if (protocol.is_action(ptc.Act.NONE)) {
+                // TODO: handle bad request action
                 const errp = ptc.Protocol.init(
                 ptc.Typ.ERR,
                 protocol.action,
@@ -166,6 +185,7 @@ fn read_incomming(
             }
         } else if (protocol.is_response()) {
             if (protocol.is_action(ptc.Act.COMM)) {
+                // TODO: handle communication response action
                 const ref = peerRefFromId(sd.peer_pool, protocol.sender_id);
                 if (ref) |peer| {
                     print("peer `{s}` is alive\n", .{peer.peer.username});
@@ -174,6 +194,7 @@ fn read_incomming(
                 }
             } 
         } else if (protocol.type == ptc.Typ.NONE) {
+            // TODO: handle bad request action
             const errp = ptc.Protocol.init(
             ptc.Typ.ERR,
             protocol.action,
@@ -195,6 +216,8 @@ fn print_usage() void {
     print("COMMANDS:\n", .{});
     print("    * :cc ................ clear screen\n", .{});
     print("    * :list .............. list all active peers\n", .{});
+    print("    * :ping all .......... ping all peers and update their life status\n", .{});
+    print("    * :ping <peer_id> .... ping one peer and update its life status\n", .{});
     print("    * :kill all .......... kill all peers\n", .{});
     print("    * :kill <peer_id> .... kill one peer\n", .{});
 }
@@ -215,7 +238,7 @@ const SharedData = struct {
     should_exit: bool,
     peer_pool: *std.ArrayList(Peer),
 
-    pub fn update_value(self: *@This(), should: bool) void {
+    pub fn setShouldExit(self: *@This(), should: bool) void {
         self.m.lock();
         defer self.m.unlock();
 
@@ -406,7 +429,7 @@ fn read_cmd(
                 sd.peer_clean();
             } else if (mem.eql(u8, user_input, ":cc")) {
                 try cmn.screen_clear();
-                print("Server running on `" ++ tclr.paint_green("{s}:{d}") ++ "`\n", .{addr_str, port});
+                print("Server running on `" ++ TextColor.paint_green("{s}:{d}") ++ "`\n", .{addr_str, port});
             } else if (mem.eql(u8, user_input, ":info")) {
                 const now = try std.time.Instant.now();
                 const dt = now.since(start_time) / std.time.ns_per_ms / 1000;

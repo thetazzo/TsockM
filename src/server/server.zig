@@ -42,6 +42,7 @@ const Server = struct {
     log_level: Logging.Level, 
     start_time: std.time.Instant,
     net_server: net.Server,
+    thread_pool: []std.Thread = undefined,
 };
 
 fn serverStart(hostname: []const u8, port: u16, log_level: Logging.Level) !Server {
@@ -228,6 +229,7 @@ fn readIncomming(
             std.log.err("unreachable code", .{});
         }
     }
+    print("Ending `readIncomming`\n", .{});
 }
 
 fn printUsage() void {
@@ -376,7 +378,7 @@ fn readCmd(
         if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
             // Handle different commands
             if (mem.startsWith(u8, user_input, ":exit")) {
-                std.log.warn(":exit not implemented", .{});
+                std.posix.exit(0);
             } else if (mem.eql(u8, user_input, ":list")) {
                 // TODO: list server command
                 if (sd.peer_pool.items.len == 0) {
@@ -514,6 +516,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     defer peer_pool.deinit();
 
     var thread_pool: [3]std.Thread = undefined;
+    server.thread_pool = &thread_pool;
 
     var sd = SharedData{
         .m = std.Thread.Mutex{},

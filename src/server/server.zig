@@ -2,6 +2,7 @@ const std = @import("std");
 const aids = @import("aids");
 const core = @import("core/core.zig");
 const COMM_ACTION = @import("actions/comm-action.zig").COMM_ACTION;
+const COMM_END_ACTION = @import("actions/comm-end-action.zig").COMM_END_ACTION;
 const Server = core.Server;
 const Peer = core.Peer;
 const PeerRef = core.PeerRef;
@@ -16,16 +17,6 @@ const print = std.debug.print;
 
 const str_allocator = std.heap.page_allocator;
 
-pub fn peerRefFromId(peer_pool: *std.ArrayList(Peer), id: Peer.PEER_ID) ?PeerRef {
-    // O(n)
-    for (peer_pool.items, 0..) |peer, i| {
-        if (mem.eql(u8, peer.id, id)) {
-            return .{ .peer = peer, .ref_id = i };
-        }
-    }
-    return null;
-}
-
 pub fn peerRefFromUsername(peer_pool: *std.ArrayList(Peer), username: []const u8) ?PeerRef {
     // O(n)
     for (peer_pool.items, 0..) |peer, i| {
@@ -37,53 +28,27 @@ pub fn peerRefFromUsername(peer_pool: *std.ArrayList(Peer), username: []const u8
 }
 
 /// TODO: convert to server action
-fn messageBroadcast(
-    sd: *SharedData,
-    sender_id: []const u8,
-    msg: []const u8,
-) void {
-    const opt_peer_ref = peerRefFromId(sd.peer_pool, sender_id);
-    if (opt_peer_ref) |peer_ref| {
-        for (sd.peer_pool.items, 0..) |peer, pid| {
-            if (peer_ref.ref_id != pid and peer.alive) {
-                const src_addr = peer_ref.peer.commAddressAsStr();
-                const dst_addr = peer.commAddressAsStr();
-                const msgp = Protocol.init(
-                    Protocol.Typ.RES,
-                    Protocol.Act.MSG,
-                    Protocol.StatusCode.OK,
-                    sender_id,
-                    src_addr,
-                    dst_addr,
-                    msg,
-                );
-                msgp.dump(sd.server.log_level);
-                _ = Protocol.transmit(peer.stream(), msgp);
-            }
-        }
-    }
+fn messageBroadcast(sd: *SharedData, sender_id: []const u8, msg: []const u8,) void {
+    _ = sd;
+    _ = sender_id;
+    _ = msg;
+    std.log.warn("`messageBroadcast` is depricated", .{});
 }
 
 /// TODO: convert to server action
-fn connectionAccept(
-    sd: *SharedData,
-    conn: net.Server.Connection,
-    server_addr: []const u8,
-    protocol: Protocol,
-) !void {
+fn connectionAccept( sd: *SharedData, conn: net.Server.Connection, server_addr: []const u8, protocol: Protocol,) !void {
     _ = sd;
     _ = conn;
     _ = server_addr;
     _ = protocol;
-    std.log.warn("depricated", .{});
+    std.log.warn("`connectionAccept` is depricated", .{});
 }
 
 /// TODO: convert to server action
 fn connectionTerminate(sd: *SharedData, protocol: Protocol) !void {
-    const opt_peer_ref = peerRefFromId(sd.peer_pool, protocol.sender_id);
-    if (opt_peer_ref) |peer_ref| {
-        try sd.peerKill(sd.server, peer_ref.ref_id);
-    }
+    _ = sd;
+    _ = protocol;
+    std.log.warn("`connectionTerminate` is depricated", .{});
 }
 
 /// I am thread
@@ -477,6 +442,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     defer server.deinit();
 
     server.Actioner.add(Protocol.Act.COMM, COMM_ACTION);
+    server.Actioner.add(Protocol.Act.COMM_END, COMM_END_ACTION);
 
     var server_cmds = std.StringHashMap(Command).init(gpa_allocator);
     errdefer server_cmds.deinit();

@@ -71,7 +71,7 @@ pub const Action = struct {
         err:    *const fn () void,
     },
     transmit: ?struct {
-        request:  *const fn (Protocol.TransmitionMode, *SharedData) void,
+        request:  *const fn (Protocol.TransmitionMode, *SharedData, []const u8) void,
         response: *const fn () void,
         err:      *const fn () void,
     },

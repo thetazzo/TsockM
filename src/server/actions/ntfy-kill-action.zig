@@ -24,7 +24,7 @@ fn collectError() void {
     std.log.err("not implemented", .{});
 }
 
-fn transmitRequest(mode: Protocol.TransmitionMode, sd: *SharedData) void {
+fn transmitRequest(mode: Protocol.TransmitionMode, sd: *SharedData, _: []const u8) void {
     switch (mode) {
         .UNICAST => {
             std.log.err("not implemented", .{});

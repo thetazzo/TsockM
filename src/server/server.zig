@@ -1,13 +1,7 @@
 const std = @import("std");
 const aids = @import("aids");
 const core = @import("core/core.zig");
-const COMM_ACTION = @import("actions/comm-action.zig").ACTION;
-const COMM_END_ACTION = @import("actions/comm-end-action.zig").ACTION;
-const MSG_ACTION = @import("actions/msg-action.zig").ACTION;
-const GET_PEER_ACTION = @import("actions/get-peer-action.zig").ACTION;
-const NTFY_KILL_ACTION = @import("actions/ntfy-kill-action.zig").ACTION;
-const BAD_REQUEST_ACTION = @import("actions/bad-request-action.zig").ACTION;
-const CLEAN_PEER_POOL_ACTION = @import("actions/clean-peer-pool-action.zig").ACTION;
+const ServerAction = @import("actions/actions.zig");
 const Server = core.Server;
 const Peer = core.Peer;
 const PeerRef = core.PeerRef;
@@ -299,13 +293,13 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     var server = Server.init(gpa_allocator, hostname, port, log_level);
     defer server.deinit();
 
-    server.Actioner.add(core.Act.COMM, COMM_ACTION);
-    server.Actioner.add(core.Act.COMM_END, COMM_END_ACTION);
-    server.Actioner.add(core.Act.MSG, MSG_ACTION);
-    server.Actioner.add(core.Act.GET_PEER, GET_PEER_ACTION);
-    server.Actioner.add(core.Act.NTFY_KILL, NTFY_KILL_ACTION);
-    server.Actioner.add(core.Act.NONE, BAD_REQUEST_ACTION);
-    server.Actioner.add(core.Act.CLEAN_PEER_POOL, CLEAN_PEER_POOL_ACTION);
+    server.Actioner.add(core.Act.COMM, ServerAction.COMM_ACTION);
+    server.Actioner.add(core.Act.COMM_END, ServerAction.COMM_END_ACTION);
+    server.Actioner.add(core.Act.MSG, ServerAction.MSG_ACTION);
+    server.Actioner.add(core.Act.GET_PEER, ServerAction.GET_PEER_ACTION);
+    server.Actioner.add(core.Act.NTFY_KILL, ServerAction.NTFY_KILL_ACTION);
+    server.Actioner.add(core.Act.NONE, ServerAction.BAD_REQUEST_ACTION);
+    server.Actioner.add(core.Act.CLEAN_PEER_POOL, ServerAction.CLEAN_PEER_POOL_ACTION);
 
     var server_cmds = std.StringHashMap(Command).init(gpa_allocator);
     errdefer server_cmds.deinit();

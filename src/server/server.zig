@@ -371,11 +371,12 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     var server = Server.init(gpa_allocator, hostname, port, log_level);
     defer server.deinit();
 
-    server.Actioner.add(Protocol.Act.COMM, COMM_ACTION);
-    server.Actioner.add(Protocol.Act.COMM_END, COMM_END_ACTION);
-    server.Actioner.add(Protocol.Act.MSG, MSG_ACTION);
-    server.Actioner.add(Protocol.Act.GET_PEER, GET_PEER_ACTION);
-    server.Actioner.add(Protocol.Act.NONE, BAD_REQUEST_ACTION);
+    server.Actioner.addListener(Protocol.Act.COMM, COMM_ACTION);
+    server.Actioner.addListener(Protocol.Act.COMM_END, COMM_END_ACTION);
+    server.Actioner.addListener(Protocol.Act.MSG, MSG_ACTION);
+    server.Actioner.addListener(Protocol.Act.GET_PEER, GET_PEER_ACTION);
+    server.Actioner.addListener(Protocol.Act.NONE, BAD_REQUEST_ACTION);
+    //server.Actioner.addPatrol(Protocol.Act.PING, ...);
 
     var server_cmds = std.StringHashMap(Command).init(gpa_allocator);
     errdefer server_cmds.deinit();

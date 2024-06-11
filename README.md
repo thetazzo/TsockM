@@ -80,7 +80,6 @@ zig build client -- <subcommand>
 * [ ] {FEAT} store messages
 #### 0.2.1
 * [x] {FEAT} Introduce server commands
-* [x] {FEAT} `:exit` server command
 * [ ] {FEAT} Introduce server actions
 #### 0.2.0
 * [x] {FEAT} Server strcture
@@ -94,7 +93,6 @@ zig build client -- <subcommand>
 #### 0.2.x
 * [ ] {BUG} notifying peer death does not work every time
 * [ ] `peerFindUsernameMatch` find all peers with specific username
-* [ ] `peerBridgeRef` function that constructs a structre containing the sender peer and the peer the sender is trying to find
 #### 0.1.0
 * [x] send a notification to client when a peer gets terminated
 * [x] Test message coloring

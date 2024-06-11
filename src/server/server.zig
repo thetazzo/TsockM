@@ -4,6 +4,7 @@ const core = @import("core/core.zig");
 const COMM_ACTION = @import("actions/comm-action.zig").COMM_ACTION;
 const COMM_END_ACTION = @import("actions/comm-end-action.zig").COMM_END_ACTION;
 const MSG_ACTION = @import("actions/msg-action.zig").MSG_ACTION;
+const GET_PEER_ACTION = @import("actions/get-peer-action.zig").ACTION;
 const Server = core.Server;
 const Peer = core.Peer;
 const PeerRef = core.PeerRef;
@@ -92,28 +93,6 @@ fn listener(
             } else if (protocol.is_action(Protocol.Act.MSG)) {
                 messageBroadcast(sd, protocol.sender_id, protocol.body);
             } else if (protocol.is_action(Protocol.Act.GET_PEER)) {
-                // TODO: get peer server action
-                // TODO: make a peer_find_bridge_ref
-                //      - similar to peerFindRef
-                //      - constructs a structure of sender peer and search peer
-                const opt_server_peer_ref = core.PeerCore.peerRefFromId(sd.peer_pool, protocol.sender_id);
-                const opt_peer_ref  = core.PeerCore.peerRefFromId(sd.peer_pool, protocol.body);
-                if (opt_server_peer_ref) |server_peer_ref| {
-                    if (opt_peer_ref) |peer_ref| {
-                        const dst_addr = server_peer_ref.peer.commAddressAsStr();
-                        const resp = Protocol.init(
-                        Protocol.Typ.RES, // type
-                        Protocol.Act.GET_PEER, // action
-                        Protocol.StatusCode.OK, // status code
-                        "server", // sender id
-                        server_addr, // src
-                        dst_addr, // dst
-                        peer_ref.peer.username, // body
-                    );
-                        resp.dump(sd.server.log_level);
-                        _ = Protocol.transmit(server_peer_ref.peer.stream(), resp);
-                    }
-                }
             } else if (protocol.is_action(Protocol.Act.NONE)) {
                 // TODO: handle bad request action
                 const errp = Protocol.init(
@@ -445,6 +424,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     server.Actioner.add(Protocol.Act.COMM, COMM_ACTION);
     server.Actioner.add(Protocol.Act.COMM_END, COMM_END_ACTION);
     server.Actioner.add(Protocol.Act.MSG, MSG_ACTION);
+    server.Actioner.add(Protocol.Act.GET_PEER, GET_PEER_ACTION);
 
     var server_cmds = std.StringHashMap(Command).init(gpa_allocator);
     errdefer server_cmds.deinit();

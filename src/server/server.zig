@@ -75,9 +75,10 @@ fn listener(
         const opt_action = sd.server.Actioner.get(protocol.action);
         if (opt_action) |act| {
             switch (protocol.type) {
-                .REQ => act.collect.request(conn, sd, protocol),
-                .RES => act.collect.response(sd, protocol),
-                .ERR => act.collect.err(),
+                // TODO: better handling of optional types
+                .REQ => act.collect.?.request(conn, sd, protocol),
+                .RES => act.collect.?.response(sd, protocol),
+                .ERR => act.collect.?.err(),
                 else => {
                     std.log.err("`therad::listener`: unknown protocol type!", .{});
                     unreachable;
@@ -160,13 +161,13 @@ fn polizei(sd: *SharedData) !void {
         const dt  = now_t.since(start_t) / std.time.ns_per_ms;
         if (dt == 2000 and !lock) {
             if (sd.server.Actioner.get(Protocol.Act.COMM)) |act| {
-                act.transmit.request(Protocol.TransmitionMode.BROADCAST, sd);
+                act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd);
             }
             lock = true;
         }
         if (dt == 3000 and lock) {
             if (sd.server.Actioner.get(Protocol.Act.NTFY_KILL)) |act| {
-                act.transmit.request(Protocol.TransmitionMode.BROADCAST, sd);
+                act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd);
             }
             lock = false;
         }

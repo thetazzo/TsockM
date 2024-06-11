@@ -28,6 +28,17 @@ pub const Act = enum {
     NONE,
 };
 
+// TODO: make this part of the protocol
+//       as of right now this is only used
+//       on transmition of servercationsc
+// TODO: allow protocols to specify how they
+//       should be transmitted and to where 
+//       they should be transmitted
+pub const TransmitionMode = enum {
+    UNICAST,
+    BROADCAST,
+};
+
 pub const StatusCode = enum(u16) {
     OK = 200,
     BAD_REQUEST = 400,

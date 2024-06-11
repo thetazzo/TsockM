@@ -14,6 +14,7 @@ pub fn address_as_str(addr: std.net.Address) []const u8 {
 }
 
 pub fn screenClear() !void {
+    std.log.warn("depricated", .{});
     const stdout = std.io.getStdOut().writer();
     try stdout.print("\x1B[2J\x1B[H", .{});
 }

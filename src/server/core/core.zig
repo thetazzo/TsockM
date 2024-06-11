@@ -1,5 +1,13 @@
 const std = @import("std");
 const aids = @import("aids");
+const actioner_lib = @import("actioner.zig");
+const commander_lib = @import("commander.zig");
+const Actioner = actioner_lib.Actioner;
+pub const Action = actioner_lib.Action;
+pub const ParseAct = actioner_lib.parseAct;
+pub const Act = actioner_lib.Act;
+pub const Commander = commander_lib.Commander;
+pub const Command = commander_lib.Command;
 pub const PeerCore = @import("peer.zig");
 pub const PeerRef = PeerCore.PeerRef;
 pub const Peer = PeerCore.Peer;
@@ -45,72 +53,6 @@ pub const SharedData = struct {
         try self.peer_pool.append(peer);
     }
 };
-
-fn Transmitter(comptime T: type) type {
-    return struct {
-        request:  *const fn (Protocol.TransmitionMode, *SharedData, T) void,
-        response: *const fn () void,
-        err:      *const fn () void,
-    };
-}
-
-pub const Action = struct {
-    collect: ?struct {
-        request:  *const fn (std.net.Server.Connection, *SharedData, Protocol) void,
-        response: *const fn (*SharedData, Protocol) void,
-        err:    *const fn () void,
-    },
-    transmit: ?struct {
-        request:  *const fn (Protocol.TransmitionMode, *SharedData, []const u8) void,
-        response: *const fn () void,
-        err:      *const fn () void,
-    },
-    internal: ?*const fn (*SharedData) void,
-};
-
-pub const Act = enum {
-    COMM,
-    COMM_END,
-    MSG,
-    GET_PEER,
-    NTFY_KILL,
-    NONE,
-    CLEAN_PEER_POOL,
-};
-
-pub fn parseAct(act: Protocol.Act) Act {
-    return switch (act) {
-        .COMM => Act.COMM,
-        .COMM_END => Act.COMM_END,
-        .MSG => Act.MSG,
-        .GET_PEER => Act.GET_PEER,
-        .NTFY_KILL => Act.NTFY_KILL,
-        .NONE => Act.NONE,
-    };
-}
-
-const Actioner = struct {
-    actions: std.AutoHashMap(Act, Action), 
-    pub fn init(allocator: std.mem.Allocator) Actioner {
-        const actions = std.AutoHashMap(Act, Action).init(allocator);
-        return Actioner{
-            .actions = actions, 
-        };
-    }
-    pub fn add(self: *@This(), caller: Act, act: Action) void {
-        self.actions.put(caller, act) catch |err| {
-            std.log.err("`core::Actioner::add`: {any}\n", .{err});
-            std.posix.exit(1);
-        };
-    }
-    pub fn get(self: *@This(), caller: Act) ?Action {
-        return self.actions.get(caller);
-    }
-    pub fn deinit(self: *@This()) void {
-        self.actions.deinit();
-    }
-};
-
 pub const Server = struct {
     hostname: []const u8,
     port: u16,
@@ -120,6 +62,7 @@ pub const Server = struct {
     start_time: std.time.Instant = undefined,
     net_server: std.net.Server = undefined,
     Actioner: Actioner,
+    Commander: Commander,
     pub fn init(
         allocator: std.mem.Allocator,
         hostname: []const u8,
@@ -131,6 +74,7 @@ pub const Server = struct {
             std.posix.exit(1);
         };
         const actioner = Actioner.init(allocator);
+        const commander = Commander.init(allocator);
         return Server {
             .hostname = hostname,
             .port = port,
@@ -138,6 +82,7 @@ pub const Server = struct {
             .address = addr,
             .address_str = cmn.address_as_str(addr),
             .Actioner = actioner,
+            .Commander = commander,
         };
     }
     pub fn start(self: *@This()) void {
@@ -163,5 +108,6 @@ pub const Server = struct {
     pub fn deinit(self: *@This()) void {
         self.net_server.deinit();
         self.Actioner.deinit();
+        self.Commander.deinit();
     }
 };

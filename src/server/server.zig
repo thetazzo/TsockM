@@ -2,6 +2,7 @@ const std = @import("std");
 const aids = @import("aids");
 const core = @import("core/core.zig");
 const ServerAction = @import("actions/actions.zig");
+const ServerCommand = @import("commands/commands.zig");
 const Server = core.Server;
 const Peer = core.Peer;
 const PeerRef = core.PeerRef;
@@ -43,7 +44,7 @@ fn listener(
         var protocol = Protocol.protocolFromStr(recv); // parse protocol from recieved bytes
         protocol.dump(sd.server.log_level);
 
-        const opt_action = sd.server.Actioner.get(core.parseAct(protocol.action));
+        const opt_action = sd.server.Actioner.get(core.ParseAct(protocol.action));
         if (opt_action) |act| {
             switch (protocol.type) {
                 // TODO: better handling of optional types
@@ -87,7 +88,6 @@ fn extractCommandValue(cs: []const u8, cmd: []const u8) []const u8 {
 /// i am a thread
 fn commander(
     sd: *SharedData,
-    server_cmds: *std.StringHashMap(Command),
 ) !void {
     while (!sd.should_exit) {
         // read for command
@@ -97,8 +97,8 @@ fn commander(
             // Handle different commands
             var splits = mem.splitScalar(u8, user_input, ' ');
             if (splits.next()) |ui| {
-                if (server_cmds.get(ui)) |cmd| {
-                    cmd(user_input, sd);
+                if (sd.server.Commander.get(ui)) |cmd| {
+                    cmd.executor(user_input, sd);
                 } else {
                     print("Unknown command: `{s}`\n", .{user_input});
                     printUsage();
@@ -143,13 +143,7 @@ fn polizei(sd: *SharedData) !void {
 
 const Command = *const fn ([]const u8, *SharedData) void;
 
-const ServerCommand = struct {
-    pub fn exitServer(cmd: []const u8, sd: *SharedData) void {
-        _ = cmd;
-        _ = sd;
-        print("Exiting server ...\n", .{});
-        std.posix.exit(0);
-    }
+const ServerCommandi_ = struct {
     pub fn printServerStats(cmd: []const u8, sd: *SharedData) void {
         _ = cmd;
         const now = std.time.Instant.now() catch |err| {
@@ -301,19 +295,15 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     server.Actioner.add(core.Act.NONE, ServerAction.BAD_REQUEST_ACTION);
     server.Actioner.add(core.Act.CLEAN_PEER_POOL, ServerAction.CLEAN_PEER_POOL_ACTION);
 
-    var server_cmds = std.StringHashMap(Command).init(gpa_allocator);
-    errdefer server_cmds.deinit();
-    defer server_cmds.deinit();
-
-    _ = try server_cmds.put(":exit"      , ServerCommand.exitServer);
-    _ = try server_cmds.put(":info"      , ServerCommand.printServerStats);
-    _ = try server_cmds.put(":list"      , ServerCommand.listActivePeers);
-    _ = try server_cmds.put(":ls"        , ServerCommand.listActivePeers);
-    _ = try server_cmds.put(":kill"      , ServerCommand.killPeers);
-    _ = try server_cmds.put(":ping"      , ServerCommand.ping);
-    _ = try server_cmds.put(":c"         , ServerCommand.clearScreen);
-    _ = try server_cmds.put(":clean-pool", ServerCommand.cleanPool);
-    _ = try server_cmds.put(":help"      , ServerCommand.printProgramUsage);
+    server.Commander.add(":exit", ServerCommand.EXIT_SERVER);
+    //server.Commander.add(":info", ServerCommand.printServerStats);
+    //server.Commander.add(":list", ServerCommand.listActivePeers);
+    //server.Commander.add(":ls", ServerCommand.listActivePeers);
+    //server.Commander.add(":kill", ServerCommand.killPeers);
+    //server.Commander.add(":ping", ServerCommand.ping);
+    //server.Commander.add(":c", ServerCommand.clearScreen);
+    //server.Commander.add(":clean-pool", ServerCommand.cleanPool);
+    //server.Commander.add(":help", ServerCommand.printProgramUsage);
 
     var peer_pool = std.ArrayList(Peer).init(gpa_allocator);
     defer peer_pool.deinit();
@@ -330,7 +320,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     };
     {
         thread_pool[0] = try std.Thread.spawn(.{}, listener, .{ &sd });
-        thread_pool[1] = try std.Thread.spawn(.{}, commander, .{ &sd, &server_cmds });
+        thread_pool[1] = try std.Thread.spawn(.{}, commander, .{ &sd });
         thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{ &sd });
     }
     defer for(thread_pool) |thr| thr.join();

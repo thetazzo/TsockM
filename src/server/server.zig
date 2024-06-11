@@ -144,17 +144,6 @@ fn polizei(sd: *SharedData) !void {
 const Command = *const fn ([]const u8, *SharedData) void;
 
 const ServerCommandi_ = struct {
-    pub fn listActivePeers(cmd: []const u8, sd: *SharedData) void {
-        _ = cmd;
-        if (sd.peer_pool.items.len == 0) {
-            print("Peer list: []\n", .{});
-        } else {
-            print("Peer list ({d}):\n", .{sd.peer_pool.items.len});
-            for (sd.peer_pool.items[0..]) |peer| {
-                peer.dump();
-            }
-        }
-    }
     pub fn killPeers(cmd: []const u8, sd: *SharedData) void {
         var split = mem.splitBackwardsScalar(u8, cmd, ' ');
         if (split.next()) |arg| {
@@ -282,8 +271,8 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
 
     server.Commander.add(":exit", ServerCommand.EXIT_SERVER);
     server.Commander.add(":info", ServerCommand.PRINT_SERVER_STATS);
-    //server.Commander.add(":list", ServerCommand.listActivePeers);
-    //server.Commander.add(":ls", ServerCommand.listActivePeers);
+    server.Commander.add(":list", ServerCommand.LIST_ACTIVE_PEERS);
+    server.Commander.add(":ls",   ServerCommand.LIST_ACTIVE_PEERS);
     //server.Commander.add(":kill", ServerCommand.killPeers);
     //server.Commander.add(":ping", ServerCommand.ping);
     //server.Commander.add(":c", ServerCommand.clearScreen);

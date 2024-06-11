@@ -5,6 +5,7 @@ const COMM_ACTION = @import("actions/comm-action.zig").ACTION;
 const COMM_END_ACTION = @import("actions/comm-end-action.zig").ACTION;
 const MSG_ACTION = @import("actions/msg-action.zig").ACTION;
 const GET_PEER_ACTION = @import("actions/get-peer-action.zig").ACTION;
+const BAD_REQUEST_ACTION = @import("actions/bad-request-action.zig").ACTION;
 const Server = core.Server;
 const Peer = core.Peer;
 const PeerRef = core.PeerRef;
@@ -94,18 +95,6 @@ fn listener(
                 messageBroadcast(sd, protocol.sender_id, protocol.body);
             } else if (protocol.is_action(Protocol.Act.GET_PEER)) {
             } else if (protocol.is_action(Protocol.Act.NONE)) {
-                // TODO: handle bad request action
-                const errp = Protocol.init(
-                Protocol.Typ.ERR,
-                protocol.action,
-                Protocol.StatusCode.BAD_REQUEST,
-                "server",
-                server_addr,
-                addr_str,
-                @tagName(Protocol.StatusCode.BAD_REQUEST),
-            );
-                errp.dump(sd.server.log_level);
-                _ = Protocol.transmit(stream, errp);
             }
         } else if (protocol.is_response()) {
             if (protocol.is_action(Protocol.Act.COMM)) {
@@ -425,6 +414,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     server.Actioner.add(Protocol.Act.COMM_END, COMM_END_ACTION);
     server.Actioner.add(Protocol.Act.MSG, MSG_ACTION);
     server.Actioner.add(Protocol.Act.GET_PEER, GET_PEER_ACTION);
+    server.Actioner.add(Protocol.Act.NONE, BAD_REQUEST_ACTION);
 
     var server_cmds = std.StringHashMap(Command).init(gpa_allocator);
     errdefer server_cmds.deinit();

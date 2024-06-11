@@ -60,7 +60,6 @@ fn listener(
 ) !void {
     while (!sd.should_exit) {
         const conn = try sd.server.net_server.accept();
-        const server_addr = cmn.address_as_str(sd.server.net_server.listen_address);
 
         const stream = conn.stream;
 
@@ -72,55 +71,17 @@ fn listener(
         var protocol = Protocol.protocolFromStr(recv); // parse protocol from recieved bytes
         protocol.dump(sd.server.log_level);
 
-        const addr_str = cmn.address_as_str(conn.address);
         const opt_action = sd.server.Actioner.get(protocol.action);
         if (opt_action) |act| {
             switch (protocol.type) {
                 .REQ => act.collect.request(conn, sd, protocol),
-                .RES => act.collect.response(),
+                .RES => act.collect.response(sd, protocol),
                 .ERR => act.collect.err(),
                 else => {
                     std.log.err("`therad::listener`: unknown protocol type!", .{});
-                    std.posix.exit(1);
+                    unreachable;
                 }
             }
-        }
-        if (protocol.is_request()) {
-            // Handle COMM request
-            if (protocol.is_action(Protocol.Act.COMM)) {
-                try connectionAccept(sd, conn, server_addr, protocol);
-            } else if (protocol.is_action(Protocol.Act.COMM_END)) {
-                try connectionTerminate(sd, protocol);
-            } else if (protocol.is_action(Protocol.Act.MSG)) {
-                messageBroadcast(sd, protocol.sender_id, protocol.body);
-            } else if (protocol.is_action(Protocol.Act.GET_PEER)) {
-            } else if (protocol.is_action(Protocol.Act.NONE)) {
-            }
-        } else if (protocol.is_response()) {
-            if (protocol.is_action(Protocol.Act.COMM)) {
-                // TODO: handle communication response action
-                const opt_peer_ref = core.PeerCore.peerRefFromId(sd.peer_pool, protocol.sender_id);
-                if (opt_peer_ref) |peer_ref| {
-                    print("peer `{s}` is alive\n", .{peer_ref.peer.username});
-                } else {
-                    print("Peer with id `{s}` does not exist!\n", .{protocol.sender_id});
-                }
-            } 
-        } else if (protocol.type == Protocol.Typ.NONE) {
-            // TODO: handle bad request action
-            const errp = Protocol.init(
-            Protocol.Typ.ERR,
-            protocol.action,
-            Protocol.StatusCode.BAD_REQUEST,
-            "server",
-            "server",
-            addr_str,
-            "bad request",
-        );
-            errp.dump(sd.server.log_level);
-            _ = Protocol.transmit(stream, errp);
-        } else {
-            std.log.err("unreachable code", .{});
         }
     }
     print("Ending `listener`\n", .{});

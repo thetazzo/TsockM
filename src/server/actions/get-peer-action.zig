@@ -30,7 +30,9 @@ fn collectRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Pro
     }
 }
 
-fn collectRespone() void {
+fn collectRespone(sd: *SharedData, protocol: Protocol) void {
+    _ = sd;
+    _ = protocol;
     std.log.err("not implemented", .{});
 }
 

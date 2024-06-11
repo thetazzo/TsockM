@@ -67,7 +67,7 @@ pub const SharedData = struct {
 pub const Action = struct {
     collect: struct {
         request:  *const fn (std.net.Server.Connection, *SharedData, Protocol) void,
-        response: *const fn () void,
+        response: *const fn (*SharedData, Protocol) void,
         err:    *const fn () void,
     },
     transmit: struct {

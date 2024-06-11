@@ -33,8 +33,13 @@ fn collectRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Pro
     _ = Protocol.transmit(stream, resp);
 }
 
-fn collectRespone() void {
-    std.log.err("not implemented", .{});
+fn collectRespone(sd: *SharedData, protocol: Protocol) void {
+    const opt_peer_ref = core.PeerCore.peerRefFromId(sd.peer_pool, protocol.sender_id);
+    if (opt_peer_ref) |peer_ref| {
+        std.debug.print("peer `{s}` is alive\n", .{peer_ref.peer.username});
+    } else {
+        std.debug.print("Peer with id `{s}` does not exist!\n", .{protocol.sender_id});
+    }
 }
 
 fn collectError() void {

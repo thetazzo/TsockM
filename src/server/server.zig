@@ -5,6 +5,7 @@ const COMM_ACTION = @import("actions/comm-action.zig").ACTION;
 const COMM_END_ACTION = @import("actions/comm-end-action.zig").ACTION;
 const MSG_ACTION = @import("actions/msg-action.zig").ACTION;
 const GET_PEER_ACTION = @import("actions/get-peer-action.zig").ACTION;
+const NTFY_KILL_ACTION = @import("actions/ntfy-kill-action.zig").ACTION;
 const BAD_REQUEST_ACTION = @import("actions/bad-request-action.zig").ACTION;
 const Server = core.Server;
 const Peer = core.Peer;
@@ -151,7 +152,7 @@ fn commander(
 }
 
 /// this is a thread
-fn polizei(sd: *SharedData, server: Server) !void {
+fn polizei(sd: *SharedData) !void {
     var start_t = try std.time.Instant.now();
     var lock = false;
     while (!sd.should_exit) {
@@ -164,7 +165,9 @@ fn polizei(sd: *SharedData, server: Server) !void {
             lock = true;
         }
         if (dt == 3000 and lock) {
-            peerNtfyDeath(sd, server);
+            if (sd.server.Actioner.get(Protocol.Act.NTFY_KILL)) |act| {
+                act.transmit.request(Protocol.TransmitionMode.BROADCAST, sd);
+            }
             lock = false;
         }
         if (dt == 4000 and !lock) {
@@ -358,6 +361,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     server.Actioner.add(Protocol.Act.COMM_END, COMM_END_ACTION);
     server.Actioner.add(Protocol.Act.MSG, MSG_ACTION);
     server.Actioner.add(Protocol.Act.GET_PEER, GET_PEER_ACTION);
+    server.Actioner.add(Protocol.Act.NTFY_KILL, NTFY_KILL_ACTION);
     server.Actioner.add(Protocol.Act.NONE, BAD_REQUEST_ACTION);
 
     var server_cmds = std.StringHashMap(Command).init(gpa_allocator);
@@ -390,7 +394,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     {
         thread_pool[0] = try std.Thread.spawn(.{}, listener, .{ &sd });
         thread_pool[1] = try std.Thread.spawn(.{}, commander, .{ &sd, &server_cmds });
-        thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{ &sd, server });
+        thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{ &sd });
     }
     defer for(thread_pool) |thr| thr.join();
 }

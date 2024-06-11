@@ -78,21 +78,42 @@ pub const Action = struct {
     internal: ?*const fn (*SharedData) void,
 };
 
+pub const Act = enum {
+    COMM,
+    COMM_END,
+    MSG,
+    GET_PEER,
+    NTFY_KILL,
+    NONE,
+    CLEAN_PEER_POOL,
+};
+
+pub fn parseAct(act: Protocol.Act) Act {
+    return switch (act) {
+        .COMM => Act.COMM,
+        .COMM_END => Act.COMM_END,
+        .MSG => Act.MSG,
+        .GET_PEER => Act.GET_PEER,
+        .NTFY_KILL => Act.NTFY_KILL,
+        .NONE => Act.NONE,
+    };
+}
+
 const Actioner = struct {
-    actions: std.AutoHashMap(Protocol.Act, Action), 
+    actions: std.AutoHashMap(Act, Action), 
     pub fn init(allocator: std.mem.Allocator) Actioner {
-        const actions = std.AutoHashMap(Protocol.Act, Action).init(allocator);
+        const actions = std.AutoHashMap(Act, Action).init(allocator);
         return Actioner{
             .actions = actions, 
         };
     }
-    pub fn add(self: *@This(), caller: Protocol.Act, act: Action) void {
+    pub fn add(self: *@This(), caller: Act, act: Action) void {
         self.actions.put(caller, act) catch |err| {
             std.log.err("`core::Actioner::add`: {any}\n", .{err});
             std.posix.exit(1);
         };
     }
-    pub fn get(self: *@This(), caller: Protocol.Act) ?Action {
+    pub fn get(self: *@This(), caller: Act) ?Action {
         return self.actions.get(caller);
     }
     pub fn deinit(self: *@This()) void {

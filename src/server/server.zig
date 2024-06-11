@@ -72,7 +72,7 @@ fn listener(
         var protocol = Protocol.protocolFromStr(recv); // parse protocol from recieved bytes
         protocol.dump(sd.server.log_level);
 
-        const opt_action = sd.server.Actioner.get(protocol.action);
+        const opt_action = sd.server.Actioner.get(core.parseAct(protocol.action));
         if (opt_action) |act| {
             switch (protocol.type) {
                 // TODO: better handling of optional types
@@ -114,14 +114,8 @@ fn extractCommandValue(cs: []const u8, cmd: []const u8) []const u8 {
 
 // TODO: convert to server action
 pub fn peerPoolClean(sd: *SharedData) void {
-    var pp_len: usize = sd.peer_pool.items.len;
-    while (pp_len > 0) {
-        pp_len -= 1;
-        const p = sd.peer_pool.items[pp_len];
-        if (p.alive == false) {
-            _ = sd.peerRemove(pp_len);
-        }
-    }
+    _ = sd;
+    std.log.warn("`peerPoolClean` is depricated", .{});
 }
 
 /// i am a thread
@@ -160,19 +154,21 @@ fn polizei(sd: *SharedData) !void {
         const now_t = try std.time.Instant.now();
         const dt  = now_t.since(start_t) / std.time.ns_per_ms;
         if (dt == 2000 and !lock) {
-            if (sd.server.Actioner.get(Protocol.Act.COMM)) |act| {
+            if (sd.server.Actioner.get(core.parseAct(Protocol.Act.COMM))) |act| {
                 act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd);
             }
             lock = true;
         }
         if (dt == 3000 and lock) {
-            if (sd.server.Actioner.get(Protocol.Act.NTFY_KILL)) |act| {
+            if (sd.server.Actioner.get(core.parseAct(Protocol.Act.NTFY_KILL))) |act| {
                 act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd);
             }
             lock = false;
         }
         if (dt == 4000 and !lock) {
-            peerPoolClean(sd);
+            if (sd.server.Actioner.get(core.parseAct(Protocol.Act.NTFY_KILL))) |act| {
+                act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd);
+            }
             lock = false;
             start_t = try std.time.Instant.now();
         }
@@ -358,12 +354,12 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     var server = Server.init(gpa_allocator, hostname, port, log_level);
     defer server.deinit();
 
-    server.Actioner.add(Protocol.Act.COMM, COMM_ACTION);
-    server.Actioner.add(Protocol.Act.COMM_END, COMM_END_ACTION);
-    server.Actioner.add(Protocol.Act.MSG, MSG_ACTION);
-    server.Actioner.add(Protocol.Act.GET_PEER, GET_PEER_ACTION);
-    server.Actioner.add(Protocol.Act.NTFY_KILL, NTFY_KILL_ACTION);
-    server.Actioner.add(Protocol.Act.NONE, BAD_REQUEST_ACTION);
+    server.Actioner.add(core.parseAct(Protocol.Act.COMM), COMM_ACTION);
+    server.Actioner.add(core.parseAct(Protocol.Act.COMM_END), COMM_END_ACTION);
+    server.Actioner.add(core.parseAct(Protocol.Act.MSG), MSG_ACTION);
+    server.Actioner.add(core.parseAct(Protocol.Act.GET_PEER), GET_PEER_ACTION);
+    server.Actioner.add(core.parseAct(Protocol.Act.NTFY_KILL), NTFY_KILL_ACTION);
+    server.Actioner.add(core.parseAct(Protocol.Act.NONE), BAD_REQUEST_ACTION);
 
     var server_cmds = std.StringHashMap(Command).init(gpa_allocator);
     errdefer server_cmds.deinit();

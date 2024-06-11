@@ -84,7 +84,6 @@ fn extractCommandValue(cs: []const u8, cmd: []const u8) []const u8 {
     return val;
 }
 
-
 /// i am a thread
 fn commander(
     sd: *SharedData,
@@ -141,16 +140,6 @@ fn polizei(sd: *SharedData) !void {
     }
 }
 
-const Command = *const fn ([]const u8, *SharedData) void;
-
-const ServerCommandi_ = struct {
-    pub fn printProgramUsage(cmd: []const u8, sd: *SharedData) void {
-        _ = cmd;
-        _ = sd;
-        printUsage();
-    }
-};
-
 pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
@@ -174,7 +163,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     server.Commander.add(":ping", ServerCommand.PING);
     server.Commander.add(":c",    ServerCommand.CLEAR_SCREEN);
     server.Commander.add(":clean-pool", ServerCommand.CLEAN_PEER_POOL);
-    //server.Commander.add(":help", ServerCommand.printProgramUsage);
+    server.Commander.add(":help", ServerCommand.PRINT_PROGRAM_USAGE);
 
     var peer_pool = std.ArrayList(Peer).init(gpa_allocator);
     defer peer_pool.deinit();

@@ -8,7 +8,7 @@ const Action = core.Action;
 const SharedData = core.SharedData;
 const Peer = core.Peer;
 
-fn onRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
+fn collectRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
     const addr_str = cmn.address_as_str(in_conn.address);
     const stream = in_conn.stream;
 
@@ -17,7 +17,7 @@ fn onRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Protocol
     const peer = Peer.construct(tmp_allocator, in_conn, protocol);
     const peer_str = std.fmt.allocPrint(tmp_allocator, "{s}|{s}", .{ peer.id, peer.username }) catch "format failed";
     sd.peerPoolAppend(peer) catch |err| {
-        std.log.err("`comm-action::onRequest::peerPoolAppend`: {any}", .{err});
+        std.log.err("`comm-action::collectRequest::peerPoolAppend`: {any}", .{err});
         std.posix.exit(1);
     };
     const resp = Protocol.init(
@@ -33,16 +33,35 @@ fn onRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Protocol
     _ = Protocol.transmit(stream, resp);
 }
 
-fn onResponse() void {
+fn collectRespone() void {
     std.log.err("not implemented", .{});
 }
 
-fn onError() void {
+fn collectError() void {
+    std.log.err("not implemented", .{});
+}
+
+fn transmitRequest() void {
+    std.log.err("not implemented", .{});
+}
+
+fn transmitRespone() void {
+    std.log.err("not implemented", .{});
+}
+
+fn transmitError() void {
     std.log.err("not implemented", .{});
 }
 
 pub const COMM_ACTION = Action{
-    .onRequest = onRequest,
-    .onResponse = onResponse,
-    .onError = onError,
+    .collect = .{
+        .request  = collectRequest,
+        .response = collectRespone,
+        .err      = collectError,
+    },
+    .transmit = .{
+        .request  = transmitRequest,
+        .response = transmitRespone,
+        .err      = transmitError,
+    },
 };

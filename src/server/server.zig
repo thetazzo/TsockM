@@ -108,9 +108,9 @@ fn listener(
         const opt_action = sd.server.Actioner.get(protocol.action);
         if (opt_action) |act| {
             switch (protocol.type) {
-                .REQ => act.onRequest(conn, sd, protocol),
-                .RES => act.onResponse(),
-                .ERR => act.onError(),
+                .REQ => act.collect.request(conn, sd, protocol),
+                .RES => act.collect.response(),
+                .ERR => act.collect.err(),
                 else => {
                     std.log.err("`therad::listener`: unknown protocol type!", .{});
                     std.posix.exit(1);

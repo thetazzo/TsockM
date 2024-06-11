@@ -65,9 +65,16 @@ pub const SharedData = struct {
 };
 
 pub const Action = struct {
-    onRequest:  *const fn (std.net.Server.Connection, *SharedData, Protocol) void,
-    onResponse: *const fn () void,
-    onError:    *const fn () void,
+    collect: struct {
+        request:  *const fn (std.net.Server.Connection, *SharedData, Protocol) void,
+        response: *const fn () void,
+        err:    *const fn () void,
+    },
+    transmit: struct {
+        request:  *const fn ([]const u8, []const u8, std.net.Stream, *SharedData) void,
+        response: *const fn () void,
+        err:    *const fn () void,
+    },
 };
 
 const Actioner = struct {

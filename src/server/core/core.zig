@@ -71,44 +71,31 @@ pub const Action = struct {
         err:    *const fn () void,
     },
     transmit: struct {
-        request:  *const fn (*SharedData) void,
+        request:  *const fn (Protocol.TransmitionMode, *SharedData) void,
         response: *const fn () void,
         err:    *const fn () void,
     },
 };
 
 const Actioner = struct {
-    listeners: std.AutoHashMap(Protocol.Act, Action), // actions that happen on `listening` thread
-    patrols: std.AutoHashMap(Protocol.Act, Action),   // actions that happen on `polizei` thread
+    actions: std.AutoHashMap(Protocol.Act, Action), 
     pub fn init(allocator: std.mem.Allocator) Actioner {
-        const listeners = std.AutoHashMap(Protocol.Act, Action).init(allocator);
-        const patrols = std.AutoHashMap(Protocol.Act, Action).init(allocator);
+        const actions = std.AutoHashMap(Protocol.Act, Action).init(allocator);
         return Actioner{
-            .listeners = listeners, 
-            .patrols = patrols,
+            .actions = actions, 
         };
     }
-    pub fn addListener(self: *@This(), caller: Protocol.Act, act: Action) void {
-        self.listeners.put(caller, act) catch |err| {
+    pub fn add(self: *@This(), caller: Protocol.Act, act: Action) void {
+        self.actions.put(caller, act) catch |err| {
             std.log.err("`core::Actioner::add`: {any}\n", .{err});
             std.posix.exit(1);
         };
     }
-    pub fn getListener(self: *@This(), caller: Protocol.Act) ?Action {
-        return self.listeners.get(caller);
-    }
-    pub fn addPatrol(self: *@This(), caller: Protocol.Act, act: Action) void {
-        self.patrols.put(caller, act) catch |err| {
-            std.log.err("`core::Actioner::add`: {any}\n", .{err});
-            std.posix.exit(1);
-        };
-    }
-    pub fn getPatrol(self: *@This(), caller: Protocol.Act) ?Action {
-        return self.patrols.get(caller);
+    pub fn get(self: *@This(), caller: Protocol.Act) ?Action {
+        return self.actions.get(caller);
     }
     pub fn deinit(self: *@This()) void {
-        self.listeners.deinit();
-        self.patrols.deinit();
+        self.actions.deinit();
     }
 };
 

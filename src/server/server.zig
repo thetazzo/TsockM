@@ -7,6 +7,7 @@ const MSG_ACTION = @import("actions/msg-action.zig").ACTION;
 const GET_PEER_ACTION = @import("actions/get-peer-action.zig").ACTION;
 const NTFY_KILL_ACTION = @import("actions/ntfy-kill-action.zig").ACTION;
 const BAD_REQUEST_ACTION = @import("actions/bad-request-action.zig").ACTION;
+const CLEAN_PEER_POOL_ACTION = @import("actions/clean-peer-pool-action.zig").ACTION;
 const Server = core.Server;
 const Peer = core.Peer;
 const PeerRef = core.PeerRef;
@@ -154,20 +155,20 @@ fn polizei(sd: *SharedData) !void {
         const now_t = try std.time.Instant.now();
         const dt  = now_t.since(start_t) / std.time.ns_per_ms;
         if (dt == 2000 and !lock) {
-            if (sd.server.Actioner.get(core.parseAct(Protocol.Act.COMM))) |act| {
+            if (sd.server.Actioner.get(core.Act.COMM)) |act| {
                 act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd);
             }
             lock = true;
         }
         if (dt == 3000 and lock) {
-            if (sd.server.Actioner.get(core.parseAct(Protocol.Act.NTFY_KILL))) |act| {
+            if (sd.server.Actioner.get(core.Act.NTFY_KILL)) |act| {
                 act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd);
             }
             lock = false;
         }
         if (dt == 4000 and !lock) {
-            if (sd.server.Actioner.get(core.parseAct(Protocol.Act.NTFY_KILL))) |act| {
-                act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd);
+            if (sd.server.Actioner.get(core.Act.CLEAN_PEER_POOL)) |act| {
+                act.internal.?(sd);
             }
             lock = false;
             start_t = try std.time.Instant.now();
@@ -354,12 +355,13 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     var server = Server.init(gpa_allocator, hostname, port, log_level);
     defer server.deinit();
 
-    server.Actioner.add(core.parseAct(Protocol.Act.COMM), COMM_ACTION);
-    server.Actioner.add(core.parseAct(Protocol.Act.COMM_END), COMM_END_ACTION);
-    server.Actioner.add(core.parseAct(Protocol.Act.MSG), MSG_ACTION);
-    server.Actioner.add(core.parseAct(Protocol.Act.GET_PEER), GET_PEER_ACTION);
-    server.Actioner.add(core.parseAct(Protocol.Act.NTFY_KILL), NTFY_KILL_ACTION);
-    server.Actioner.add(core.parseAct(Protocol.Act.NONE), BAD_REQUEST_ACTION);
+    server.Actioner.add(core.Act.COMM, COMM_ACTION);
+    server.Actioner.add(core.Act.COMM_END, COMM_END_ACTION);
+    server.Actioner.add(core.Act.MSG, MSG_ACTION);
+    server.Actioner.add(core.Act.GET_PEER, GET_PEER_ACTION);
+    server.Actioner.add(core.Act.NTFY_KILL, NTFY_KILL_ACTION);
+    server.Actioner.add(core.Act.NONE, BAD_REQUEST_ACTION);
+    server.Actioner.add(core.Act.CLEAN_PEER_POOL, CLEAN_PEER_POOL_ACTION);
 
     var server_cmds = std.StringHashMap(Command).init(gpa_allocator);
     errdefer server_cmds.deinit();

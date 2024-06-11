@@ -144,17 +144,6 @@ fn polizei(sd: *SharedData) !void {
 const Command = *const fn ([]const u8, *SharedData) void;
 
 const ServerCommandi_ = struct {
-    pub fn cleanPool(cmd: []const u8, sd: *SharedData) void {
-        _ = cmd;
-        var pp_len: usize = sd.peer_pool.items.len;
-        while (pp_len > 0) {
-            pp_len -= 1;
-            const p = sd.peer_pool.items[pp_len];
-            if (p.alive == false) {
-                _ = sd.peerRemove(pp_len);
-            }
-        }
-    }
     pub fn printProgramUsage(cmd: []const u8, sd: *SharedData) void {
         _ = cmd;
         _ = sd;
@@ -184,7 +173,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     server.Commander.add(":kill", ServerCommand.KILL_PEER);
     server.Commander.add(":ping", ServerCommand.PING);
     server.Commander.add(":c",    ServerCommand.CLEAR_SCREEN);
-    //server.Commander.add(":clean-pool", ServerCommand.cleanPool);
+    server.Commander.add(":clean-pool", ServerCommand.CLEAN_PEER_POOL);
     //server.Commander.add(":help", ServerCommand.printProgramUsage);
 
     var peer_pool = std.ArrayList(Peer).init(gpa_allocator);

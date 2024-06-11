@@ -32,30 +32,6 @@ pub fn peerRefFromUsername(peer_pool: *std.ArrayList(Peer), username: []const u8
     return null;
 }
 
-/// TODO: convert to server action
-fn messageBroadcast(sd: *SharedData, sender_id: []const u8, msg: []const u8,) void {
-    _ = sd;
-    _ = sender_id;
-    _ = msg;
-    std.log.warn("`messageBroadcast` is depricated", .{});
-}
-
-/// TODO: convert to server action
-fn connectionAccept( sd: *SharedData, conn: net.Server.Connection, server_addr: []const u8, protocol: Protocol,) !void {
-    _ = sd;
-    _ = conn;
-    _ = server_addr;
-    _ = protocol;
-    std.log.warn("`connectionAccept` is depricated", .{});
-}
-
-/// TODO: convert to server action
-fn connectionTerminate(sd: *SharedData, protocol: Protocol) !void {
-    _ = sd;
-    _ = protocol;
-    std.log.warn("`connectionTerminate` is depricated", .{});
-}
-
 /// I am thread
 fn listener(
     sd: *SharedData,
@@ -113,11 +89,6 @@ fn extractCommandValue(cs: []const u8, cmd: []const u8) []const u8 {
     return val;
 }
 
-// TODO: convert to server action
-pub fn peerPoolClean(sd: *SharedData) void {
-    _ = sd;
-    std.log.warn("`peerPoolClean` is depricated", .{});
-}
 
 /// i am a thread
 fn commander(
@@ -172,35 +143,6 @@ fn polizei(sd: *SharedData) !void {
             }
             lock = false;
             start_t = try std.time.Instant.now();
-        }
-    }
-}
-
-fn pingAllPeers(sd: *SharedData) void {
-    _ = sd;
-    std.log.warn("`pingAllPeers` is depricated", .{});
-}
-
-// TODO: convert to server action
-fn peerNtfyDeath(sd: *SharedData, server: Server) void {
-    _ = server;
-    for (sd.peer_pool.items) |peer| {
-        if (peer.alive == false) {
-            // TODO: peer_broadcast_death
-            for (sd.peer_pool.items) |ap| {
-                if (!mem.eql(u8, ap.id, peer.id)) {
-                    const ntfy = Protocol.init(
-                    Protocol.Typ.REQ,
-                    Protocol.Act.NTFY_KILL,
-                    Protocol.StatusCode.OK,
-                    "server",
-                    "server",
-                    "client",
-                    peer.id,
-                );
-                    _ = Protocol.transmit(ap.stream(), ntfy);
-                }
-            }
         }
     }
 }
@@ -338,7 +280,9 @@ const ServerCommand = struct {
     }
     pub fn cleanPool(cmd: []const u8, sd: *SharedData) void {
         _ = cmd;
-        peerPoolClean(sd);
+        if (sd.server.Actioner.get(core.Act.CLEAN_PEER_POOL)) |act| {
+            act.internal.?(sd);
+        }
     }
     pub fn printProgramUsage(cmd: []const u8, sd: *SharedData) void {
         _ = cmd;

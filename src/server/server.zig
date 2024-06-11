@@ -144,21 +144,6 @@ fn polizei(sd: *SharedData) !void {
 const Command = *const fn ([]const u8, *SharedData) void;
 
 const ServerCommandi_ = struct {
-    pub fn printServerStats(cmd: []const u8, sd: *SharedData) void {
-        _ = cmd;
-        const now = std.time.Instant.now() catch |err| {
-            std.log.err("`printServerStats`: {any}", .{err});
-            std.posix.exit(1);
-        };
-        const dt = now.since(sd.server.start_time) / std.time.ns_per_ms / 1000;
-        print("==================================================\n", .{});
-        print("Server status\n", .{});
-        print("--------------------------------------------------\n", .{});
-        print("peers connected: {d}\n", .{sd.peer_pool.items.len});
-        print("uptime: {d:.3}s\n", .{dt});
-        print("address: {s}\n", .{ sd.server.address_str });
-        print("==================================================\n", .{});
-    }
     pub fn listActivePeers(cmd: []const u8, sd: *SharedData) void {
         _ = cmd;
         if (sd.peer_pool.items.len == 0) {
@@ -296,7 +281,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     server.Actioner.add(core.Act.CLEAN_PEER_POOL, ServerAction.CLEAN_PEER_POOL_ACTION);
 
     server.Commander.add(":exit", ServerCommand.EXIT_SERVER);
-    //server.Commander.add(":info", ServerCommand.printServerStats);
+    server.Commander.add(":info", ServerCommand.PRINT_SERVER_STATS);
     //server.Commander.add(":list", ServerCommand.listActivePeers);
     //server.Commander.add(":ls", ServerCommand.listActivePeers);
     //server.Commander.add(":kill", ServerCommand.killPeers);

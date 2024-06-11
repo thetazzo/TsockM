@@ -13,7 +13,18 @@ fn collectRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Pro
     _ = in_conn;
     const opt_peer_ref = core.PeerCore.peerRefFromId(sd.peer_pool, protocol.sender_id);
     if (opt_peer_ref) |peer_ref| {
-        try sd.peerKill(sd.server, peer_ref.ref_id);
+        const peer = sd.peer_pool.items[peer_ref.ref_id];
+        const endp = Protocol.init(
+            Protocol.Typ.REQ,
+            Protocol.Act.COMM_END,
+            Protocol.StatusCode.OK,
+            "server",
+            sd.server.address_str,
+            peer.commAddressAsStr(),
+            "OK",
+        );
+        endp.dump(sd.server.log_level);
+        _ = Protocol.transmit(peer.stream(), endp);
     }
 }
 
@@ -36,14 +47,14 @@ fn transmitRequest(mode: Protocol.TransmitionMode, sd: *SharedData, request_data
             };
             const peer = sd.peer_pool.items[ref_id];
             const endp = Protocol.init(
-            Protocol.Typ.REQ,
-            Protocol.Act.COMM_END,
-            Protocol.StatusCode.OK,
-            "server",
-            sd.server.address_str,
-            peer.commAddressAsStr(),
-            "OK",
-        );
+                Protocol.Typ.REQ,
+                Protocol.Act.COMM_END,
+                Protocol.StatusCode.OK,
+                "server",
+                sd.server.address_str,
+                peer.commAddressAsStr(),
+                "OK",
+            );
             endp.dump(sd.server.log_level);
             _ = Protocol.transmit(peer.stream(), endp);
         },

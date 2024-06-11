@@ -32,15 +32,6 @@ pub const SharedData = struct {
         _ = self.peer_pool.orderedRemove(pid);
     }
 
-    // TODO: peerRequestDeath server action
-    pub fn peerKill(self: *@This(), server: Server, ref_id: usize) !void {
-        self.m.lock();
-        defer self.m.unlock();
-        _ = server;
-        _ = ref_id;
-        unreachable;
-    }
-
     pub fn removePeerFromPool(self: *@This(), peer_ref: PeerRef) void {
         self.m.lock();
         defer self.m.unlock();

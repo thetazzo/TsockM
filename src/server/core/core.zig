@@ -1,6 +1,6 @@
 const std = @import("std");
 const aids = @import("aids");
-const PeerCore = @import("peer.zig");
+pub const PeerCore = @import("peer.zig");
 pub const PeerRef = PeerCore.PeerRef;
 pub const Peer = PeerCore.Peer;
 const Protocol = aids.Protocol;

@@ -8,7 +8,6 @@ const mem = std.mem;
 const Server = net.Server;
 const print = std.debug.print;
 
-
 pub const Peer = struct {
     pub const PEER_ID = []const u8;
     pub const PEER_USERNAME = []const u8;
@@ -74,3 +73,14 @@ pub const Peer = struct {
 };
 
 pub const PeerRef = struct {peer: Peer, ref_id: usize };
+
+pub fn peerRefFromId(peer_pool: *std.ArrayList(Peer), id: Peer.PEER_ID) ?PeerRef {
+    // O(n)
+    for (peer_pool.items, 0..) |peer, i| {
+        if (mem.eql(u8, peer.id, id)) {
+            return .{ .peer = peer, .ref_id = i };
+        }
+    }
+    return null;
+}
+

@@ -130,8 +130,8 @@ fn listener(
                 // TODO: make a peer_find_bridge_ref
                 //      - similar to peerFindRef
                 //      - constructs a structure of sender peer and search peer
-                const opt_server_peer_ref = peerRefFromId(sd.peer_pool, protocol.sender_id);
-                const opt_peer_ref  = peerRefFromId(sd.peer_pool, protocol.body);
+                const opt_server_peer_ref = core.PeerCore.peerRefFromId(sd.peer_pool, protocol.sender_id);
+                const opt_peer_ref  = core.PeerCore.peerRefFromId(sd.peer_pool, protocol.body);
                 if (opt_server_peer_ref) |server_peer_ref| {
                     if (opt_peer_ref) |peer_ref| {
                         const dst_addr = server_peer_ref.peer.commAddressAsStr();
@@ -165,7 +165,7 @@ fn listener(
         } else if (protocol.is_response()) {
             if (protocol.is_action(Protocol.Act.COMM)) {
                 // TODO: handle communication response action
-                const opt_peer_ref = peerRefFromId(sd.peer_pool, protocol.sender_id);
+                const opt_peer_ref = core.PeerCore.peerRefFromId(sd.peer_pool, protocol.sender_id);
                 if (opt_peer_ref) |peer_ref| {
                     print("peer `{s}` is alive\n", .{peer_ref.peer.username});
                 } else {
@@ -385,7 +385,7 @@ const ServerCommand = struct {
                 }
                 sd.clearPeerPool();
             } else {
-                const opt_peer_ref = peerRefFromId(sd.peer_pool, arg);
+                const opt_peer_ref = core.PeerCore.peerRefFromId(sd.peer_pool, arg);
                 if (opt_peer_ref) |peer_ref| {
                     try sd.peerKill(sd.server, peer_ref.ref_id);
                 }

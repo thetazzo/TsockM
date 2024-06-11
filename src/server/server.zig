@@ -280,8 +280,13 @@ const ServerCommand = struct {
     }
     pub fn cleanPool(cmd: []const u8, sd: *SharedData) void {
         _ = cmd;
-        if (sd.server.Actioner.get(core.Act.CLEAN_PEER_POOL)) |act| {
-            act.internal.?(sd);
+        var pp_len: usize = sd.peer_pool.items.len;
+        while (pp_len > 0) {
+            pp_len -= 1;
+            const p = sd.peer_pool.items[pp_len];
+            if (p.alive == false) {
+                _ = sd.peerRemove(pp_len);
+            }
         }
     }
     pub fn printProgramUsage(cmd: []const u8, sd: *SharedData) void {

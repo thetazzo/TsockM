@@ -10,15 +10,19 @@ const Peer = core.Peer;
 
 const str_allocator = std.heap.page_allocator;
 
+fn printCmdUsage() void {
+    std.debug.print("usage: :kill <flag>\n", .{});
+    std.debug.print("FLAGS:\n", .{});
+    std.debug.print("    * all .......... kill all peers\n", .{});
+    std.debug.print("    * <peer_id> .... id of the peer to kill\n", .{});
+}
+
 pub fn executor(cmd: []const u8, sd: *SharedData) void {
     var split = std.mem.splitBackwardsScalar(u8, cmd, ' ');
     if (split.next()) |arg| {
         if (std.mem.eql(u8, arg, cmd)) {
             std.log.err("missing command flag", .{});
-            std.debug.print("usage: :kill <flag>\n", .{});
-            std.debug.print("FLAGS:\n", .{});
-            std.debug.print("    * all .......... kill all peers\n", .{});
-            std.debug.print("    * <peer_id> .... id of the peer to kill\n", .{});
+            printCmdUsage();
             return;
         }
         if (std.mem.eql(u8, arg, "all")) {

@@ -53,7 +53,7 @@ fn transmitError() void {
     std.log.err("not implemented", .{});
 }
 
-pub const COMM_ACTION = Action{
+pub const ACTION = Action{
     .collect = .{
         .request  = collectRequest,
         .response = collectRespone,

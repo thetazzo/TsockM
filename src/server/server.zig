@@ -144,64 +144,6 @@ fn polizei(sd: *SharedData) !void {
 const Command = *const fn ([]const u8, *SharedData) void;
 
 const ServerCommandi_ = struct {
-    fn ping(cmd: []const u8, sd: *SharedData) void {
-        var split = mem.splitBackwardsScalar(u8, cmd, ' ');
-        if (split.next()) |arg| {
-            if (mem.eql(u8, arg, cmd)) {
-                std.log.err("missing argument", .{});
-                printUsage();
-                return;
-            }
-            if (mem.eql(u8, arg, "all")) {
-                for (sd.peer_pool.items, 0..) |peer, pid| {
-                    const reqp = Protocol{
-                        .type = Protocol.Typ.REQ, // type
-                        .action = Protocol.Act.COMM, // action
-                        .status_code = Protocol.StatusCode.OK, // status_code
-                        .sender_id = "server", // sender_id
-                        .src = sd.server.address_str, // src_address
-                        .dst = peer.commAddressAsStr(), // dst address
-                        .body = "check?", // body
-                    };
-                    reqp.dump(Logging.Level.DEV);
-                    // TODO: I don't know why but i must send 2 requests to determine the status of the stream
-                    _ = Protocol.transmit(peer.stream(), reqp);
-                    const status = Protocol.transmit(peer.stream(), reqp);
-                    if (status == 1) {
-                        // TODO: Put htis into sd ??
-                        sd.peer_pool.items[pid].alive = false;
-                    } 
-                }
-            } else {
-                var found: bool = false;
-                for (sd.peer_pool.items, 0..) |peer, pid| {
-                    if (mem.eql(u8, peer.id, arg)) {
-                        const reqp = Protocol{
-                            .type = Protocol.Typ.REQ, // type
-                            .action = Protocol.Act.COMM, // action
-                            .status_code = Protocol.StatusCode.OK, // status_code
-                            .sender_id = "server", // sender_id
-                            .src = sd.server.address_str, // src_address
-                            .dst = peer.commAddressAsStr(), // dst address
-                            .body = "check?", // body
-                        };
-                        reqp.dump(Logging.Level.DEV);
-                        // TODO: I don't know why but i must send 2 requests to determine the status of the stream
-                        _ = Protocol.transmit(peer.stream(), reqp);
-                        const status = Protocol.transmit(peer.stream(), reqp);
-                        if (status == 1) {
-                            // TODO: Put htis into sd ??
-                            sd.peer_pool.items[pid].alive = false;
-                        } 
-                        found = true;
-                    }
-                }
-                if (!found) {
-                    print("Peer with id `{s}` was not found!\n", .{arg});
-                }
-            }
-        }
-    }
     pub fn clearScreen(cmd: []const u8, sd: *SharedData) void {
         _ = cmd;
         cmn.screenClear() catch |err| {
@@ -247,7 +189,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     server.Commander.add(":list", ServerCommand.LIST_ACTIVE_PEERS);
     server.Commander.add(":ls",   ServerCommand.LIST_ACTIVE_PEERS);
     server.Commander.add(":kill", ServerCommand.KILL_PEER);
-    //server.Commander.add(":ping", ServerCommand.ping);
+    server.Commander.add(":ping", ServerCommand.PING);
     //server.Commander.add(":c", ServerCommand.clearScreen);
     //server.Commander.add(":clean-pool", ServerCommand.cleanPool);
     //server.Commander.add(":help", ServerCommand.printProgramUsage);

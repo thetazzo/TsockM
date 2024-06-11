@@ -32,7 +32,9 @@ fn collectError() void {
     std.log.err("not implemented", .{});
 }
 
-fn transmitRequest() void {
+fn transmitRequest(mode: Protocol.TransmitionMode, sd: *SharedData) void {
+    _ = mode;
+    _ = sd;
     std.log.err("not implemented", .{});
 }
 

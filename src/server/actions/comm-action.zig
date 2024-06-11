@@ -46,8 +46,36 @@ fn collectError() void {
     std.log.err("not implemented", .{});
 }
 
-fn transmitRequest() void {
-    std.log.err("not implemented", .{});
+fn transmitRequest(mode: Protocol.TransmitionMode, sd: *SharedData) void {
+    switch (mode) {
+        .UNICAST => {
+            std.log.err("not implemented", .{});
+            unreachable;
+        },
+        .BROADCAST => {
+            for (sd.peer_pool.items, 0..) |peer, pid| {
+                const reqp = Protocol{
+                    .type = Protocol.Typ.REQ,              // type
+                    .action = Protocol.Act.COMM,           // action
+                    .status_code = Protocol.StatusCode.OK, // status_code
+                    .sender_id = "server",                 // sender_id
+                    .src = sd.server.address_str,          // src_address
+                    .dst = peer.commAddressAsStr(),        // dst address
+                    .body = "check",                       // body
+                };
+                reqp.dump(sd.server.log_level);
+                // TODO: I don't know why but i must send 2 requests to determine the status of the stream
+                _ = Protocol.transmit(peer.stream(), reqp);
+                const status = Protocol.transmit(peer.stream(), reqp);
+                // 
+                if (status == 1) {
+                    // TODO: Put this into sd ??
+                    // TODO introduce markPeerForDeath or straight peer remove
+                    sd.peer_pool.items[pid].alive = false;
+                } 
+            }
+        },
+    }
 }
 
 fn transmitRespone() void {

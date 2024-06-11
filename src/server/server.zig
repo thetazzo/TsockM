@@ -158,7 +158,9 @@ fn polizei(sd: *SharedData, server: Server) !void {
         const now_t = try std.time.Instant.now();
         const dt  = now_t.since(start_t) / std.time.ns_per_ms;
         if (dt == 2000 and !lock) {
-            pingAllPeers(sd);
+            if (sd.server.Actioner.get(Protocol.Act.COMM)) |act| {
+                act.transmit.request(Protocol.TransmitionMode.BROADCAST, sd);
+            }
             lock = true;
         }
         if (dt == 3000 and lock) {
@@ -173,30 +175,11 @@ fn polizei(sd: *SharedData, server: Server) !void {
     }
 }
 
-// TODO: convert to a server action
-//          - only peer.alive = false should be mutex locked
-//          - introduce markPeerForDeath or straight peer remove
 fn pingAllPeers(sd: *SharedData) void {
-    for (sd.peer_pool.items, 0..) |peer, pid| {
-        const reqp = Protocol{
-            .type = Protocol.Typ.REQ, // type
-            .action = Protocol.Act.COMM, // action
-            .status_code = Protocol.StatusCode.OK, // status_code
-            .sender_id = "server", // sender_id
-            .src = sd.server.address_str, // src_address
-            .dst = peer.commAddressAsStr(), // dst address
-            .body = "check", // body
-        };
-        reqp.dump(sd.server.log_level);
-        // TODO: I don't know why but i must send 2 requests to determine the status of the stream
-        _ = Protocol.transmit(peer.stream(), reqp);
-        const status = Protocol.transmit(peer.stream(), reqp);
-        if (status == 1) {
-            // TODO: Put htis into sd ??
-            sd.peer_pool.items[pid].alive = false;
-        } 
-    }
+    _ = sd;
+    std.log.warn("`pingAllPeers` is depricated", .{});
 }
+
 // TODO: convert to server action
 fn peerNtfyDeath(sd: *SharedData, server: Server) void {
     _ = server;

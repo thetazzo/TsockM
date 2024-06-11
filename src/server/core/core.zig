@@ -78,24 +78,24 @@ pub const Action = struct {
 };
 
 const Actioner = struct {
-    actions: std.AutoHashMap(Protocol.Act, Action), // actions that happen on `listening` thread
-    patrols: std.AutoHashMap(Protocol.Act, Action), // actions that happen on `polizei` thread
+    listeners: std.AutoHashMap(Protocol.Act, Action), // actions that happen on `listening` thread
+    patrols: std.AutoHashMap(Protocol.Act, Action),   // actions that happen on `polizei` thread
     pub fn init(allocator: std.mem.Allocator) Actioner {
-        const actions = std.AutoHashMap(Protocol.Act, Action).init(allocator);
+        const listeners = std.AutoHashMap(Protocol.Act, Action).init(allocator);
         const patrols = std.AutoHashMap(Protocol.Act, Action).init(allocator);
         return Actioner{
-            .actions = actions, 
+            .listeners = listeners, 
             .patrols = patrols,
         };
     }
-    pub fn addAction(self: *@This(), caller: Protocol.Act, act: Action) void {
-        self.actions.put(caller, act) catch |err| {
+    pub fn addListener(self: *@This(), caller: Protocol.Act, act: Action) void {
+        self.listeners.put(caller, act) catch |err| {
             std.log.err("`core::Actioner::add`: {any}\n", .{err});
             std.posix.exit(1);
         };
     }
-    pub fn getAction(self: *@This(), caller: Protocol.Act) ?Action {
-        return self.actions.get(caller);
+    pub fn getListener(self: *@This(), caller: Protocol.Act) ?Action {
+        return self.listeners.get(caller);
     }
     pub fn addPatrol(self: *@This(), caller: Protocol.Act, act: Action) void {
         self.patrols.put(caller, act) catch |err| {
@@ -107,7 +107,7 @@ const Actioner = struct {
         return self.patrols.get(caller);
     }
     pub fn deinit(self: *@This()) void {
-        self.actions.deinit();
+        self.listeners.deinit();
         self.patrols.deinit();
     }
 };

@@ -71,7 +71,7 @@ pub const Action = struct {
         err:    *const fn () void,
     },
     transmit: struct {
-        request:  *const fn ([]const u8, []const u8, std.net.Stream, *SharedData) void,
+        request:  *const fn () void,
         response: *const fn () void,
         err:    *const fn () void,
     },

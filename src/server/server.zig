@@ -3,6 +3,7 @@ const aids = @import("aids");
 const core = @import("core/core.zig");
 const COMM_ACTION = @import("actions/comm-action.zig").COMM_ACTION;
 const COMM_END_ACTION = @import("actions/comm-end-action.zig").COMM_END_ACTION;
+const MSG_ACTION = @import("actions/msg-action.zig").MSG_ACTION;
 const Server = core.Server;
 const Peer = core.Peer;
 const PeerRef = core.PeerRef;
@@ -443,6 +444,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
 
     server.Actioner.add(Protocol.Act.COMM, COMM_ACTION);
     server.Actioner.add(Protocol.Act.COMM_END, COMM_END_ACTION);
+    server.Actioner.add(Protocol.Act.MSG, MSG_ACTION);
 
     var server_cmds = std.StringHashMap(Command).init(gpa_allocator);
     errdefer server_cmds.deinit();

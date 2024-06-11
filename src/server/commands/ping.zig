@@ -25,6 +25,7 @@ pub fn executor(cmd: []const u8, sd: *SharedData) void {
             printCmdUsage();
             return;
         }
+        // TODO: connecton to server actions
         if (std.mem.eql(u8, arg, "all")) {
             for (sd.peer_pool.items, 0..) |peer, pid| {
                 const reqp = Protocol{

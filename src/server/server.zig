@@ -144,13 +144,6 @@ fn polizei(sd: *SharedData) !void {
 const Command = *const fn ([]const u8, *SharedData) void;
 
 const ServerCommandi_ = struct {
-    pub fn clearScreen(cmd: []const u8, sd: *SharedData) void {
-        _ = cmd;
-        cmn.screenClear() catch |err| {
-            print("`clearScreen`: {any}\n", .{err});
-        };
-        print("Server running on `" ++ TextColor.paint_green("{s}") ++ "`\n", .{sd.server.address_str});
-    }
     pub fn cleanPool(cmd: []const u8, sd: *SharedData) void {
         _ = cmd;
         var pp_len: usize = sd.peer_pool.items.len;
@@ -190,7 +183,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     server.Commander.add(":ls",   ServerCommand.LIST_ACTIVE_PEERS);
     server.Commander.add(":kill", ServerCommand.KILL_PEER);
     server.Commander.add(":ping", ServerCommand.PING);
-    //server.Commander.add(":c", ServerCommand.clearScreen);
+    server.Commander.add(":c",    ServerCommand.CLEAR_SCREEN);
     //server.Commander.add(":clean-pool", ServerCommand.cleanPool);
     //server.Commander.add(":help", ServerCommand.printProgramUsage);
 

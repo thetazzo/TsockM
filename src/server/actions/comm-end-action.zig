@@ -27,10 +27,43 @@ fn collectError() void {
     std.log.err("not implemented", .{});
 }
 
-fn transmitRequest(mode: Protocol.TransmitionMode, sd: *SharedData) void {
-    _ = mode;
-    _ = sd;
-    std.log.err("not implemented", .{});
+fn transmitRequest(mode: Protocol.TransmitionMode, sd: *SharedData, request_data: []const u8) void {
+    switch (mode) {
+        .UNICAST => {
+            const ref_id = std.fmt.parseInt(usize, request_data, 10) catch |err| {
+                std.log.err("provided request data `{any}` is not a number\n{any}", .{request_data, err});
+                return;
+            };
+            const peer = sd.peer_pool.items[ref_id];
+            const endp = Protocol.init(
+            Protocol.Typ.REQ,
+            Protocol.Act.COMM_END,
+            Protocol.StatusCode.OK,
+            "server",
+            sd.server.address_str,
+            peer.commAddressAsStr(),
+            "OK",
+        );
+            endp.dump(sd.server.log_level);
+            _ = Protocol.transmit(peer.stream(), endp);
+        },
+        .BROADCAST => {
+            for (sd.peer_pool.items[0..]) |peer| {
+                const endp = Protocol.init(
+                Protocol.Typ.REQ,
+                Protocol.Act.COMM_END,
+                Protocol.StatusCode.OK,
+                "server",
+                sd.server.address_str,
+                peer.commAddressAsStr(),
+                "OK",
+            );
+                endp.dump(sd.server.log_level);
+                _ = Protocol.transmit(peer.stream(), endp);
+            }
+            sd.clearPeerPool();
+        }
+    }
 }
 
 fn transmitRespone() void {

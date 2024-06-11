@@ -127,13 +127,13 @@ fn polizei(sd: *SharedData) !void {
         const dt  = now_t.since(start_t) / std.time.ns_per_ms;
         if (dt == 2000 and !lock) {
             if (sd.server.Actioner.get(core.Act.COMM)) |act| {
-                act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd);
+                act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd, "");
             }
             lock = true;
         }
         if (dt == 3000 and lock) {
             if (sd.server.Actioner.get(core.Act.NTFY_KILL)) |act| {
-                act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd);
+                act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd, "");
             }
             lock = false;
         }
@@ -191,24 +191,20 @@ const ServerCommand = struct {
                 return;
             }
             if (mem.eql(u8, arg, "all")) {
-                for (sd.peer_pool.items[0..]) |peer| {
-                    const endp = Protocol.init(
-                    Protocol.Typ.REQ,
-                    Protocol.Act.COMM_END,
-                    Protocol.StatusCode.OK,
-                    "server",
-                    sd.server.address_str,
-                    peer.commAddressAsStr(),
-                    "OK",
-                );
-                    endp.dump(sd.server.log_level);
-                    _ = Protocol.transmit(peer.stream(), endp);
+                if (sd.server.Actioner.get(core.Act.COMM_END)) |act| {
+                    act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd, "");
                 }
-                sd.clearPeerPool();
             } else {
                 const opt_peer_ref = core.PeerCore.peerRefFromId(sd.peer_pool, arg);
                 if (opt_peer_ref) |peer_ref| {
-                    try sd.peerKill(sd.server, peer_ref.ref_id);
+                    if (sd.server.Actioner.get(core.Act.COMM_END)) |act| {
+                        const id = std.fmt.allocPrint(str_allocator, "{d}", .{peer_ref.ref_id}) catch |err| {
+                            std.log.err("killPeers: {any}", .{err});
+                            return;
+                        };
+                        defer str_allocator.free(id);
+                        act.transmit.?.request(Protocol.TransmitionMode.UNICAST, sd, id);
+                    }
                 }
             }
         }
@@ -297,7 +293,6 @@ const ServerCommand = struct {
 };
 
 pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
-
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
 

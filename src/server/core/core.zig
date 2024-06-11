@@ -36,18 +36,9 @@ pub const SharedData = struct {
     pub fn peerKill(self: *@This(), server: Server, ref_id: usize) !void {
         self.m.lock();
         defer self.m.unlock();
-        const peer_ = self.peer_pool.items[ref_id];
-        const endp = Protocol.init(
-        Protocol.Typ.REQ,
-        Protocol.Act.COMM_END,
-        Protocol.StatusCode.OK,
-        "server",
-        "server",
-        "client",
-        "OK",
-    );
-        endp.dump(server.log_level);
-        _ = Protocol.transmit(peer_.stream(), endp);
+        _ = server;
+        _ = ref_id;
+        unreachable;
     }
 
     pub fn removePeerFromPool(self: *@This(), peer_ref: PeerRef) void {
@@ -63,6 +54,14 @@ pub const SharedData = struct {
         try self.peer_pool.append(peer);
     }
 };
+
+fn Transmitter(comptime T: type) type {
+    return struct {
+        request:  *const fn (Protocol.TransmitionMode, *SharedData, T) void,
+        response: *const fn () void,
+        err:      *const fn () void,
+    };
+}
 
 pub const Action = struct {
     collect: ?struct {

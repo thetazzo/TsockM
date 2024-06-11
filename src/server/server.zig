@@ -144,33 +144,6 @@ fn polizei(sd: *SharedData) !void {
 const Command = *const fn ([]const u8, *SharedData) void;
 
 const ServerCommandi_ = struct {
-    pub fn killPeers(cmd: []const u8, sd: *SharedData) void {
-        var split = mem.splitBackwardsScalar(u8, cmd, ' ');
-        if (split.next()) |arg| {
-            if (mem.eql(u8, arg, cmd)) {
-                std.log.err("missing argument", .{});
-                printUsage();
-                return;
-            }
-            if (mem.eql(u8, arg, "all")) {
-                if (sd.server.Actioner.get(core.Act.COMM_END)) |act| {
-                    act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd, "");
-                }
-            } else {
-                const opt_peer_ref = core.PeerCore.peerRefFromId(sd.peer_pool, arg);
-                if (opt_peer_ref) |peer_ref| {
-                    if (sd.server.Actioner.get(core.Act.COMM_END)) |act| {
-                        const id = std.fmt.allocPrint(str_allocator, "{d}", .{peer_ref.ref_id}) catch |err| {
-                            std.log.err("killPeers: {any}", .{err});
-                            return;
-                        };
-                        defer str_allocator.free(id);
-                        act.transmit.?.request(Protocol.TransmitionMode.UNICAST, sd, id);
-                    }
-                }
-            }
-        }
-    }
     fn ping(cmd: []const u8, sd: *SharedData) void {
         var split = mem.splitBackwardsScalar(u8, cmd, ' ');
         if (split.next()) |arg| {
@@ -273,7 +246,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     server.Commander.add(":info", ServerCommand.PRINT_SERVER_STATS);
     server.Commander.add(":list", ServerCommand.LIST_ACTIVE_PEERS);
     server.Commander.add(":ls",   ServerCommand.LIST_ACTIVE_PEERS);
-    //server.Commander.add(":kill", ServerCommand.killPeers);
+    server.Commander.add(":kill", ServerCommand.KILL_PEER);
     //server.Commander.add(":ping", ServerCommand.ping);
     //server.Commander.add(":c", ServerCommand.clearScreen);
     //server.Commander.add(":clean-pool", ServerCommand.cleanPool);

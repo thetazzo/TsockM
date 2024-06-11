@@ -58,7 +58,7 @@ pub fn str_as_retcode(code: []const u8) StatusCode {
     } else if (mem.eql(u8, code, "502")) {
         return StatusCode.BAD_GATEWAY;
     } else {
-        std.log.err("unreachable", .{});
+        std.log.err("unreachable `{s}`", .{code});
         unreachable;
     }
 }
@@ -203,6 +203,11 @@ pub fn protocolFromStr(str: []const u8) Protocol {
             proto.action = eact;
         } else {
             std.log.err("Something went wrong with protocol action: `{s}`\n", .{act});
+            proto.type = Typ.ERR;
+            proto.action = Act.NONE;
+            proto.status_code = StatusCode.BAD_GATEWAY;
+            proto.body = @tagName(StatusCode.BAD_GATEWAY);
+            return proto;
         }
     }
     if (spl.next()) |rc| {

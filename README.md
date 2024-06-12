@@ -75,13 +75,19 @@ zig build client -- <subcommand>
 
 ### TODO
 
-#### 0.3.0
+#### 0.4.0
 * [ ] {FEAT} encrypt body of the protocol
 * [ ] {FEAT} store messages
-#### 0.2.1
+#### 0.3.1
+* [ ] {UPDATE} `core.zig` rename to `server.zig`
+#### 0.3.0
 * [x] {FEAT} Introduce server commands
-* [x] {FEAT} `:exit` server command
-* [ ] {FEAT} Introduce server actions
+* [x] {FEAT} Introduce server actions
+* [x] {FEAT} `:mute` and `:unmute` server commands
+* {FEAT} handle threads in `core.zig`
+    * [ ] `launch_commander` - launces the thread reading stdin for commands
+    * [ ] `launch_listener`  - launches the thread for listening for TCP connections
+    * [ ] `launch_polizei`   - pings peers to determine life status
 #### 0.2.0
 * [x] {FEAT} Server strcture
 * [x] {FEAT} Consume program arguments:
@@ -94,7 +100,6 @@ zig build client -- <subcommand>
 #### 0.2.x
 * [ ] {BUG} notifying peer death does not work every time
 * [ ] `peerFindUsernameMatch` find all peers with specific username
-* [ ] `peerBridgeRef` function that constructs a structre containing the sender peer and the peer the sender is trying to find
 #### 0.1.0
 * [x] send a notification to client when a peer gets terminated
 * [x] Test message coloring

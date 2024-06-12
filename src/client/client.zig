@@ -509,6 +509,10 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     rl.initWindow(SW, SH, "TsockM");
     defer rl.closeWindow();
 
+    rl.setWindowState(.{
+        .window_resizable = true
+    });
+
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
 

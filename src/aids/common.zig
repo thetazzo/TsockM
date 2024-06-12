@@ -13,7 +13,11 @@ pub fn address_as_str(addr: std.net.Address) []const u8 {
     return addr_str;
 }
 
-pub fn screenClear() !void {
-    const stdout = std.io.getStdOut().writer();
-    try stdout.print("\x1B[2J\x1B[H", .{});
+pub fn assert(cnd: bool, opt_msg: ?[]const u8) void {
+    if (!cnd) {
+        if (opt_msg) |msg| {
+            std.log.err("Assertion failed: {s}", .{msg});
+        }
+        @panic("assertion failed");
+    }
 }

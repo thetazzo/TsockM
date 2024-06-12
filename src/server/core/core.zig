@@ -1,18 +1,16 @@
 const std = @import("std");
 const aids = @import("aids");
 const actioner_lib = @import("actioner.zig");
-const commander_lib = @import("commander.zig");
 const Actioner = actioner_lib.Actioner;
 pub const Action = actioner_lib.Action;
 pub const ParseAct = actioner_lib.parseAct;
 pub const Act = actioner_lib.Act;
-pub const Commander = commander_lib.Commander;
-pub const Command = commander_lib.Command;
 pub const PeerCore = @import("peer.zig");
 pub const PeerRef = PeerCore.PeerRef;
 pub const Peer = PeerCore.Peer;
 const Protocol = aids.Protocol;
 const cmn = aids.cmn;
+pub const Stab = aids.Stab;
 const TextColor = aids.TextColor;
 const Logging = aids.Logging;
 
@@ -63,7 +61,7 @@ pub const Server = struct {
     start_time: std.time.Instant = undefined,
     net_server: std.net.Server = undefined,
     Actioner: Actioner,
-    Commander: Commander,
+    Commander: Stab.Commander(Stab.Command(SharedData)),
     __version__: []const u8,
     pub fn init(
         allocator: std.mem.Allocator,
@@ -77,7 +75,7 @@ pub const Server = struct {
             std.posix.exit(1);
         };
         const actioner = Actioner.init(allocator);
-        const commander = Commander.init(allocator);
+        const commander = Stab.Commander(Stab.Command(SharedData)).init(allocator);
         return Server {
             .hostname = hostname,
             .port = port,

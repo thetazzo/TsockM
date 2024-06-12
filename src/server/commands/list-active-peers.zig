@@ -1,7 +1,6 @@
 const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
-const Command = core.Command;
 const SharedData = core.SharedData;
 
 pub fn executor(_: ?[]const u8, sd: ?*SharedData) void {
@@ -15,6 +14,6 @@ pub fn executor(_: ?[]const u8, sd: ?*SharedData) void {
     }
 }
 
-pub const COMMAND = Command{
+pub const COMMAND = aids.Stab.Command(SharedData){
     .executor = executor,
 };

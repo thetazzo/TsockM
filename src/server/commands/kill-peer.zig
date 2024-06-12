@@ -2,7 +2,6 @@ const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
 const Protocol = aids.Protocol;
-const Command = core.Command;
 const SharedData = core.SharedData;
 
 const str_allocator = std.heap.page_allocator;
@@ -42,6 +41,6 @@ pub fn executor(cmd: ?[]const u8, sd: ?*SharedData) void {
     }
 }
 
-pub const COMMAND = Command{
+pub const COMMAND = aids.Stab.Command(SharedData){
     .executor = executor,
 };

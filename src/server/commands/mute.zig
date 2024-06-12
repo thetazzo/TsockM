@@ -1,7 +1,6 @@
 const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
-const Command = core.Command;
 const SharedData = core.SharedData;
 
 fn printUnmuteUsage() void {
@@ -36,10 +35,10 @@ fn executorUnmute(cmd: ?[]const u8, sd: ?*SharedData) void {
     }
 }
 
-pub const COMMAND_MUTE = Command{
+pub const COMMAND_MUTE = aids.Stab.Command(SharedData){
     .executor = executorMute,
 };
 
-pub const COMMAND_UNMUTE = Command{
+pub const COMMAND_UNMUTE = aids.Stab.Command(SharedData){
     .executor = executorUnmute,
 };

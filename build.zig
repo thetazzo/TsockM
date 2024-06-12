@@ -1,13 +1,23 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) void {
+fn Aids(b: *std.Build) struct { module: *std.Build.Module } {
+    const mod = b.addModule("aids", .{
+        .root_source_file = b.path("src/aids/aids.zig"),
+    });
+    return .{
+        .module = mod,
+    };
+}
 
+fn Sqids(b: *std.Build) struct { module: *std.Build.Module } {
     const sqids_dep = b.dependency("sqids", .{});
+    const mod = sqids_dep.module("sqids");
+    return .{
+        .module = mod,
+    };
+}
 
-    const target = b.standardTargetOptions(.{});
-
-    const optimize = b.standardOptimizeOption(.{});
-
+fn Raylib(b: *std.Build, target: std.Build.ResolvedTarget ,optimize: std.builtin.OptimizeMode) struct { module: *std.Build.Module, artifact: *std.Build.Step.Compile } {
     const raylib_optimize = b.option(
         std.builtin.OptimizeMode,
         "raylib-optimize",
@@ -19,13 +29,25 @@ pub fn build(b: *std.Build) void {
         .linux_display_backend = .X11,
     });
 
-    const lib_mod = b.addModule("aids", .{
-        .root_source_file = b.path("src/aids/root.zig"),
-    });
-    const sqids_mod = sqids_dep.module("sqids");
     const raylib = raylib_dep.module("raylib"); // main raylib module
-    const raygui = raylib_dep.module("raygui"); // raygui module
+    //const raygui = raylib_dep.module("raygui"); // raygui module
     const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
+    return .{
+        .module= raylib,
+        .artifact= raylib_artifact,
+    };
+}
+
+pub fn build(b: *std.Build) void {
+
+
+    const target = b.standardTargetOptions(.{});
+
+    const optimize = b.standardOptimizeOption(.{});
+
+    const raylib = Raylib(b, target, optimize);
+    const aids = Aids(b);
+    const sqids = Sqids(b);
 
     const server_exe = b.addExecutable(.{
         .name = "tsockm-server",
@@ -33,8 +55,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    server_exe.root_module.addImport("aids", lib_mod);
-    server_exe.root_module.addImport("sqids", sqids_mod);
+    server_exe.root_module.addImport("aids", aids.module);
+    server_exe.root_module.addImport("sqids", sqids.module);
 
     b.installArtifact(server_exe);
     const run_server_exe = b.addRunArtifact(server_exe);
@@ -53,10 +75,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    client_exe.linkLibrary(raylib_artifact);
-    client_exe.root_module.addImport("raylib", raylib);
-    client_exe.root_module.addImport("raygui", raygui);
-    client_exe.root_module.addImport("aids", lib_mod);
+    client_exe.linkLibrary(raylib.artifact);
+    client_exe.root_module.addImport("raylib", raylib.module);
+    //client_exe.root_module.addImport("raygui", raylib.raygui);
+    client_exe.root_module.addImport("aids", aids.module);
 
     //b.installArtifact(client_exe);
     const build_client = b.addInstallArtifact(client_exe, .{});

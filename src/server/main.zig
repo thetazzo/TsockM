@@ -69,6 +69,7 @@ pub fn main() !void {
                 } else {
                     std.log.err("unknown flag `{s}`", .{arg});
                     print_usage(program);
+                    return;
                 }
             } 
             _ = try server.start(server_addr, server_port, log_level);

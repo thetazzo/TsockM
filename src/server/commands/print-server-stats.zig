@@ -13,6 +13,7 @@ pub fn executor(_: ?[]const u8, sd: ?*SharedData) void {
     std.debug.print("==================================================\n", .{});
     std.debug.print("Server status\n", .{});
     std.debug.print("--------------------------------------------------\n", .{});
+    std.debug.print("version: {s}\n", .{sd.?.server.__version__});
     std.debug.print("peers connected: {d}\n", .{sd.?.peer_pool.items.len});
     std.debug.print("uptime: {d:.3}s\n", .{dt});
     std.debug.print("address: {s}\n", .{ sd.?.server.address_str });

@@ -99,7 +99,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
 
-    var server = Server.init(gpa_allocator, hostname, port, log_level);
+    var server = Server.init(gpa_allocator, hostname, port, log_level, "0.3.0");
     defer server.deinit();
 
     // Bind server actions to the server

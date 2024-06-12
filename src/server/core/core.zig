@@ -64,11 +64,13 @@ pub const Server = struct {
     net_server: std.net.Server = undefined,
     Actioner: Actioner,
     Commander: Commander,
+    __version__: []const u8,
     pub fn init(
         allocator: std.mem.Allocator,
         hostname: []const u8,
         port: u16,
         log_level: Logging.Level, 
+        __version__: []const u8,
     ) Server {
         const addr = std.net.Address.resolveIp(hostname, port) catch |err| {
             std.log.err("`server::init::addr`: {any}\n", .{err});
@@ -84,6 +86,7 @@ pub const Server = struct {
             .address_str = cmn.address_as_str(addr),
             .Actioner = actioner,
             .Commander = commander,
+            .__version__ = __version__,
         };
     }
     pub fn printServerRunning(self: @This()) void {

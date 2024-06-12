@@ -1,9 +1,16 @@
-const fmt = @import("std").fmt;
+const std = @import("std");
+const fmt = std.fmt;
 
 /// ----------------------------------------------
 ///               Unitlity functions
 /// ----------------------------------------------
 /// Convert a number into a string
+pub fn clearScreen() void {
+    const stdout = std.io.getStdOut().writer();
+    stdout.print("\x1B[2J\x1B[H", .{}) catch |err| {
+        std.debug.print("`clearScreen`: {any}\n", .{err});
+    };
+}
 fn toString(num: u32) []const u8 {
     return fmt.comptimePrint("{d}", .{num});
 }

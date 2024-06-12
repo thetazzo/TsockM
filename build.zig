@@ -58,12 +58,15 @@ pub fn build(b: *std.Build) void {
     client_exe.root_module.addImport("raygui", raygui);
     client_exe.root_module.addImport("aids", lib_mod);
 
-    b.installArtifact(client_exe);
+    //b.installArtifact(client_exe);
+    const build_client = b.addInstallArtifact(client_exe, .{});
+    const build_client_step = b.step("client", "Build the client");
+    build_client_step.dependOn(&build_client.step);
     const run_client_exe = b.addRunArtifact(client_exe);
     // add command line arguments
     if (b.args) |args| {
         run_client_exe.addArgs(args);
     }
-    const run_client_step = b.step("client", "Run the CLIENT");
+    const run_client_step = b.step("run", "Run the CLIENT");
     run_client_step.dependOn(&run_client_exe.step);
 }

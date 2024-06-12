@@ -16,7 +16,7 @@ pub fn executor(_: ?[]const u8, sd: ?*SharedData) void {
     std.debug.print("peers connected: {d}\n", .{sd.?.peer_pool.items.len});
     std.debug.print("uptime: {d:.3}s\n", .{dt});
     std.debug.print("address: {s}\n", .{ sd.?.server.address_str });
-    std.debug.print("muted: {any}\n", .{ sd.?.server.log_level == .SILENT });
+    std.debug.print("log_level: {s}\n", .{ @tagName(sd.?.server.log_level) });
     std.debug.print("==================================================\n", .{});
 }
 

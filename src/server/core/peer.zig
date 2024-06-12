@@ -84,3 +84,12 @@ pub fn peerRefFromId(peer_pool: *std.ArrayList(Peer), id: Peer.PEER_ID) ?PeerRef
     return null;
 }
 
+pub fn peerRefFromUsername(peer_pool: *std.ArrayList(Peer), username: []const u8) ?PeerRef {
+    // O(n)
+    for (peer_pool.items, 0..) |peer, i| {
+        if (mem.eql(u8, peer.username, username)) {
+            return .{ .peer = peer, .ref_id = i };
+        }
+    }
+    return null;
+}

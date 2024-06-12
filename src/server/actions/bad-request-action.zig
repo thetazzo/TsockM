@@ -6,7 +6,6 @@ const Protocol = aids.Protocol;
 const net = std.net;
 const Action = core.Action;
 const SharedData = core.SharedData;
-const Peer = core.Peer;
 
 fn collectRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
     const errp = Protocol.init(

@@ -1,12 +1,8 @@
 const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
-const cmn = aids.cmn;
-const Protocol = aids.Protocol;
-const net = std.net;
 const Command = core.Command;
 const SharedData = core.SharedData;
-const Peer = core.Peer;
 
 pub fn executor(_: ?[]const u8, sd: ?*SharedData) void {
     const now = std.time.Instant.now() catch |err| {
@@ -20,6 +16,7 @@ pub fn executor(_: ?[]const u8, sd: ?*SharedData) void {
     std.debug.print("peers connected: {d}\n", .{sd.?.peer_pool.items.len});
     std.debug.print("uptime: {d:.3}s\n", .{dt});
     std.debug.print("address: {s}\n", .{ sd.?.server.address_str });
+    std.debug.print("muted: {any}\n", .{ sd.?.server.log_level == .SILENT });
     std.debug.print("==================================================\n", .{});
 }
 

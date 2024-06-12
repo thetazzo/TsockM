@@ -5,27 +5,13 @@ const ServerAction = @import("actions/actions.zig");
 const ServerCommand = @import("commands/commands.zig");
 const Server = core.Server;
 const Peer = core.Peer;
-const PeerRef = core.PeerRef;
 const SharedData = core.SharedData;
 const Protocol = aids.Protocol;
-const cmn = aids.cmn;
-const TextColor = aids.TextColor;
 const Logging = aids.Logging;
-const net = std.net;
 const mem = std.mem;
 const print = std.debug.print;
 
 const str_allocator = std.heap.page_allocator;
-
-pub fn peerRefFromUsername(peer_pool: *std.ArrayList(Peer), username: []const u8) ?PeerRef {
-    // O(n)
-    for (peer_pool.items, 0..) |peer, i| {
-        if (mem.eql(u8, peer.username, username)) {
-            return .{ .peer = peer, .ref_id = i };
-        }
-    }
-    return null;
-}
 
 /// I am thread
 fn listener(
@@ -61,29 +47,6 @@ fn listener(
     print("Ending `listener`\n", .{});
 }
 
-fn printUsage() void {
-    print("COMMANDS:\n", .{});
-    print("    * :c .............................. clear screen\n", .{});
-    print("    * :info ........................... print server statiistics\n", .{});
-    print("    * :exit ........................... terminate server\n", .{});
-    print("    * :help ........................... print server commands\n", .{});
-    print("    * :clean-pool ..................... removes dead peers\n", .{});
-    print("    * :list | :ls  .................... list all active peers\n", .{});
-    print("    * :ping <peer_id> | all ........... ping peer/s and update its/their life status\n", .{});
-    print("    * :kill <peer_id> | all ........... kill peer/s\n", .{});
-}
-
-fn extractCommandValue(cs: []const u8, cmd: []const u8) []const u8 {
-    var splits = mem.split(u8, cs, cmd);
-    _ = splits.next().?; // the `:msg` part
-    const val = mem.trimLeft(u8, splits.next().?, " \n");
-    if (val.len <= 0) {
-        std.log.err("missing action value", .{});
-        printUsage();
-    }
-    return val;
-}
-
 /// i am a thread
 fn commander(
     sd: *SharedData,
@@ -99,8 +62,8 @@ fn commander(
                 if (sd.server.Commander.get(ui)) |cmd| {
                     cmd.executor(user_input, sd);
                 } else {
-                    print("Unknown command: `{s}`\n", .{user_input});
-                    printUsage();
+                    std.log.err("Unknown command: `{s}`\n", .{user_input});
+                    ServerCommand.PRINT_PROGRAM_USAGE.executor(null, sd);
                 }
             }
         } else {
@@ -119,21 +82,15 @@ fn polizei(sd: *SharedData) !void {
         const now_t = try std.time.Instant.now();
         const dt  = now_t.since(start_t) / std.time.ns_per_ms;
         if (dt == 2000 and !lock) {
-            if (sd.server.Actioner.get(core.Act.COMM)) |act| {
-                act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd, "");
-            }
+            ServerAction.COMM_ACTION.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd, "");
             lock = true;
         }
         if (dt == 3000 and lock) {
-            if (sd.server.Actioner.get(core.Act.NTFY_KILL)) |act| {
-                act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd, "");
-            }
+            ServerAction.NTFY_KILL_ACTION.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd, "");
             lock = false;
         }
         if (dt == 4000 and !lock) {
-            if (sd.server.Actioner.get(core.Act.CLEAN_PEER_POOL)) |act| {
-                act.internal.?(sd);
-            }
+            ServerAction.CLEAN_PEER_POOL_ACTION.internal.?(sd);
             lock = false;
             start_t = try std.time.Instant.now();
         }

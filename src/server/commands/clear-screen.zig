@@ -10,7 +10,7 @@ const Peer = core.Peer;
 
 pub fn executor(_: ?[]const u8, sd: ?*SharedData) void {
     aids.TextColor.clearScreen();
-    std.debug.print("Server running on `" ++ aids.TextColor.paint_green("{s}") ++ "`\n", .{sd.?.server.address_str});
+    sd.?.server.printServerRunning();
 }
 
 pub const COMMAND = Command{

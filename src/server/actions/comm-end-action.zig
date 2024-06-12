@@ -1,12 +1,10 @@
 const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
-const cmn = aids.cmn;
 const Protocol = aids.Protocol;
 const net = std.net;
 const Action = core.Action;
 const SharedData = core.SharedData;
-const Peer = core.Peer;
 
 // TODO: try if sd.server.net_server can get the connection instead if in_conn param
 fn collectRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Protocol) void {

@@ -94,6 +94,15 @@ zig build client -- <subcommand>
 * [ ] {UPDATE} `core.zig` rename to `server.zig`
 * [ ] {UPDATE} make `Protocol` more robust with more functions and quality of life things
 * [ ] {UPDATE} make `Peer` more robust with more functions and quality of life things
+* [x] {FIX} report unknown argument
+* {FEAT} Introduce `ClientActions`
+    * [ ] bad-request-action.zig
+    * [ ] clean-peer-pool-action.zig
+    * [ ] comm-action.zig
+    * [ ] comm-end-action.zig
+    * [ ] get-peer-action.zig
+    * [ ] msg-action.zig
+    * [ ] ntfy-kill-action.zig
 #### 0.3.0
 * [x] {FEAT} Introduce server commands
 * [x] {FEAT} Introduce server actions
@@ -134,7 +143,7 @@ zig build client -- <subcommand>
     
 ### TODO
 
-#### 0.3.x
+#### 0.4.x
 * [ ] {FEAT} popups for warnings and errors
 * [ ] {FEAT} decrypt body of the protocol
 * [ ] {FEAT} clipboard paste support
@@ -145,20 +154,25 @@ zig build client -- <subcommand>
     * `\c{#00FFAA};HELLO\` prints colored text based on hex value 
 * {FEAT} Client actions
     * [ ] Ping user by username and print user info
-#### 0.2.3
-* [x] finish implementaton of `:exit` action ~ handle COMM_END response
-* [ ] don't crash the the client wait for a connection to the server be available
-* [ ] print client termination
-* [ ] Multicolor support for message display
+#### 0.3.1
+#### 0.3.0
+* [ ] {UPDATE} make `Action` and `Command` a shared library between server and client src code
+* [x] {UPDATE} finish implementaton of `:exit` action ~ handle COMM_END response
 * [ ] {UPDATE} transform functions to be camel case as per zig standrad
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad
-* [ ] better centering of text on input boxes
-    * Use `msasuseTextEx(text).y`
-* [ ] Replace client actions are actually thing that happen on `accept_connection`
-* [ ] Replace client actions as client commands
-* {FEAT} Client command
-    * [x] Exiting the application
-    * [x] Sending messages
+* [ ] {UPDATE} better centering of text on input boxes ~ Use `msasuseTextEx(text).y`
+* [ ] {UPDATE} don't crash the the client wait for a connection to the server be available
+* [ ] {FEAT} Multicolor support for message display
+* [ ] {FEAT} print client termination
+* {FEAT} Introduce `ClientActions`
+    * [ ] bad-request-action
+    * [ ] clean-peer-pool-action
+    * [ ] comm-action
+    * [ ] comm-end-action
+    * [ ] get-peer-action
+    * [ ] msg-action
+    * [ ] ntfy-kill-action
+* [ ] {FEAT} Introduce `ClientCommands`
 #### 0.2.2
 * [x] {FIX} when exiting duuring `connection succesful` the program deadlocks
 * [x] {FEAT} consume `-fp` for setting location to the font 

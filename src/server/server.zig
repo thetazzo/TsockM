@@ -168,7 +168,6 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     var peer_pool = std.ArrayList(Peer).init(gpa_allocator);
     defer peer_pool.deinit();
 
-    try cmn.screenClear();
     server.start();
 
     var thread_pool: [3]std.Thread = undefined;

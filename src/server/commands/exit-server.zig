@@ -8,9 +8,7 @@ const Command = core.Command;
 const SharedData = core.SharedData;
 const Peer = core.Peer;
 
-pub fn executor(cmd: []const u8, sd: *SharedData) void {
-    _ = cmd;
-    _ = sd;
+pub fn executor(_: ?[]const u8, _: ?*SharedData) void {
     std.debug.print("Exiting server ...\n", .{});
     std.posix.exit(0);
 }

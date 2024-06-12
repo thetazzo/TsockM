@@ -17,23 +17,23 @@ fn printCmdUsage() void {
     std.debug.print("    * <peer_id> .... id of the peer to ping\n", .{});
 }
 
-pub fn executor(cmd: []const u8, sd: *SharedData) void {
-    var split = std.mem.splitBackwardsScalar(u8, cmd, ' ');
+pub fn executor(cmd: ?[]const u8, sd: ?*SharedData) void {
+    var split = std.mem.splitBackwardsScalar(u8, cmd.?, ' ');
     if (split.next()) |arg| {
-        if (std.mem.eql(u8, arg, cmd)) {
+        if (std.mem.eql(u8, arg, cmd.?)) {
             std.log.err("missing flag", .{});
             printCmdUsage();
             return;
         }
         // TODO: connecton to server actions
         if (std.mem.eql(u8, arg, "all")) {
-            for (sd.peer_pool.items, 0..) |peer, pid| {
+            for (sd.?.peer_pool.items, 0..) |peer, pid| {
                 const reqp = Protocol{
                     .type = Protocol.Typ.REQ, // type
                     .action = Protocol.Act.COMM, // action
                     .status_code = Protocol.StatusCode.OK, // status_code
                     .sender_id = "server", // sender_id
-                    .src = sd.server.address_str, // src_address
+                    .src = sd.?.server.address_str, // src_address
                     .dst = peer.commAddressAsStr(), // dst address
                     .body = "check?", // body
                 };
@@ -42,20 +42,20 @@ pub fn executor(cmd: []const u8, sd: *SharedData) void {
                 _ = Protocol.transmit(peer.stream(), reqp);
                 const status = Protocol.transmit(peer.stream(), reqp);
                 if (status == 1) {
-                    // TODO: Put htis into sd ??
-                    sd.peer_pool.items[pid].alive = false;
+                    // TODO: Put htis into sd.? ??
+                    sd.?.peer_pool.items[pid].alive = false;
                 } 
             }
         } else {
             var found: bool = false;
-            for (sd.peer_pool.items, 0..) |peer, pid| {
+            for (sd.?.peer_pool.items, 0..) |peer, pid| {
                 if (std.mem.eql(u8, peer.id, arg)) {
                     const reqp = Protocol{
                         .type = Protocol.Typ.REQ, // type
                         .action = Protocol.Act.COMM, // action
                         .status_code = Protocol.StatusCode.OK, // status_code
                         .sender_id = "server", // sender_id
-                        .src = sd.server.address_str, // src_address
+                        .src = sd.?.server.address_str, // src_address
                         .dst = peer.commAddressAsStr(), // dst address
                         .body = "check?", // body
                     };
@@ -64,8 +64,8 @@ pub fn executor(cmd: []const u8, sd: *SharedData) void {
                     _ = Protocol.transmit(peer.stream(), reqp);
                     const status = Protocol.transmit(peer.stream(), reqp);
                     if (status == 1) {
-                        // TODO: Put htis into sd ??
-                        sd.peer_pool.items[pid].alive = false;
+                        // TODO: Put htis into sd.? ??
+                        sd.?.peer_pool.items[pid].alive = false;
                     } 
                     found = true;
                 }

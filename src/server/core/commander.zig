@@ -4,7 +4,7 @@ const SharedData = @import("core.zig").SharedData;
 const CMD = []const u8;
 
 pub const Command = struct {
-    executor: *const fn ([]const u8, *SharedData) void,
+    executor: *const fn (?[]const u8, ?*SharedData) void,
 };
 
 pub const Commander = struct {

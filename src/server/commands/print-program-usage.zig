@@ -9,9 +9,7 @@ const SharedData = core.SharedData;
 const Peer = core.Peer;
 
 // TODO use shared data when printing server commands ~ sd.Commander.usageList().print();
-pub fn executor(cmd: []const u8, sd: *SharedData) void {
-    _ = cmd;
-    _ = sd;
+pub fn executor(_: ?[]const u8, _: ?*SharedData) void {
     std.debug.print("COMMANDS:\n", .{});
     std.debug.print("    * :c .............................. clear screen\n", .{});
     std.debug.print("    * :info ........................... print server statiistics\n", .{});

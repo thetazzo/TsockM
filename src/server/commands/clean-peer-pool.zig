@@ -9,14 +9,13 @@ const Command = core.Command;
 const SharedData = core.SharedData;
 const Peer = core.Peer;
 
-pub fn executor(cmd: []const u8, sd: *SharedData) void {
-    _ = cmd;
-    var pp_len: usize = sd.peer_pool.items.len;
+pub fn executor(_: ?[]const u8, sd: ?*SharedData) void {
+    var pp_len: usize = sd.?.peer_pool.items.len;
     while (pp_len > 0) {
         pp_len -= 1;
-        const p = sd.peer_pool.items[pp_len];
+        const p = sd.?.peer_pool.items[pp_len];
         if (p.alive == false) {
-            _ = sd.peerRemove(pp_len);
+            _ = sd.?.peerRemove(pp_len);
         }
     }
 }

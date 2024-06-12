@@ -9,13 +9,12 @@ const Command = core.Command;
 const SharedData = core.SharedData;
 const Peer = core.Peer;
 
-pub fn executor(cmd: []const u8, sd: *SharedData) void {
-    _ = cmd;
-    if (sd.peer_pool.items.len == 0) {
+pub fn executor(_: ?[]const u8, sd: ?*SharedData) void {
+    if (sd.?.peer_pool.items.len == 0) {
         std.debug.print("Peer list: []\n", .{});
     } else {
-        std.debug.print("Peer list ({d}):\n", .{sd.peer_pool.items.len});
-        for (sd.peer_pool.items[0..]) |peer| {
+        std.debug.print("Peer list ({d}):\n", .{sd.?.peer_pool.items.len});
+        for (sd.?.peer_pool.items[0..]) |peer| {
             peer.dump();
         }
     }

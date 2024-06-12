@@ -17,9 +17,9 @@ const TextColor = aids.TextColor;
 const Logging = aids.Logging;
 
 pub const SharedData = struct {
-    m: std.Thread.Mutex,
-    should_exit: bool,
-    peer_pool: *std.ArrayList(Peer),
+    m: std.Thread.Mutex = undefined,
+    should_exit: bool = undefined,
+    peer_pool: *std.ArrayList(Peer) = undefined,
     server: Server,
 
     pub fn setShouldExit(self: *@This(), should: bool) void {
@@ -53,6 +53,7 @@ pub const SharedData = struct {
         try self.peer_pool.append(peer);
     }
 };
+
 pub const Server = struct {
     hostname: []const u8,
     port: u16,
@@ -85,6 +86,9 @@ pub const Server = struct {
             .Commander = commander,
         };
     }
+    pub fn printServerRunning(self: @This()) void {
+        std.debug.print("Server running on `" ++ aids.TextColor.paint_green("{s}") ++ "`\n", .{self.address_str});
+    }
     pub fn start(self: *@This()) void {
         const net_server = self.address.listen(.{
             .reuse_address = true,
@@ -92,7 +96,8 @@ pub const Server = struct {
             std.log.err("`server::start::net_server`: {any}\n", .{err});
             std.posix.exit(1);
         };
-        std.debug.print("Server running on `" ++ TextColor.paint_green("{s}") ++ "`\n", .{self.address_str});
+        aids.TextColor.clearScreen();
+        self.printServerRunning();
         const start_time = std.time.Instant.now() catch |err| {
             std.log.err("`server::init::start_time`: {any}\n", .{err});
             std.posix.exit(1);

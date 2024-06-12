@@ -14,9 +14,7 @@ const print = std.debug.print;
 const str_allocator = std.heap.page_allocator;
 
 /// I am thread
-fn listener(
-    sd: *SharedData,
-) !void {
+fn listener(sd: *SharedData) !void {
     while (!sd.should_exit) {
         const conn = try sd.server.net_server.accept();
 
@@ -48,9 +46,7 @@ fn listener(
 }
 
 /// i am a thread
-fn commander(
-    sd: *SharedData,
-) !void {
+fn commander(sd: *SharedData) !void {
     while (!sd.should_exit) {
         // read for command
         var buf: [256]u8 = undefined;
@@ -74,22 +70,24 @@ fn commander(
     print("Thread `run_cmd` finished\n", .{});
 }
 
+/// ping peers to determine ther life status
 /// this is a thread
 fn polizei(sd: *SharedData) !void {
     var start_t = try std.time.Instant.now();
     var lock = false;
+    const CHECK_INTERVAL = 2000; // ms 
     while (!sd.should_exit) {
         const now_t = try std.time.Instant.now();
         const dt  = now_t.since(start_t) / std.time.ns_per_ms;
-        if (dt == 2000 and !lock) {
+        if (dt == CHECK_INTERVAL and !lock) {
             ServerAction.COMM_ACTION.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd, "");
             lock = true;
         }
-        if (dt == 3000 and lock) {
+        if (dt == CHECK_INTERVAL+500 and lock) {
             ServerAction.NTFY_KILL_ACTION.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd, "");
             lock = false;
         }
-        if (dt == 4000 and !lock) {
+        if (dt == CHECK_INTERVAL+1001 and !lock) {
             ServerAction.CLEAN_PEER_POOL_ACTION.internal.?(sd);
             lock = false;
             start_t = try std.time.Instant.now();

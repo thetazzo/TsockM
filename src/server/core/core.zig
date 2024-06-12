@@ -87,7 +87,22 @@ pub const Server = struct {
         };
     }
     pub fn printServerRunning(self: @This()) void {
-        std.debug.print("Server running on `" ++ aids.TextColor.paint_green("{s}") ++ "`\n", .{self.address_str});
+        std.debug.print(
+            "Server running on `" ++ aids.TextColor.paint_green("{s}") ++ "` ",
+            .{self.address_str},
+        );
+        switch (self.log_level) {
+            .DEV => {
+                std.debug.print(TextColor.paint_hex("#ffa500", "(DEV)"), .{});
+            },
+            .COMPACT => {
+                std.debug.print(TextColor.paint_hex("#ffa500", "(COMPACT)"), .{});
+            },
+            .SILENT => {
+                std.debug.print(TextColor.paint_hex("#ffa500", "(MUTED)"), .{});
+            },
+        }
+        std.debug.print("\n", .{});
     }
     pub fn start(self: *@This()) void {
         const net_server = self.address.listen(.{

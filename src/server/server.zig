@@ -104,23 +104,27 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     var server = Server.init(gpa_allocator, hostname, port, log_level);
     defer server.deinit();
 
-    server.Actioner.add(core.Act.COMM, ServerAction.COMM_ACTION);
-    server.Actioner.add(core.Act.COMM_END, ServerAction.COMM_END_ACTION);
-    server.Actioner.add(core.Act.MSG, ServerAction.MSG_ACTION);
-    server.Actioner.add(core.Act.GET_PEER, ServerAction.GET_PEER_ACTION);
-    server.Actioner.add(core.Act.NTFY_KILL, ServerAction.NTFY_KILL_ACTION);
-    server.Actioner.add(core.Act.NONE, ServerAction.BAD_REQUEST_ACTION);
+    // Bind server actions to the server
+    server.Actioner.add(core.Act.COMM           , ServerAction.COMM_ACTION);
+    server.Actioner.add(core.Act.COMM_END       , ServerAction.COMM_END_ACTION);
+    server.Actioner.add(core.Act.MSG            , ServerAction.MSG_ACTION);
+    server.Actioner.add(core.Act.GET_PEER       , ServerAction.GET_PEER_ACTION);
+    server.Actioner.add(core.Act.NTFY_KILL      , ServerAction.NTFY_KILL_ACTION);
+    server.Actioner.add(core.Act.NONE           , ServerAction.BAD_REQUEST_ACTION);
     server.Actioner.add(core.Act.CLEAN_PEER_POOL, ServerAction.CLEAN_PEER_POOL_ACTION);
 
-    server.Commander.add(":exit", ServerCommand.EXIT_SERVER);
-    server.Commander.add(":info", ServerCommand.PRINT_SERVER_STATS);
-    server.Commander.add(":list", ServerCommand.LIST_ACTIVE_PEERS);
-    server.Commander.add(":ls",   ServerCommand.LIST_ACTIVE_PEERS);
-    server.Commander.add(":kill", ServerCommand.KILL_PEER);
-    server.Commander.add(":ping", ServerCommand.PING);
-    server.Commander.add(":c",    ServerCommand.CLEAR_SCREEN);
-    server.Commander.add(":clean-pool", ServerCommand.CLEAN_PEER_POOL);
-    server.Commander.add(":help", ServerCommand.PRINT_PROGRAM_USAGE);
+    // Bind server commands to the server
+    server.Commander.add(":exit"                , ServerCommand.EXIT_SERVER);
+    server.Commander.add(":info"                , ServerCommand.PRINT_SERVER_STATS);
+    server.Commander.add(":list"                , ServerCommand.LIST_ACTIVE_PEERS);
+    server.Commander.add(":ls"                  , ServerCommand.LIST_ACTIVE_PEERS);
+    server.Commander.add(":kill"                , ServerCommand.KILL_PEER);
+    server.Commander.add(":ping"                , ServerCommand.PING);
+    server.Commander.add(":c"                   , ServerCommand.CLEAR_SCREEN);
+    server.Commander.add(":clean-pool"          , ServerCommand.CLEAN_PEER_POOL);
+    server.Commander.add(":mute"                , ServerCommand.MUTE);
+    server.Commander.add(":unmute"              , ServerCommand.UNMUTE);
+    server.Commander.add(":help"                , ServerCommand.PRINT_PROGRAM_USAGE);
 
     var peer_pool = std.ArrayList(Peer).init(gpa_allocator);
     defer peer_pool.deinit();

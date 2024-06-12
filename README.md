@@ -98,10 +98,6 @@ zig build client -- <subcommand>
 * [x] {FEAT} Introduce server commands
 * [x] {FEAT} Introduce server actions
 * [x] {FEAT} `:mute` and `:unmute` server commands
-* {FEAT} handle threads in `core.zig`
-    * [ ] `launch_commander` - launces the thread reading stdin for commands
-    * [ ] `launch_listener`  - launches the thread for listening for TCP connections
-    * [ ] `launch_polizei`   - pings peers to determine life status
 #### 0.2.0
 * [x] {FEAT} Server strcture
 * [x] {FEAT} Consume program arguments:

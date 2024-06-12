@@ -137,9 +137,9 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
         .server = server,
     };
     {
-        thread_pool[0] = try std.Thread.spawn(.{}, listener, .{ &sd });
-        thread_pool[1] = try std.Thread.spawn(.{}, commander, .{ &sd });
+        thread_pool[0] = try std.Thread.spawn(.{}, commander, .{ &sd });
+        thread_pool[1] = try std.Thread.spawn(.{}, listener, .{ &sd });
         thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{ &sd });
+        defer for(thread_pool) |thr| thr.join();
     }
-    defer for(thread_pool) |thr| thr.join();
 }

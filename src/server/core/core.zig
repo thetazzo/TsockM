@@ -120,24 +120,6 @@ pub const Server = struct {
         self.net_server = net_server;
         self.start_time = start_time;
     }
-    pub fn launch_commander(self: @This(), thread_pool: []std.Thread) void {
-        _ = self;
-        _ = thread_pool;
-        std.log.err("not implemented", .{});
-        std.posix.exit(1);
-    }
-    pub fn launch_listener(self: @This(), thread_pool: []std.Thread) void {
-        _ = self;
-        _ = thread_pool;
-        std.log.err("not implemented", .{});
-        std.posix.exit(1);
-    }
-    pub fn launch_polizi(self: @This(), thread_pool: []std.Thread) void {
-        _ = self;
-        _ = thread_pool;
-        std.log.err("not implemented", .{});
-        std.posix.exit(1);
-    }
     pub fn deinit(self: *@This()) void {
         self.net_server.deinit();
         self.Actioner.deinit();

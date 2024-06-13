@@ -8,6 +8,7 @@ const Peer = core.Peer;
 const SharedData = core.SharedData;
 const Protocol = aids.Protocol;
 const Logging = aids.Logging;
+const Stab = aids.Stab;
 const mem = std.mem;
 const print = std.debug.print;
 
@@ -28,7 +29,7 @@ fn listener(sd: *SharedData) !void {
         var protocol = Protocol.protocolFromStr(recv); // parse protocol from recieved bytes
         protocol.dump(sd.server.log_level);
 
-        const opt_action = sd.server.Actioner.get(core.ParseAct(protocol.action));
+        const opt_action = sd.server.Actioner.get(aids.Stab.parseAct(protocol.action));
         if (opt_action) |act| {
             switch (protocol.type) {
                 // TODO: better handling of optional types
@@ -103,13 +104,13 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     defer server.deinit();
 
     // Bind server actions to the server
-    server.Actioner.add(core.Act.COMM           , ServerAction.COMM_ACTION);
-    server.Actioner.add(core.Act.COMM_END       , ServerAction.COMM_END_ACTION);
-    server.Actioner.add(core.Act.MSG            , ServerAction.MSG_ACTION);
-    server.Actioner.add(core.Act.GET_PEER       , ServerAction.GET_PEER_ACTION);
-    server.Actioner.add(core.Act.NTFY_KILL      , ServerAction.NTFY_KILL_ACTION);
-    server.Actioner.add(core.Act.NONE           , ServerAction.BAD_REQUEST_ACTION);
-    server.Actioner.add(core.Act.CLEAN_PEER_POOL, ServerAction.CLEAN_PEER_POOL_ACTION);
+    server.Actioner.add(Stab.Act.COMM           , ServerAction.COMM_ACTION);
+    server.Actioner.add(Stab.Act.COMM_END       , ServerAction.COMM_END_ACTION);
+    server.Actioner.add(Stab.Act.MSG            , ServerAction.MSG_ACTION);
+    server.Actioner.add(Stab.Act.GET_PEER       , ServerAction.GET_PEER_ACTION);
+    server.Actioner.add(Stab.Act.NTFY_KILL      , ServerAction.NTFY_KILL_ACTION);
+    server.Actioner.add(Stab.Act.NONE           , ServerAction.BAD_REQUEST_ACTION);
+    server.Actioner.add(Stab.Act.CLEAN_PEER_POOL, ServerAction.CLEAN_PEER_POOL_ACTION);
 
     // Bind server commands to the server
     server.Commander.add(":exit"                , ServerCommand.EXIT_SERVER);

@@ -22,13 +22,13 @@ pub fn executor(cmd: ?[]const u8, sd: ?*SharedData) void {
             return;
         }
         if (std.mem.eql(u8, arg, "all")) {
-            if (sd.?.server.Actioner.get(core.Act.COMM_END)) |act| {
+            if (sd.?.server.Actioner.get(aids.Stab.Act.COMM_END)) |act| {
                 act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd.?, "");
             }
         } else {
             const opt_peer_ref = core.PeerCore.peerRefFromId(sd.?.peer_pool, arg);
             if (opt_peer_ref) |peer_ref| {
-                if (sd.?.server.Actioner.get(core.Act.COMM_END)) |act| {
+                if (sd.?.server.Actioner.get(aids.Stab.Act.COMM_END)) |act| {
                     const id = std.fmt.allocPrint(str_allocator, "{d}", .{peer_ref.ref_id}) catch |err| {
                         std.log.err("killPeers: {any}", .{err});
                         return;

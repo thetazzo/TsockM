@@ -3,7 +3,7 @@ const aids = @import("aids");
 const core = @import("../core/core.zig");
 const Protocol = aids.Protocol;
 const net = std.net;
-const Action = core.Action;
+const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
 // TODO: try if sd.server.net_server can get the connection instead if in_conn param
@@ -83,7 +83,7 @@ fn transmitError() void {
     std.log.err("not implemented", .{});
 }
 
-pub const ACTION = Action{
+pub const ACTION = Action(SharedData){
     .collect = .{
         .request  = collectRequest,
         .response = collectRespone,

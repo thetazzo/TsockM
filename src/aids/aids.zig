@@ -3,4 +3,16 @@ pub const Protocol = @import("protocol.zig");
 pub const cmn = @import("common.zig");
 pub const TextColor = @import("text_color.zig");
 pub const Assert = @import("assert.zig");
-pub const Stab = @import("commander-stab.zig");
+const Commander_ = @import("commander.zig");
+const Actioner_ = @import("actioner.zig");
+
+pub const Stab = struct {
+    pub const Commander = Commander_.Commander;
+    pub const Command = Commander_.Command;
+    pub const Actioner = Actioner_.Actioner;
+    pub const Action = Actioner_.Action;
+    pub const Act = Actioner_.Act;
+    pub const parseAct = Actioner_.parseAct;
+};
+
+

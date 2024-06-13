@@ -4,7 +4,7 @@ const core = @import("../core/core.zig");
 const cmn = aids.cmn;
 const Protocol = aids.Protocol;
 const net = std.net;
-const Action = core.Action;
+const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 const Peer = core.Peer;
 
@@ -86,7 +86,7 @@ fn transmitError() void {
     std.log.err("not implemented", .{});
 }
 
-pub const ACTION = Action{
+pub const ACTION = Action(SharedData){
     .collect = .{
         .request  = collectRequest,
         .response = collectRespone,

@@ -1,7 +1,7 @@
 const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
-const Action = core.Action;
+const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
 fn internal(sd: *SharedData) void {
@@ -15,7 +15,7 @@ fn internal(sd: *SharedData) void {
     }
 }
 
-pub const ACTION = Action{
+pub const ACTION = Action(SharedData){
     .collect = null,
     .transmit = null,
     .internal = internal,

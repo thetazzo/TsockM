@@ -1,10 +1,5 @@
 const std = @import("std");
 const aids = @import("aids");
-const actioner_lib = @import("actioner.zig");
-const Actioner = actioner_lib.Actioner;
-pub const Action = actioner_lib.Action;
-pub const ParseAct = actioner_lib.parseAct;
-pub const Act = actioner_lib.Act;
 pub const PeerCore = @import("peer.zig");
 pub const PeerRef = PeerCore.PeerRef;
 pub const Peer = PeerCore.Peer;
@@ -60,7 +55,7 @@ pub const Server = struct {
     address_str: []const u8,
     start_time: std.time.Instant = undefined,
     net_server: std.net.Server = undefined,
-    Actioner: Actioner,
+    Actioner: Stab.Actioner(SharedData),
     Commander: Stab.Commander(Stab.Command(SharedData)),
     __version__: []const u8,
     pub fn init(
@@ -74,7 +69,7 @@ pub const Server = struct {
             std.log.err("`server::init::addr`: {any}\n", .{err});
             std.posix.exit(1);
         };
-        const actioner = Actioner.init(allocator);
+        const actioner = Stab.Actioner(SharedData).init(allocator);
         const commander = Stab.Commander(Stab.Command(SharedData)).init(allocator);
         return Server {
             .hostname = hostname,

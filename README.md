@@ -95,14 +95,6 @@ zig build client -- <subcommand>
 * [ ] {UPDATE} make `Protocol` more robust with more functions and quality of life things
 * [ ] {UPDATE} make `Peer` more robust with more functions and quality of life things
 * [x] {FIX} report unknown argument
-* {FEAT} Introduce `ClientActions`
-    * [ ] bad-request-action.zig
-    * [ ] clean-peer-pool-action.zig
-    * [ ] comm-action.zig
-    * [ ] comm-end-action.zig
-    * [ ] get-peer-action.zig
-    * [ ] msg-action.zig
-    * [ ] ntfy-kill-action.zig
 #### 0.3.0
 * [x] {FEAT} Introduce server commands
 * [x] {FEAT} Introduce server actions
@@ -154,15 +146,15 @@ zig build client -- <subcommand>
     * `\c{#00FFAA};HELLO\` prints colored text based on hex value 
 * {FEAT} Client actions
     * [ ] Ping user by username and print user info
+* [ ] {FEAT} Multicolor support for message display
 #### 0.3.1
-#### 0.3.0
 * [ ] {UPDATE} make `Action` and `Command` a shared library between server and client src code
 * [x] {UPDATE} finish implementaton of `:exit` action ~ handle COMM_END response
 * [ ] {UPDATE} transform functions to be camel case as per zig standrad
 * [ ] {UPDATE} transform variables to be snake case as per zig standrad
 * [ ] {UPDATE} better centering of text on input boxes ~ Use `msasuseTextEx(text).y`
 * [ ] {UPDATE} don't crash the the client wait for a connection to the server be available
-* [ ] {FEAT} Multicolor support for message display
+#### 0.3.0
 * [ ] {FEAT} print client termination
 * {FEAT} Introduce `ClientActions`
     * [ ] bad-request-action

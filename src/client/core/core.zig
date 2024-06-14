@@ -27,13 +27,32 @@ pub const SharedData = struct {
 pub const Client = struct {
     id: []const u8,
     username: []const u8,
-    stream: std.net.Stream,
-    server_addr: std.net.Address,
-    server_addr_str: []const u8,
-    client_addr: std.net.Address,
-    client_addr_str: []const u8,
-
+    Commander: aids.Stab.Commander(SharedData),
     log_level: Logging.Level,
+    // Should the client be it's own server ?
+    stream: std.net.Stream = undefined,
+    server_addr: std.net.Address = undefined,
+    server_addr_str: []const u8 = undefined,
+    client_addr: std.net.Address = undefined,
+    client_addr_str: []const u8 = undefined,
+    pub fn init(id: []const u8, username: []const u8, log_level: Logging.Level) Client {
+        // acllocate commander
+        return Client{
+            .id = id,
+            .username = username,
+            .log_level = log_level,
+        };
+    }
+    pub fn deinit(self: *@This()) void {
+        self.Commander.deinit();
+    }
+    pub fn connect(self: *@This()) void {
+        _ = self;
+        std.log.err("not implemented", .{});
+        std.posix.exit(1);
+        // TODO: handle .server setting here
+        // self.server = server
+    }
 
     pub fn asStr(self: @This(), allocator: std.mem.Allocator) []const u8 {
         const stats = std.fmt.allocPrint(allocator,

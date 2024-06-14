@@ -35,6 +35,20 @@ pub const Client = struct {
 
     log_level: Logging.Level,
 
+    pub fn asStr(self: @This(), allocator: std.mem.Allocator) []const u8 {
+        const stats = std.fmt.allocPrint(allocator,
+            "username: {s}\n" ++
+            "id: {s}\n" ++
+            "server_address: {s}\n" ++
+            "client_address: {s}\n",
+            .{self.username, self.id, self.server_addr_str, self.client_addr_str}
+        ) catch |err| {
+            std.log.err("client::asStr: {any}", .{err});
+            std.posix.exit(1);
+        };
+        return stats;
+    }
+
     pub fn dump(self: @This()) void {
         std.debug.print("------------------------------------\n", .{});
         std.debug.print("Client {{\n", .{});

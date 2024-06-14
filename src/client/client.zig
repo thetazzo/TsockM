@@ -19,19 +19,6 @@ const str_allocator = std.heap.page_allocator;
 
 const LOG_LEVEL = Logging.Level.DEV;
 
-fn clientStats(client: Client) ![]const u8 {
-    const username    = try std.fmt.allocPrint(str_allocator, "username: {s}\n", .{client.username});
-    defer str_allocator.free(username);
-    const id          = try std.fmt.allocPrint(str_allocator, "id: {s}\n", .{client.id});
-    defer str_allocator.free(id);
-    const server_addr = try std.fmt.allocPrint(str_allocator, "server_address: {s}\n", .{client.server_addr_str});
-    defer str_allocator.free(server_addr);
-    const client_addr = try std.fmt.allocPrint(str_allocator, "client address: {s}\n", .{client.client_addr_str});
-    defer str_allocator.free(client_addr);
-    const stats = try std.fmt.allocPrint(str_allocator, "{s}{s}{s}{s}", .{username, id, server_addr, client_addr});
-    return stats;
-}
-
 fn print_usage() void {
     print("COMMANDS:\n", .{});
     print("    * :msg <message> .... boradcast the message to all users\n", .{});
@@ -116,15 +103,12 @@ fn listen_for_comms(sd: *core.SharedData) !void {
                         resp.sender_id, //body
                     );
                     try sd.client.sendRequestToServer(reqp);
-
                     // collect GET_PEER response
                     const np = try Protocol.collect(str_allocator, sd.client.stream);
                     np.dump(LOG_LEVEL);
-
                     var un_spl = mem.split(u8, np.body, "#");
                     const unn = un_spl.next().?; // user name
                     const unh = un_spl.next().?; // username hash
-
                     // print recieved message
                     print("{s}" ++ tclr.paint_hex("#555555", "#{s}") ++ ": {s}\n", .{ unn, unh, resp.body });
                 } else {
@@ -159,11 +143,9 @@ fn listen_for_comms(sd: *core.SharedData) !void {
                         resp.body, //body
                     );
                     sd.client.sendRequestToServer(reqp);
-
                     // collect GET_PEER response
                     const np = try Protocol.collect(str_allocator, sd.client.stream);
                     np.dump(LOG_LEVEL);
-
                     var un_spl = mem.split(u8, np.body, "#");
                     const unn = un_spl.next().?; // user name
                     const unh = un_spl.next().?; // username hash
@@ -613,14 +595,17 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             // Messaging screen
             // Draw successful connection
             var buf: [256]u8 = undefined;
-            const succ_str = try std.fmt.bufPrintZ(&buf, "Client connected successfully to `{s}:{d}` :)\n", .{server_addr, server_port});
+            const succ_str = try std.fmt.bufPrintZ(&buf,
+                "Client connected successfully to `{s}:{d}` :)\n",
+                .{server_addr, server_port}
+            );
             if (response_counter > 0) {
                 const sslen = rl.measureTextEx(font, succ_str, font_size, 0).x;
                 rl.drawTextEx(font, succ_str, rl.Vector2{.x=sw/2 - sslen/2, .y=sh/2 - sh/4}, font_size, 0, rl.Color.green);
                 response_counter -= 1;
             } else {
                 // Draw client information
-                const client_stats = try clientStats(sd.client);
+                const client_stats = sd.client.asStr(str_allocator);
                 defer str_allocator.free(client_stats);
                 const client_str  = try std.fmt.bufPrintZ(&buf, "{s}\n", .{client_stats});
                 try message_display.render(str_allocator, font, font_size, frame_counter);

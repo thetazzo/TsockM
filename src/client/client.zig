@@ -1,5 +1,10 @@
 const std = @import("std");
 const aids = @import("aids");
+const core = @import("./core/core.zig");
+const EXIT_CLIENT = @import("./commands/exit-client.zig").COMMAND;
+
+const Client =  core.Client;
+
 const Protocol = aids.Protocol;
 const Logging = aids.Logging;
 const cmn = aids.cmn;
@@ -16,33 +21,14 @@ const str_allocator = std.heap.page_allocator;
 
 const LOG_LEVEL = Logging.Level.DEV;
 
-const Client = struct {
-    id: []const u8,
-    username: []const u8,
-    stream: net.Stream,
-    server_addr: net.Address,
-    client_addr: Protocol.Addr,
-
-    pub fn dump(self: @This()) void {
-        print("------------------------------------\n", .{});
-        print("Client {{\n", .{});
-        print("    id: `{s}`\n", .{self.id});
-        print("    username: `{s}`\n", .{self.username});
-        print("    server_addr: `{s}`\n", .{cmn.address_as_str(self.server_addr)});
-        print("    client_addr: `{s}`\n", .{self.client_addr});
-        print("}}\n", .{});
-        print("------------------------------------\n", .{});
-    }
-};
-
 fn clientStats(client: Client) ![]const u8 {
     const username    = try std.fmt.allocPrint(str_allocator, "username: {s}\n", .{client.username});
     defer str_allocator.free(username);
     const id          = try std.fmt.allocPrint(str_allocator, "id: {s}\n", .{client.id});
     defer str_allocator.free(id);
-    const server_addr = try std.fmt.allocPrint(str_allocator, "server_address: {s}\n", .{cmn.address_as_str(client.server_addr)});
+    const server_addr = try std.fmt.allocPrint(str_allocator, "server_address: {s}\n", .{client.server_addr_str});
     defer str_allocator.free(server_addr);
-    const client_addr = try std.fmt.allocPrint(str_allocator, "client address: {s}\n", .{client.client_addr});
+    const client_addr = try std.fmt.allocPrint(str_allocator, "client address: {s}\n", .{client.client_addr_str});
     defer str_allocator.free(client_addr);
     const stats = try std.fmt.allocPrint(str_allocator, "{s}{s}{s}{s}", .{username, id, server_addr, client_addr});
     return stats;
@@ -84,12 +70,15 @@ fn request_connection(address: []const u8, port: u16, username: []const u8) !Cli
         const username_ = peer_spl.next().?;
 
         // construct the client
-        return Client{
+        return core.Client{
             .id = id,
             .username = username_,
             .stream = stream,
             .server_addr = addr,
-            .client_addr = resp.dst,
+            .server_addr_str = dst_addr,
+            .client_addr = try net.Address.initUnix(resp.dst),
+            .client_addr_str = resp.dst,
+            .log_level = Logging.Level.DEV,
         };
     } else {
         std.log.err("server error when creating client", .{});
@@ -97,45 +86,16 @@ fn request_connection(address: []const u8, port: u16, username: []const u8) !Cli
     }
 }
 
-fn send_request(addr: net.Address, req: Protocol) !void {
-    // Open a sterm to the server
-    const req_stream = try net.tcpConnectToAddress(addr);
-    defer req_stream.close();
-
-    // send protocol to server
-    req.dump(LOG_LEVEL);
-    _ = Protocol.transmit(req_stream, req);
-}
-
-// Data to share between threads
-const SharedData = struct {
-    m: std.Thread.Mutex,
-    should_exit: bool,
-    messages: std.ArrayList(Display.Message),
-
-    pub fn setShouldExit(self: *@This(), should: bool) void {
-        self.m.lock();
-        defer self.m.unlock();
-
-        self.should_exit = should;
-    }
-
-    pub fn pushMessage(self: *@This(), msg: Display.Message) !void {
-        self.m.lock();
-        defer self.m.unlock();
-        try self.messages.append(msg);
-    }
-};
-
-fn listen_for_comms(sd: *SharedData, client: *Client) !void {
-    const addr_str = cmn.address_as_str(client.server_addr);
+/// i am thread
+fn listen_for_comms(sd: *core.SharedData) !void {
+    const addr_str = sd.client.server_addr_str;
     while (true) {
-        const resp = try Protocol.collect(str_allocator, client.stream);
+        const resp = try Protocol.collect(str_allocator, sd.client.stream);
         resp.dump(LOG_LEVEL);
         if (resp.is_response()) {
             if (resp.is_action(Protocol.Act.COMM_END)) {
                 if (resp.status_code == Protocol.StatusCode.OK) {
-                    client.stream.close();
+                    sd.client.stream.close();
                     print("Server connection terminated.\n", .{});
                     break;
                 }
@@ -151,15 +111,15 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                         Protocol.Typ.REQ, // type
                         Protocol.Act.GET_PEER, // action
                         Protocol.StatusCode.OK, // status code
-                        client.id, // sender id
-                        client.client_addr, // src address
+                        sd.client.id, // sender id
+                        sd.client.client_addr, // src address
                         addr_str, // destination address
                         resp.sender_id, //body
                     );
-                    try send_request(client.server_addr, reqp);
+                    try sd.client.sendRequestToServer(reqp);
 
                     // collect GET_PEER response
-                    const np = try Protocol.collect(str_allocator, client.stream);
+                    const np = try Protocol.collect(str_allocator, sd.client.stream);
                     np.dump(LOG_LEVEL);
 
                     var un_spl = mem.split(u8, np.body, "#");
@@ -180,12 +140,12 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                         Protocol.Typ.RES,
                         Protocol.Act.COMM,
                         Protocol.StatusCode.OK,
-                        client.id,
-                        client.client_addr,
+                        sd.client.id,
+                        sd.client.client_addr,
                         addr_str,
                         "OK"
                     );
-                    try send_request(client.server_addr, msgp);
+                    sd.client.sendRequestToServer(msgp);
                 }
             } else if (resp.is_action(Protocol.Act.NTFY_KILL)) {
                 if (resp.status_code == Protocol.StatusCode.OK) {
@@ -194,15 +154,15 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                         Protocol.Typ.REQ, // type
                         Protocol.Act.GET_PEER, // action
                         Protocol.StatusCode.OK, // status code
-                        client.id, // sender id
-                        client.client_addr, // src address
+                        sd.client.id, // sender id
+                        sd.client.client_addr, // src address
                         addr_str, // destination address
                         resp.body, //body
                     );
-                    try send_request(client.server_addr, reqp);
+                    sd.client.sendRequestToServer(reqp);
 
                     // collect GET_PEER response
-                    const np = try Protocol.collect(str_allocator, client.stream);
+                    const np = try Protocol.collect(str_allocator, sd.client.stream);
                     np.dump(LOG_LEVEL);
 
                     var un_spl = mem.split(u8, np.body, "#");
@@ -212,7 +172,7 @@ fn listen_for_comms(sd: *SharedData, client: *Client) !void {
                 }
             } else if (resp.is_action(Protocol.Act.COMM_END)) {
                 if (resp.status_code == Protocol.StatusCode.OK) {
-                    client.stream.close();
+                    sd.client.stream.close();
                     print("Server connection terminated. Press <ENTER> to close the program.\n", .{});
                     break;
                 }
@@ -237,8 +197,8 @@ fn extract_command_val(cs: []const u8, cmd: []const u8) []const u8 {
     return val;
 }
 
-fn read_cmd(sd: *SharedData, client: *Client) !void {
-    const addr_str = cmn.address_as_str(client.server_addr);
+fn read_cmd(sd: *core.SharedData, client: *Client) !void {
+    const addr_str = client.server_addr_str;
     print("Enter action here:\n", .{});
     while (!sd.should_exit) {
         // read for command
@@ -261,7 +221,7 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
                     addr_str,
                     msg,
                 );
-                try send_request(client.server_addr, reqp);
+                sd.client.sendRequestToServer(reqp);
             } else if (mem.startsWith(u8, user_input, ":gp")) {
                 const pid = extract_command_val(user_input, ":gp");
                 // construct message protocol
@@ -274,7 +234,7 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
                     addr_str,
                     pid,
                 );
-                try send_request(client.server_addr, reqp);
+                sd.client.sendRequestToServer(reqp);
             } else if (mem.eql(u8, user_input, ":info")) {
                 client.dump();
             } else if (mem.eql(u8, user_input, ":exit")) {
@@ -288,7 +248,7 @@ fn read_cmd(sd: *SharedData, client: *Client) !void {
                     "",
                 );
                 //sd.setShouldExit(true);
-                try send_request(client.server_addr, reqp);
+                sd.client.sendRequestToServer(reqp);
             } else if (mem.eql(u8, user_input, ":cc")) {
                 try cmn.screen_clear();
                 client.dump();
@@ -329,10 +289,11 @@ fn request_connection_from_input(input_box: *InputBox, server_addr: []const u8, 
     return client;
 }
 
-fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList(Display.Message)) !void {
-    const addr_str = cmn.address_as_str(client.server_addr);
+/// I am thread
+fn accept_connections(sd: *core.SharedData, messages: *std.ArrayList(Display.Message)) !void {
+    const addr_str = sd.client.server_addr_str;
     while (!sd.should_exit) {
-        const resp = try Protocol.collect(str_allocator, client.stream);
+        const resp = try Protocol.collect(str_allocator, sd.client.stream);
         resp.dump(LOG_LEVEL);
         if (resp.is_response()) {
             if (resp.is_action(Protocol.Act.COMM_END)) {
@@ -350,15 +311,15 @@ fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList
                         Protocol.Typ.REQ, // type
                         Protocol.Act.GET_PEER, // action
                         Protocol.StatusCode.OK, // status code
-                        client.id, // sender id
-                        client.client_addr, // src address
+                        sd.client.id, // sender id
+                        sd.client.client_addr_str, // src address
                         addr_str, // destination address
                         resp.sender_id, //body
                     );
-                    try send_request(client.server_addr, reqp);
+                    sd.client.sendRequestToServer(reqp);
 
                     // collect GET_PEER response
-                    const np = try Protocol.collect(str_allocator, client.stream);
+                    const np = try Protocol.collect(str_allocator, sd.client.stream);
                     np.dump(LOG_LEVEL);
 
                     var un_spl = mem.split(u8, np.body, "#");
@@ -398,29 +359,17 @@ fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList
                }
             } 
         } else if (resp.type == Protocol.Typ.ERR) {
-            //client.stream.close();
+            //sd.client.stream.close();
             resp.dump(LOG_LEVEL);
             break;
         }
     }
 }
 
-fn exitClient(client: Client, message_box: *InputBox, message_display: *Display) void {
+fn exitClient(sd: *core.SharedData, message_box: *InputBox, message_display: *Display) void {
     _ = message_box;
     _ = message_display;
-    const reqp = Protocol.init(
-        Protocol.Typ.REQ,
-        Protocol.Act.COMM_END,
-        Protocol.StatusCode.OK,
-        client.id,
-        client.client_addr,
-        cmn.address_as_str(client.server_addr),
-        "OK",
-    );
-    send_request(client.server_addr, reqp) catch |err| {
-        std.log.err("`send_request`: {any}", .{err});
-        std.posix.exit(1);
-    };
+    EXIT_CLIENT.executor("", sd);
 }
 
 fn sendMessage(client: Client, message_box: *InputBox, message_display: *Display) void {
@@ -431,14 +380,11 @@ fn sendMessage(client: Client, message_box: *InputBox, message_display: *Display
         Protocol.Act.MSG,
         Protocol.StatusCode.OK,
         client.id,
-        client.client_addr,
-        cmn.address_as_str(client.server_addr),
+        client.client_addr_str,
+        client.server_addr_str,
         msg,
     );
-    send_request(client.server_addr, reqp) catch |err| {
-        std.log.err("`send_request`: {any}", .{err});
-        std.posix.exit(1);
-    };
+    client.sendRequestToServer(reqp);
     const q = std.fmt.allocPrint(str_allocator, "{s}", .{msg}) catch |err| {
         std.log.err("`allocPrint`: {any}", .{err});
         std.posix.exit(1);
@@ -501,7 +447,7 @@ fn pingClient(client: Client, message_box: *InputBox, message_display: *Display)
     }
 }
 
-const Action = *const fn (Client, *InputBox, *Display) void;
+const Action = *const fn (*core.SharedData, *InputBox, *Display) void;
 
 pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8) !void {
     const SW = @as(i32, @intCast(16*screen_scale));
@@ -519,8 +465,8 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     var client_acts = std.StringHashMap(Action).init(gpa_allocator);
     defer client_acts.deinit();
 
-    _ = try client_acts.put(":msg", sendMessage);
-    _ = try client_acts.put(":ping", pingClient);
+    //_ = try client_acts.put(":msg", sendMessage);
+    //_ = try client_acts.put(":ping", pingClient);
     _ = try client_acts.put(":exit", exitClient);
 
     // Loading font
@@ -535,12 +481,12 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     } else if (opt_self_dirname) |exe_dir| {
         const font_pathZ = try std.fmt.allocPrintZ(str_allocator, "{s}/{s}", .{exe_dir, "fonts/IosevkaTermSS02-SemiBold.ttf"}); 
         font = loadExternalFont(font_pathZ);
+
     }
 
     const FPS = 30;
     rl.setTargetFPS(FPS);
 
-    var client: Client = undefined;
     var connected = false;
     var response_counter: usize = FPS*1;
     var frame_counter: usize = 0;
@@ -552,10 +498,10 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     message_display.allocMessages(gpa_allocator);
     defer message_display.messages.deinit();
 
-    // I think detaching and or joining threads is not needed becuse I handle ending of threads with SharedData.should_exit
+    // I think detaching and or joining threads is not needed becuse I handle ending of threads with core.SharedData.should_exit
     var thread_pool: [1]std.Thread = undefined;
 
-    var sd = SharedData{
+    var sd = core.SharedData{
         .m = std.Thread.Mutex{},
         .should_exit = false,
         .messages = message_display.messages,
@@ -597,7 +543,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             if (user_login_btn.isMouseOver()) {
                 user_login_btn.color = rl.Color.dark_gray;
                 if (user_login_btn.isClicked()) {
-                    client = try request_connection_from_input(&user_login_box, server_addr, server_port);
+                    sd.client = try request_connection_from_input(&user_login_box, server_addr, server_port);
                     connected = true;
                     _ = message_box.setEnabled(true);
                 }
@@ -625,9 +571,9 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             } 
             if (rl.isKeyDown(.key_enter)) {
                 // Start the a separate thread that listens for inncomming messages from the server
-                client = try request_connection_from_input(&user_login_box, server_addr, server_port);
+                sd.client = try request_connection_from_input(&user_login_box, server_addr, server_port);
                 connected = true;
-                thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd, &client, &message_display.messages });
+                thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd, &message_display.messages });
                 //errdefer thread_pool[0].join();
             }
         }
@@ -643,10 +589,10 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                     var splits = mem.splitScalar(u8, mcln, ' ');
                     if (splits.next()) |frst| {
                         if (client_acts.get(frst)) |action| {
-                            action(client, &message_box, &message_display);
+                            action(&sd, &message_box, &message_display);
                         } else {
                             // default action
-                            sendMessage(client, &message_box, &message_display);
+                            sendMessage(sd.client, &message_box, &message_display);
                         }
                     }
                 }
@@ -664,7 +610,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 response_counter -= 1;
             } else {
                 // Draw client information
-                const client_stats = try clientStats(client);
+                const client_stats = try clientStats(sd.client);
                 defer str_allocator.free(client_stats);
                 const client_str  = try std.fmt.bufPrintZ(&buf, "{s}\n", .{client_stats});
                 try message_display.render(str_allocator, font, font_size, frame_counter);
@@ -703,7 +649,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     //if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
     //    // communication request
     //    defer print("Client stopped\n", .{});
-    //    var sd = SharedData{
+    //    var sd = core.SharedData{
     //        .m = std.Thread.Mutex{},
     //        .should_exit = false,
     //    };

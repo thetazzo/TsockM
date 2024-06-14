@@ -95,6 +95,7 @@ zig build client -- <subcommand>
 * [ ] {UPDATE} make `Protocol` more robust with more functions and quality of life things
 * [ ] {UPDATE} make `Peer` more robust with more functions and quality of life things
 * [x] {FIX} report unknown argument
+* [ ] {FEAT} ERROR protocol sent when peer was ping that does not exist
 #### 0.3.0
 * [x] {FEAT} Introduce server commands
 * [x] {FEAT} Introduce server actions

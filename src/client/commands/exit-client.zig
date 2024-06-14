@@ -4,6 +4,7 @@ const core = @import("../core/core.zig");
 const SharedData = core.SharedData;
 
 pub fn executor(_: ?[]const u8, sd: ?*SharedData) void {
+    // TODO: This should be client action
     const reqp = aids.Protocol.init(
         aids.Protocol.Typ.REQ,
         aids.Protocol.Act.COMM_END,

@@ -2,9 +2,7 @@ const std = @import("std");
 const aids = @import("aids");
 const core = @import("./core/core.zig");
 const EXIT_CLIENT = @import("./commands/exit-client.zig").COMMAND;
-
 const Client =  core.Client;
-
 const Protocol = aids.Protocol;
 const Logging = aids.Logging;
 const cmn = aids.cmn;
@@ -43,6 +41,7 @@ fn print_usage() void {
     print("    * :cc ,,............. clear screen\n", .{});
 }
 
+// TODO: convert to client action
 fn request_connection(address: []const u8, port: u16, username: []const u8) !Client {
     const addr = try net.Address.resolveIp(address, port);
     print("Requesting connection to `{s}`\n", .{cmn.address_as_str(addr)});
@@ -197,6 +196,7 @@ fn extract_command_val(cs: []const u8, cmd: []const u8) []const u8 {
     return val;
 }
 
+// TODO: i am thread
 fn read_cmd(sd: *core.SharedData, client: *Client) !void {
     const addr_str = client.server_addr_str;
     print("Enter action here:\n", .{});
@@ -281,6 +281,7 @@ fn loadExternalFont(font_name: [:0]const u8) rl.Font {
 return font;
 }
 
+// TODO: convert to client action
 fn request_connection_from_input(input_box: *InputBox, server_addr: []const u8, server_port: u16) !Client {
     // request connection
     const username = mem.sliceTo(&input_box.value, 0);
@@ -297,14 +298,17 @@ fn accept_connections(sd: *core.SharedData, messages: *std.ArrayList(Display.Mes
         resp.dump(LOG_LEVEL);
         if (resp.is_response()) {
             if (resp.is_action(Protocol.Act.COMM_END)) {
+                // TODO: COMM client action
                 if (resp.status_code == Protocol.StatusCode.OK) {
                     sd.setShouldExit(true);
                 }
             } else if (resp.is_action(Protocol.Act.GET_PEER)) {
+                // TODO: GET_PEER client action
                 if (resp.status_code == Protocol.StatusCode.OK) {
                     std.log.err("not implemented", .{});
                 }
             } else if (resp.is_action(Protocol.Act.MSG)) {
+                // TODO: MSG client action
                 if (resp.status_code == Protocol.StatusCode.OK) {
                     // construct protocol to get peer data
                     const reqp = Protocol.init(
@@ -345,14 +349,17 @@ fn accept_connections(sd: *core.SharedData, messages: *std.ArrayList(Display.Mes
             }
         } else if (resp.is_request()) {
             if (resp.is_action(Protocol.Act.COMM)) {
+                // TODO: COMM client action
                 if (resp.status_code == Protocol.StatusCode.OK) {
                     std.log.err("not implemented", .{});
                 }
             } else if (resp.is_action(Protocol.Act.NTFY_KILL)) {
+                // TODO: NTFY_KILL client action
                 if (resp.status_code == Protocol.StatusCode.OK) {
                     std.log.err("not implemented", .{});
                 }
             } else if (resp.is_action(Protocol.Act.COMM_END)) {
+                // TODO: COMM_END client action
                 if (resp.status_code == Protocol.StatusCode.OK) {
                     sd.setShouldExit(true);
                     return;
@@ -372,6 +379,7 @@ fn exitClient(sd: *core.SharedData, message_box: *InputBox, message_display: *Di
     EXIT_CLIENT.executor("", sd);
 }
 
+/// TODO: convert to client action
 fn sendMessage(client: Client, message_box: *InputBox, message_display: *Display) void {
     const msg = message_box.getCleanValue();
     // handle sending a message
@@ -404,6 +412,7 @@ fn sendMessage(client: Client, message_box: *InputBox, message_display: *Display
     _ = message_box.clean();
 }
 
+/// TODO: convert to client action
 fn pingClient(client: Client, message_box: *InputBox, message_display: *Display) void {
     _ = client;
     _ = message_display;
@@ -447,6 +456,7 @@ fn pingClient(client: Client, message_box: *InputBox, message_display: *Display)
     }
 }
 
+/// TODO: introduce client action
 const Action = *const fn (*core.SharedData, *InputBox, *Display) void;
 
 pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8) !void {

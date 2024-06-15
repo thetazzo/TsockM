@@ -17,8 +17,6 @@ const print = std.debug.print;
 
 const str_allocator = std.heap.page_allocator;
 
-const LOG_LEVEL = Logging.Level.DEV;
-
 fn print_usage() void {
     print("COMMANDS:\n", .{});
     print("    * :msg <message> .... boradcast the message to all users\n", .{});
@@ -30,37 +28,42 @@ fn print_usage() void {
 
 // TODO: convert to client action
 fn request_connection(address: []const u8, port: u16, username: []const u8) void {
-    const addr = try net.Address.resolveIp(address, port);
-    print("Requesting connection to `{s}`\n", .{cmn.address_as_str(addr)});
-    const stream = try net.tcpConnectToAddress(addr);
-    const dst_addr = cmn.address_as_str(addr);
-    // request connection
-    const reqp = Protocol.init(
-        Protocol.Typ.REQ,
-        Protocol.Act.COMM,
-        Protocol.StatusCode.OK,
-        "client",
-        "client",
-        dst_addr,
-        username,
-    );
-    reqp.dump(LOG_LEVEL);
-    _ = Protocol.transmit(stream, reqp);
+    _ = address;
+    _ = port;
+    _ = username;
+    std.log.err("depricated");
+    std.posix.exit(1);
+    //const addr = try net.Address.resolveIp(address, port);
+    //print("Requesting connection to `{s}`\n", .{cmn.address_as_str(addr)});
+    //const stream = try net.tcpConnectToAddress(addr);
+    //const dst_addr = cmn.address_as_str(addr);
+    //// request connection
+    //const reqp = Protocol.init(
+    //    Protocol.Typ.REQ,
+    //    Protocol.Act.COMM,
+    //    Protocol.StatusCode.OK,
+    //    "client",
+    //    "client",
+    //    dst_addr,
+    //    username,
+    //);
+    //reqp.dump(LOG_LEVEL);
+    //_ = Protocol.transmit(stream, reqp);
 
-    const resp = try Protocol.collect(str_allocator, stream);
-    resp.dump(LOG_LEVEL);
+    //const resp = try Protocol.collect(str_allocator, stream);
+    //resp.dump(LOG_LEVEL);
 
-    if (resp.status_code == Protocol.StatusCode.OK) {
-        //var peer_spl = mem.split(u8, resp.body, "|");
-        //const id = peer_spl.next().?;
-        //const username_ = peer_spl.next().?;
+    //if (resp.status_code == Protocol.StatusCode.OK) {
+    //    //var peer_spl = mem.split(u8, resp.body, "|");
+    //    //const id = peer_spl.next().?;
+    //    //const username_ = peer_spl.next().?;
 
-        // construct the client
+    //    // construct the client
 
-    } else {
-        std.log.err("server error when creating client", .{});
-        std.posix.exit(1);
-    }
+    //} else {
+    //    std.log.err("server error when creating client", .{});
+    //    std.posix.exit(1);
+    //}
 }
 
 /// i am thread
@@ -68,7 +71,7 @@ fn listen_for_comms(sd: *core.SharedData) !void {
     const addr_str = sd.client.server_addr_str;
     while (true) {
         const resp = try Protocol.collect(str_allocator, sd.client.stream);
-        resp.dump(LOG_LEVEL);
+        resp.dump(sd.client.log_level);
         if (resp.is_response()) {
             if (resp.is_action(Protocol.Act.COMM_END)) {
                 if (resp.status_code == Protocol.StatusCode.OK) {
@@ -96,14 +99,14 @@ fn listen_for_comms(sd: *core.SharedData) !void {
                     try sd.client.sendRequestToServer(reqp);
                     // collect GET_PEER response
                     const np = try Protocol.collect(str_allocator, sd.client.stream);
-                    np.dump(LOG_LEVEL);
+                    np.dump(sd.client.log_level);
                     var un_spl = mem.split(u8, np.body, "#");
                     const unn = un_spl.next().?; // user name
                     const unh = un_spl.next().?; // username hash
                     // print recieved message
                     print("{s}" ++ tclr.paint_hex("#555555", "#{s}") ++ ": {s}\n", .{ unn, unh, resp.body });
                 } else {
-                    resp.dump(LOG_LEVEL);
+                    resp.dump(sd.client.log_level);
                 }
             }
         } else if (resp.is_request()) {
@@ -136,7 +139,7 @@ fn listen_for_comms(sd: *core.SharedData) !void {
                     sd.client.sendRequestToServer(reqp);
                     // collect GET_PEER response
                     const np = try Protocol.collect(str_allocator, sd.client.stream);
-                    np.dump(LOG_LEVEL);
+                    np.dump(sd.client.log_level);
                     var un_spl = mem.split(u8, np.body, "#");
                     const unn = un_spl.next().?; // user name
                     const unh = un_spl.next().?; // username hash
@@ -151,7 +154,7 @@ fn listen_for_comms(sd: *core.SharedData) !void {
             } 
         } else if (resp.type == Protocol.Typ.ERR) {
             //client.stream.close();
-            resp.dump(LOG_LEVEL);
+            resp.dump(sd.client.log_level);
             break;
         }
     }
@@ -199,7 +202,7 @@ fn accept_connections(sd: *core.SharedData, messages: *std.ArrayList(Display.Mes
     const addr_str = sd.client.server_addr_str;
     while (!sd.should_exit) {
         const resp = try Protocol.collect(str_allocator, sd.client.stream);
-        resp.dump(LOG_LEVEL);
+        resp.dump(sd.client.log_level);
         if (resp.is_response()) {
             if (resp.is_action(Protocol.Act.COMM_END)) {
                 // TODO: COMM client action
@@ -228,7 +231,7 @@ fn accept_connections(sd: *core.SharedData, messages: *std.ArrayList(Display.Mes
 
                     // collect GET_PEER response
                     const np = try Protocol.collect(str_allocator, sd.client.stream);
-                    np.dump(LOG_LEVEL);
+                    np.dump(sd.client.log_level);
 
                     var un_spl = mem.split(u8, np.body, "#");
                     const unn = un_spl.next().?; // user name
@@ -248,7 +251,7 @@ fn accept_connections(sd: *core.SharedData, messages: *std.ArrayList(Display.Mes
                     const message = Display.Message{ .author=unn, .text = msg_text };
                     _ = try messages.append(message);
                 } else {
-                    resp.dump(LOG_LEVEL);
+                    resp.dump(sd.client.log_level);
                 }
             }
         } else if (resp.is_request()) {
@@ -271,10 +274,11 @@ fn accept_connections(sd: *core.SharedData, messages: *std.ArrayList(Display.Mes
             } 
         } else if (resp.type == Protocol.Typ.ERR) {
             //sd.client.stream.close();
-            resp.dump(LOG_LEVEL);
+            resp.dump(sd.client.log_level);
             break;
         }
     }
+    print("Ending `accepting_connection`\n", .{});
 }
 
 fn exitClient(sd: *core.SharedData, message_box: *InputBox, message_display: *Display) void {
@@ -496,7 +500,6 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 _ = message_box.setEnabled(true);
                 _ = user_login_box.setEnabled(false);
                 thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd, &message_display.messages });
-                errdefer thread_pool[0].join();
             }
         }
         if (message_box.enabled) {

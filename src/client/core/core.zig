@@ -92,6 +92,7 @@ pub const Client = struct {
             const username_ = peer_spl.next().?;
             self.setUsername(username_);
             self.setID(id);
+            self.stream = stream;
             self.server_addr = addr;
             self.server_addr_str = dst_addr;
             self.client_addr_str = resp.dst;

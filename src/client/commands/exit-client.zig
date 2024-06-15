@@ -11,7 +11,7 @@ pub fn executor(_: ?[]const u8, sd: ?*SharedData) void {
         aids.Protocol.StatusCode.OK,
         sd.?.client.id,
         sd.?.client.client_addr_str,
-        aids.cmn.address_as_str(sd.?.client.server_addr),
+        sd.?.client.server_addr_str,
         "OK",
     );
     sd.?.client.sendRequestToServer(reqp); 

@@ -3,6 +3,7 @@ const Display = @import("../ui/display.zig");
 const aids = @import("aids");
 const Protocol = aids.Protocol;
 const Logging = aids.Logging;
+const Stab = aids.Stab;
 
 // Data to share between threads
 pub const SharedData = struct {
@@ -25,33 +26,79 @@ pub const SharedData = struct {
 };
 
 pub const Client = struct {
-    id: []const u8,
-    username: []const u8,
-    Commander: aids.Stab.Commander(SharedData),
+    id: []const u8 = undefined,
+    username: []const u8 = undefined,
+    Commander: Stab.Commander(Stab.Command(SharedData)),
     log_level: Logging.Level,
     // Should the client be it's own server ?
     stream: std.net.Stream = undefined,
     server_addr: std.net.Address = undefined,
-    server_addr_str: []const u8 = undefined,
+    server_addr_str: []const u8 = "404: not found",
     client_addr: std.net.Address = undefined,
-    client_addr_str: []const u8 = undefined,
-    pub fn init(id: []const u8, username: []const u8, log_level: Logging.Level) Client {
-        // acllocate commander
+    client_addr_str: []const u8 = "404: not found",
+    pub fn init(allocator: std.mem.Allocator, log_level: Logging.Level) Client {
+        const commander = Stab.Commander(Stab.Command(SharedData)).init(allocator);
         return Client{
-            .id = id,
-            .username = username,
             .log_level = log_level,
+            .Commander = commander,
         };
     }
     pub fn deinit(self: *@This()) void {
         self.Commander.deinit();
     }
-    pub fn connect(self: *@This()) void {
-        _ = self;
-        std.log.err("not implemented", .{});
-        std.posix.exit(1);
-        // TODO: handle .server setting here
+    pub fn setUsername(self: *@This(), username: []const u8) void {
+        self.username = username;
+    }
+    pub fn setID(self: *@This(), id: []const u8) void {
+        self.id = id;
+    }
+    pub fn connect(self: *@This(), allocator: std.mem.Allocator, hostname: []const u8, port: u16) void {
         // self.server = server
+        // self.id= id
+        // self.server_addr = server_addr
+        // self.client_addr = client_addr
+        const addr = std.net.Address.resolveIp(hostname, port) catch |err| {
+            std.log.err("client::connect: {any}", .{err});
+            std.posix.exit(1);
+        };
+        std.debug.print("Requesting connection to `{s}:{d}`\n", .{hostname, port});
+        const stream = std.net.tcpConnectToAddress(addr) catch |err| {
+            std.log.err("client::connect: {any}", .{err});
+            std.posix.exit(1);
+        };
+        const dst_addr = aids.cmn.address_as_str(addr);
+        // request connection
+        const reqp = Protocol.init(
+            Protocol.Typ.REQ,
+            Protocol.Act.COMM,
+            Protocol.StatusCode.OK,
+            "client",
+            "client",
+            dst_addr,
+            self.username,
+        );
+        reqp.dump(self.log_level);
+        _ = Protocol.transmit(stream, reqp);
+
+        const resp = Protocol.collect(allocator, stream) catch |err| {
+            std.log.err("client::connect: {any}", .{err});
+            std.posix.exit(1);
+        };
+        resp.dump(self.log_level);
+
+        if (resp.status_code == Protocol.StatusCode.OK) {
+            var peer_spl = std.mem.split(u8, resp.body, "|");
+            const id = peer_spl.next().?;
+            const username_ = peer_spl.next().?;
+            self.setUsername(username_);
+            self.setID(id);
+            self.server_addr = addr;
+            self.server_addr_str = dst_addr;
+            self.client_addr_str = resp.dst;
+        } else {
+            std.log.err("server error when creating client", .{});
+            std.posix.exit(1);
+        }
     }
 
     pub fn asStr(self: @This(), allocator: std.mem.Allocator) []const u8 {

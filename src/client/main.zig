@@ -1,4 +1,6 @@
 const std = @import("std");
+const aids = @import("aids");
+const Logging = aids.Logging;
 const client = @import("client.zig");
 
 const SERVER_ADDRESS = "127.0.0.1"; // default address is local host
@@ -25,6 +27,7 @@ pub fn main() !void {
     var server_port: u16 = SERVER_PORT;
     var screen_scale: usize = 80;
     var font_path: []const u8 = "";
+    var log_level: Logging.Level = Logging.Level.COMPACT;
 
     if (subc) |subcommand| {
         if (std.mem.eql(u8, subcommand, "help")) {
@@ -61,12 +64,31 @@ pub fn main() !void {
                         print_usage(program);
                         return;
                     }
+                } else if (std.mem.eql(u8, sflag, "--log-level")) {
+                    const opt_level = argv.next(); 
+                    if (opt_level) |level| {
+                        if (std.mem.eql(u8, level, "DEV") or std.mem.eql(u8, level, "D")) {
+                            log_level = Logging.Level.DEV;
+                        } else if (std.mem.eql(u8, level, "SILENT") or std.mem.eql(u8, level, "S")) {
+                            log_level = Logging.Level.SILENT;
+                        } else if (std.mem.eql(u8, level, "COMPACT") or std.mem.eql(u8, level, "C")) {
+                            log_level = Logging.Level.COMPACT;
+                        } else {
+                            std.log.err("Invalid logging level `{s}`", .{level});
+                            print_usage(program);
+                            return;
+                        }
+                    } else {
+                        std.log.err("Missing logging level", .{});
+                        print_usage(program);
+                        return;
+                    }
                 } else {
                     std.log.err("unknown flag `{s}`", .{sflag});
                     print_usage(program);
                 }
             } 
-            _ = try client.start(server_addr, server_port, screen_scale, font_path);
+            _ = try client.start(server_addr, server_port, screen_scale, font_path, log_level);
         } else {
             std.log.err("missing subcommand!", .{});
             print_usage(program);

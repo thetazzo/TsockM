@@ -1,7 +1,8 @@
 const std = @import("std");
 const aids = @import("aids");
 const core = @import("./core/core.zig");
-const EXIT_CLIENT = @import("./commands/exit-client.zig").COMMAND;
+const ClientCommand = @import("./commands/commands.zig");
+const ClientAction = @import("./actions/actions.zig");
 const Client =  core.Client;
 const Protocol = aids.Protocol;
 const Logging = aids.Logging;
@@ -193,6 +194,25 @@ fn pingClient(client: Client, message_box: *InputBox, message_display: *Display)
     }
 }
 
+fn renderMessage(sd: *core.SharedData, message_box: *InputBox, message_display: *Display, msg: []const u8) void {
+    const baked_msg = std.fmt.allocPrint(str_allocator, "{s}", .{msg}) catch |err| {
+        std.log.err("`allocPrint`: {any}", .{err});
+        std.posix.exit(1);
+    };
+    var un_spl = std.mem.split(u8, sd.client.username, "#");
+    const unn = un_spl.next().?; // user name
+    //const unh = un_spl.next().?; // username hash
+    const message = Display.Message{
+        .author=unn,
+        .text=baked_msg,
+    };
+    _ = message_display.messages.append(message) catch |err| {
+        std.log.err("`message_display`: {any}", .{err});
+        std.posix.exit(1);
+    };
+    _ = message_box.clean();
+}
+
 /// TODO: introduce client action
 const Action = *const fn (*core.SharedData, *InputBox, *Display) void;
 
@@ -214,7 +234,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
 
     //_ = try client_acts.put(":msg", sendMessage);
     //_ = try client_acts.put(":ping", pingClient);
-    client.Commander.add(":exit", EXIT_CLIENT);
+    client.Commander.add(":exit", ClientCommand.EXIT_CLIENT);
 
     // Loading font
     const self_path = try std.fs.selfExePathAlloc(gpa_allocator);
@@ -228,7 +248,6 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     } else if (opt_self_dirname) |exe_dir| {
         const font_pathZ = try std.fmt.allocPrintZ(str_allocator, "{s}/{s}", .{exe_dir, "fonts/IosevkaTermSS02-SemiBold.ttf"}); 
         font = loadExternalFont(font_pathZ);
-
     }
 
     const FPS = 30;
@@ -340,10 +359,12 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                     var splits = mem.splitScalar(u8, mcln, ' ');
                     if (splits.next()) |frst| {
                         if (client.Commander.get(frst)) |action| {
-                            action.executor("", &sd);
+                            action.executor(frst, &sd);
                         } else {
                             // default action
-                            sendMessage(sd.client, &message_box, &message_display);
+                            const msg = message_box.getCleanValue();
+                            ClientAction.MSG.transmit.?.request(Protocol.TransmitionMode.UNICAST, &sd, msg);
+                            renderMessage(&sd, &message_box, &message_display, msg);
                         }
                     }
                 }

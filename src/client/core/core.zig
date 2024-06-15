@@ -1,5 +1,5 @@
 const std = @import("std");
-const Display = @import("../ui/display.zig");
+const ui = @import("../ui/ui.zig");
 const aids = @import("aids");
 const Protocol = aids.Protocol;
 const Logging = aids.Logging;
@@ -9,7 +9,7 @@ const Stab = aids.Stab;
 pub const SharedData = struct {
     m: std.Thread.Mutex,
     should_exit: bool,
-    messages: std.ArrayList(Display.Message),
+    messages: std.ArrayList(ui.Display.Message),
     client: Client = undefined, // Client gets defined after the username is entered
 
     pub fn setShouldExit(self: *@This(), should: bool) void {
@@ -18,7 +18,7 @@ pub const SharedData = struct {
         self.should_exit = should;
     }
 
-    pub fn pushMessage(self: *@This(), msg: Display.Message) !void {
+    pub fn pushMessage(self: *@This(), msg: ui.Display.Message) !void {
         self.m.lock();
         defer self.m.unlock();
         try self.messages.append(msg);
@@ -29,6 +29,7 @@ pub const Client = struct {
     id: []const u8 = undefined,
     username: []const u8 = undefined,
     Commander: Stab.Commander(Stab.Command(SharedData)),
+    Actioner: Stab.Actioner(Stab.Action(SharedData)),
     log_level: Logging.Level,
     // Should the client be it's own server ?
     stream: std.net.Stream = undefined,
@@ -38,13 +39,16 @@ pub const Client = struct {
     client_addr_str: []const u8 = "404: not found",
     pub fn init(allocator: std.mem.Allocator, log_level: Logging.Level) Client {
         const commander = Stab.Commander(Stab.Command(SharedData)).init(allocator);
+        const actioner = Stab.Actioner(Stab.Action(SharedData)).init(allocator);
         return Client{
             .log_level = log_level,
             .Commander = commander,
+            .Actioner = actioner,
         };
     }
     pub fn deinit(self: *@This()) void {
         self.Commander.deinit();
+        self.Actioner.deinit();
     }
     pub fn setUsername(self: *@This(), username: []const u8) void {
         self.username = username;

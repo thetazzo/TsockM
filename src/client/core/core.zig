@@ -53,10 +53,6 @@ pub const Client = struct {
         self.id = id;
     }
     pub fn connect(self: *@This(), allocator: std.mem.Allocator, hostname: []const u8, port: u16) void {
-        // self.server = server
-        // self.id= id
-        // self.server_addr = server_addr
-        // self.client_addr = client_addr
         const addr = std.net.Address.resolveIp(hostname, port) catch |err| {
             std.log.err("client::connect: {any}", .{err});
             std.posix.exit(1);
@@ -116,6 +112,7 @@ pub const Client = struct {
         return stats;
     }
 
+    /// TODO: depricated
     pub fn dump(self: @This()) void {
         std.debug.print("------------------------------------\n", .{});
         std.debug.print("Client {{\n", .{});

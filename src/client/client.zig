@@ -17,163 +17,7 @@ const print = std.debug.print;
 
 const str_allocator = std.heap.page_allocator;
 
-fn print_usage() void {
-    print("COMMANDS:\n", .{});
-    print("    * :msg <message> .... boradcast the message to all users\n", .{});
-    print("    * :gp <peer_id> ..... request peer data from server\n", .{});
-    print("    * :exit ............. terminate the program\n", .{});
-    print("    * :info ............. print information about the client\n", .{});
-    print("    * :cc ,,............. clear screen\n", .{});
-}
-
-// TODO: convert to client action
-fn request_connection(address: []const u8, port: u16, username: []const u8) void {
-    _ = address;
-    _ = port;
-    _ = username;
-    std.log.err("depricated");
-    std.posix.exit(1);
-    //const addr = try net.Address.resolveIp(address, port);
-    //print("Requesting connection to `{s}`\n", .{cmn.address_as_str(addr)});
-    //const stream = try net.tcpConnectToAddress(addr);
-    //const dst_addr = cmn.address_as_str(addr);
-    //// request connection
-    //const reqp = Protocol.init(
-    //    Protocol.Typ.REQ,
-    //    Protocol.Act.COMM,
-    //    Protocol.StatusCode.OK,
-    //    "client",
-    //    "client",
-    //    dst_addr,
-    //    username,
-    //);
-    //reqp.dump(LOG_LEVEL);
-    //_ = Protocol.transmit(stream, reqp);
-
-    //const resp = try Protocol.collect(str_allocator, stream);
-    //resp.dump(LOG_LEVEL);
-
-    //if (resp.status_code == Protocol.StatusCode.OK) {
-    //    //var peer_spl = mem.split(u8, resp.body, "|");
-    //    //const id = peer_spl.next().?;
-    //    //const username_ = peer_spl.next().?;
-
-    //    // construct the client
-
-    //} else {
-    //    std.log.err("server error when creating client", .{});
-    //    std.posix.exit(1);
-    //}
-}
-
-/// i am thread
-fn listen_for_comms(sd: *core.SharedData) !void {
-    const addr_str = sd.client.server_addr_str;
-    while (true) {
-        const resp = try Protocol.collect(str_allocator, sd.client.stream);
-        resp.dump(sd.client.log_level);
-        if (resp.is_response()) {
-            if (resp.is_action(Protocol.Act.COMM_END)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    sd.client.stream.close();
-                    print("Server connection terminated.\n", .{});
-                    break;
-                }
-            } else if (resp.is_action(Protocol.Act.GET_PEER)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    const peer_name = resp.body;
-                    print("Peer name is: {s}\n", .{peer_name});
-                }
-            } else if (resp.is_action(Protocol.Act.MSG)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    // construct protocol to get peer data
-                    const reqp = Protocol.init(
-                        Protocol.Typ.REQ, // type
-                        Protocol.Act.GET_PEER, // action
-                        Protocol.StatusCode.OK, // status code
-                        sd.client.id, // sender id
-                        sd.client.client_addr, // src address
-                        addr_str, // destination address
-                        resp.sender_id, //body
-                    );
-                    try sd.client.sendRequestToServer(reqp);
-                    // collect GET_PEER response
-                    const np = try Protocol.collect(str_allocator, sd.client.stream);
-                    np.dump(sd.client.log_level);
-                    var un_spl = mem.split(u8, np.body, "#");
-                    const unn = un_spl.next().?; // user name
-                    const unh = un_spl.next().?; // username hash
-                    // print recieved message
-                    print("{s}" ++ tclr.paint_hex("#555555", "#{s}") ++ ": {s}\n", .{ unn, unh, resp.body });
-                } else {
-                    resp.dump(sd.client.log_level);
-                }
-            }
-        } else if (resp.is_request()) {
-            if (resp.is_action(Protocol.Act.COMM)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    // protocol to say communication is OK
-                    const msgp = Protocol.init(
-                        Protocol.Typ.RES,
-                        Protocol.Act.COMM,
-                        Protocol.StatusCode.OK,
-                        sd.client.id,
-                        sd.client.client_addr,
-                        addr_str,
-                        "OK"
-                    );
-                    sd.client.sendRequestToServer(msgp);
-                }
-            } else if (resp.is_action(Protocol.Act.NTFY_KILL)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    // construct protocol to get peer data
-                    const reqp = Protocol.init(
-                        Protocol.Typ.REQ, // type
-                        Protocol.Act.GET_PEER, // action
-                        Protocol.StatusCode.OK, // status code
-                        sd.client.id, // sender id
-                        sd.client.client_addr, // src address
-                        addr_str, // destination address
-                        resp.body, //body
-                    );
-                    sd.client.sendRequestToServer(reqp);
-                    // collect GET_PEER response
-                    const np = try Protocol.collect(str_allocator, sd.client.stream);
-                    np.dump(sd.client.log_level);
-                    var un_spl = mem.split(u8, np.body, "#");
-                    const unn = un_spl.next().?; // user name
-                    const unh = un_spl.next().?; // username hash
-                    print("Peer `{s}" ++ tclr.paint_hex("#555555", "#{s}") ++ "` has died\n", .{unn, unh});
-                }
-            } else if (resp.is_action(Protocol.Act.COMM_END)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    sd.client.stream.close();
-                    print("Server connection terminated. Press <ENTER> to close the program.\n", .{});
-                    break;
-                }
-            } 
-        } else if (resp.type == Protocol.Typ.ERR) {
-            //client.stream.close();
-            resp.dump(sd.client.log_level);
-            break;
-        }
-    }
-    sd.setShouldExit(true);
-}
-
-fn extract_command_val(cs: []const u8, cmd: []const u8) []const u8 {
-    var splits = mem.split(u8, cs, cmd);
-    _ = splits.next().?; // the `:msg` part
-    const val = mem.trimLeft(u8, splits.next().?, " \n");
-    if (val.len <= 0) {
-        std.log.err("missing action value", .{});
-        print_usage();
-    }
-    return val;
-}
-
-fn isKeyPressed() bool
-{
+fn isKeyPressed() bool {
     var keyPressed: bool = false;
     const key = rl.getKeyPressed();
 
@@ -186,15 +30,6 @@ fn loadExternalFont(font_name: [:0]const u8) rl.Font {
     var tmp = [128]i32{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127 };
     const font = rl.loadFontEx(font_name, 60, &tmp);
 return font;
-}
-
-// TODO: convert to client action
-fn request_connection_from_input(input_box: *InputBox, server_addr: []const u8, server_port: u16) !Client {
-    // request connection
-    const username = mem.sliceTo(&input_box.value, 0);
-    const client = try request_connection(server_addr, server_port, username);
-    _ = input_box.setEnabled(false);
-    return client;
 }
 
 /// I am thread
@@ -279,12 +114,6 @@ fn accept_connections(sd: *core.SharedData, messages: *std.ArrayList(Display.Mes
         }
     }
     print("Ending `accepting_connection`\n", .{});
-}
-
-fn exitClient(sd: *core.SharedData, message_box: *InputBox, message_display: *Display) void {
-    _ = message_box;
-    _ = message_display;
-    EXIT_CLIENT.executor("", sd);
 }
 
 /// TODO: convert to client action
@@ -385,7 +214,6 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
 
     //_ = try client_acts.put(":msg", sendMessage);
     //_ = try client_acts.put(":ping", pingClient);
-    //_ = try client_acts.put(":exit", exitClient);
     client.Commander.add(":exit", EXIT_CLIENT);
 
     // Loading font
@@ -459,7 +287,6 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             if (user_login_btn.isMouseOver()) {
                 user_login_btn.color = rl.Color.dark_gray;
                 if (user_login_btn.isClicked()) {
-                    //sd.client = try request_connection_from_input(&user_login_box, server_addr, server_port);
                     const username = mem.sliceTo(&user_login_box.value, 0);
                     sd.client.setUsername(username);
                     sd.client.connect(str_allocator, server_addr, server_port);
@@ -492,7 +319,6 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             } 
             if (rl.isKeyDown(.key_enter)) {
                 // Start the a separate thread that listens for inncomming messages from the server
-                //sd.client = try request_connection_from_input(&user_login_box, server_addr, server_port);
                 const username = mem.sliceTo(&user_login_box.value, 0);
                 sd.client.setUsername(username);
                 sd.client.connect(str_allocator, server_addr, server_port);

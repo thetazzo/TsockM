@@ -458,7 +458,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                     //sd.client = try request_connection_from_input(&user_login_box, server_addr, server_port);
                     const username = mem.sliceTo(&user_login_box.value, 0);
                     sd.client.setUsername(username);
-                    sd.client.connect(gpa_allocator, server_addr, server_port);
+                    sd.client.connect(str_allocator, server_addr, server_port);
                     connected = true;
                     _ = message_box.setEnabled(true);
                     _ = user_login_box.setEnabled(false);
@@ -491,7 +491,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 //sd.client = try request_connection_from_input(&user_login_box, server_addr, server_port);
                 const username = mem.sliceTo(&user_login_box.value, 0);
                 sd.client.setUsername(username);
-                sd.client.connect(gpa_allocator, server_addr, server_port);
+                sd.client.connect(str_allocator, server_addr, server_port);
                 connected = true;
                 _ = message_box.setEnabled(true);
                 _ = user_login_box.setEnabled(false);

@@ -37,9 +37,9 @@ return font;
 fn accept_connections(sd: *core.SharedData) !void {
     while (!sd.should_exit) {
         const resp = try Protocol.collect(str_allocator, sd.client.stream);
-        resp.dump(sd.client.log_level);
         const opt_action = sd.client.Actioner.get(aids.Stab.parseAct(resp.action));
         if (opt_action) |act| {
+            resp.dump(sd.client.log_level);
             switch (resp.type) {
                 // TODO: better handling of optional types
                 .REQ => act.collect.?.request(null, sd, resp),
@@ -83,6 +83,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
 
     client.Actioner.add(aids.Stab.Act.COMM_END, ClientAction.COMM_END);
     client.Actioner.add(aids.Stab.Act.MSG, ClientAction.MSG);
+    client.Actioner.add(aids.Stab.Act.NTFY_KILL, ClientAction.NTFY_KILL);
 
     // Loading font
     const self_path = try std.fs.selfExePathAlloc(gpa_allocator);

@@ -4,7 +4,7 @@ const Protocol = @import("protocol.zig");
 pub fn Action(comptime T: type) type {
     return struct {
         collect: ?struct {
-            request:  *const fn (std.net.Server.Connection, *T, Protocol) void,
+            request:  *const fn (?std.net.Server.Connection, *T, Protocol) void,
             response: *const fn (*T, Protocol) void,
             err:    *const fn () void,
         },

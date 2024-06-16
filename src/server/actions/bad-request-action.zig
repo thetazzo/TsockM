@@ -7,18 +7,18 @@ const net = std.net;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
-fn collectRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
+fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
     const errp = Protocol.init(
         Protocol.Typ.ERR,
         protocol.action,
         Protocol.StatusCode.BAD_REQUEST,
         "server",
         sd.server.address_str,
-        cmn.address_as_str(in_conn.address),
+        cmn.address_as_str(in_conn.?.address),
         @tagName(Protocol.StatusCode.BAD_REQUEST),
     );
     errp.dump(sd.server.log_level);
-    _ = Protocol.transmit(in_conn.stream, errp);
+    _ = Protocol.transmit(in_conn.?.stream, errp);
 }
 
 fn collectRespone(sd: *SharedData, protocol: Protocol) void {

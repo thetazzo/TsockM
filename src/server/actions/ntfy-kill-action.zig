@@ -6,7 +6,7 @@ const net = std.net;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
-fn collectRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
+fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
     _ = in_conn;
     _ = sd;
     _ = protocol;

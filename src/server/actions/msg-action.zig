@@ -6,7 +6,7 @@ const net = std.net;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
-fn collectRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
+fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
     _ = in_conn;
     const opt_peer_ref = core.PeerCore.peerRefFromId(sd.peer_pool, protocol.sender_id);
     if (opt_peer_ref) |peer_ref| {

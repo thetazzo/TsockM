@@ -8,13 +8,13 @@ const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 const Peer = core.Peer;
 
-fn collectRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
-    const addr_str = cmn.address_as_str(in_conn.address);
-    const stream = in_conn.stream;
+fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
+    const addr_str = cmn.address_as_str(in_conn.?.address);
+    const stream = in_conn.?.stream;
 
     // TODO: find a way around the allocator
     const tmp_allocator = std.heap.page_allocator;
-    const peer = Peer.construct(tmp_allocator, in_conn, protocol);
+    const peer = Peer.construct(tmp_allocator, in_conn.?, protocol);
     const peer_str = std.fmt.allocPrint(tmp_allocator, "{s}|{s}", .{ peer.id, peer.username }) catch "format failed";
     sd.peerPoolAppend(peer) catch |err| {
         std.log.err("`comm-action::collectRequest::peerPoolAppend`: {any}", .{err});

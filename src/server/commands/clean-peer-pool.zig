@@ -3,17 +3,17 @@ const aids = @import("aids");
 const core = @import("../core/core.zig");
 const SharedData = core.SharedData;
 
-pub fn executor(_: ?[]const u8, sd: ?*SharedData) void {
-    var pp_len: usize = sd.?.peer_pool.items.len;
+pub fn executor(_: ?[]const u8, cd: ?core.CommandData) void {
+    var pp_len: usize = cd.?.sd.peer_pool.items.len;
     while (pp_len > 0) {
         pp_len -= 1;
-        const p = sd.?.peer_pool.items[pp_len];
+        const p = cd.?.sd.peer_pool.items[pp_len];
         if (p.alive == false) {
-            _ = sd.?.peerRemove(pp_len);
+            _ = cd.?.sd.peerRemove(pp_len);
         }
     }
 }
 
-pub const COMMAND = aids.Stab.Command(SharedData){
+pub const COMMAND = aids.Stab.Command(core.CommandData){
     .executor = executor,
 };

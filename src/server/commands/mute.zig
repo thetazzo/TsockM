@@ -10,12 +10,12 @@ fn printUnmuteUsage() void {
     std.debug.print("    * compact|COMPACT|C .... print compact protocols\n", .{});
 }
 
-fn executorMute(_: ?[]const u8, sd: ?*SharedData) void {
-    sd.?.server.log_level = .SILENT;
+fn executorMute(_: ?[]const u8, cd: ?core.CommandData) void {
+    cd.?.sd.server.log_level = .SILENT;
     std.debug.print("Muted the server\n", .{});
 }
 
-fn executorUnmute(cmd: ?[]const u8, sd: ?*SharedData) void {
+fn executorUnmute(cmd: ?[]const u8, cd: ?core.CommandData) void {
     var split = std.mem.splitBackwardsScalar(u8, cmd.?, ' ');
     if (split.next()) |arg| {
         if (std.mem.eql(u8, arg, cmd.?)) {
@@ -24,9 +24,9 @@ fn executorUnmute(cmd: ?[]const u8, sd: ?*SharedData) void {
             return;
         }
         if (std.mem.eql(u8, arg, "compact") or std.mem.eql(u8, arg, "COMPACT") or std.mem.eql(u8, arg, "C")) {
-            sd.?.server.log_level = .COMPACT;
+            cd.?.sd.server.log_level = .COMPACT;
         } else if (std.mem.eql(u8, arg, "dev") or std.mem.eql(u8, arg, "DEV") or std.mem.eql(u8, arg, "D")) {
-            sd.?.server.log_level = .DEV;
+            cd.?.sd.server.log_level = .DEV;
         } else {
             std.log.err("unknown option `{s}`", .{arg});
             printUnmuteUsage();
@@ -35,10 +35,10 @@ fn executorUnmute(cmd: ?[]const u8, sd: ?*SharedData) void {
     }
 }
 
-pub const COMMAND_MUTE = aids.Stab.Command(SharedData){
+pub const COMMAND_MUTE = aids.Stab.Command(core.CommandData){
     .executor = executorMute,
 };
 
-pub const COMMAND_UNMUTE = aids.Stab.Command(SharedData){
+pub const COMMAND_UNMUTE = aids.Stab.Command(core.CommandData){
     .executor = executorUnmute,
 };

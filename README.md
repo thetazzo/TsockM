@@ -161,15 +161,14 @@ zig build client -- <subcommand>
 * [ ] {UPDATE} better centering of text on input boxes ~ Use `msasuseTextEx(text).y`
 * [ ] {UPDATE} don't crash the the client wait for a connection to the server be available
 #### 0.3.0
-* [ ] {FEAT} print client termination
+* [x] {FEAT} print client termination
 * {FEAT} Introduce `ClientActions`
-    * [ ] bad-request-action
-    * [ ] clean-peer-pool-action
+    * [x] bad-request-action
     * [x] comm-action
     * [x] comm-end-action
-    * [ ] get-peer-action
+    * [x] get-peer-action
     * [x] msg-action
-    * [ ] ntfy-kill-action
+    * [x] ntfy-kill-action
 * [x] {FEAT} Introduce `ClientCommands`
 #### 0.2.2
 * [x] {FIX} when exiting duuring `connection succesful` the program deadlocks

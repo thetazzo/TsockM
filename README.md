@@ -94,6 +94,7 @@ zig build client -- <subcommand>
 * [ ] {UPDATE} `core.zig` rename to `server.zig`
 * [ ] {UPDATE} make `Protocol` more robust with more functions and quality of life things
 * [ ] {UPDATE} make `Peer` more robust with more functions and quality of life things
+* [ ] {UPDATE} `Commander::Command::executor` generic type is not a ptr anymore
 * [x] {FIX} report unknown argument
 * [ ] {FEAT} ERROR protocol sent when peer was ping that does not exist
 #### 0.3.0
@@ -136,18 +137,22 @@ zig build client -- <subcommand>
     
 ### TODO
 
-#### 0.4.x
-* [ ] {FEAT} popups for warnings and errors
+#### 0.5.x
 * [ ] {FEAT} decrypt body of the protocol
-* [ ] {FEAT} clipboard paste support
 * [ ] {UPADTE} removed depricated code
-* [ ] {FEAT} custom string tokens like `\c{RED};HELLO\` that applies special properties to text
+* [ ] {FEAT} custom messeging commands like `\c{RED};HELLO\` that applies special properties to text
     * `\b;HELLO\` prints bold text
     * `\u;HELLO\` prints underlined text
     * `\c{#00FFAA};HELLO\` prints colored text based on hex value 
-* {FEAT} Client actions
-    * [ ] Ping user by username and print user info
 * [ ] {FEAT} Multicolor support for message display
+#### 0.4.x
+* [ ] {FEAT} popups for warnings and errors
+* [ ] {FEAT} clipboard paste support
+* {FEAT} `ClientScreen` ~ groups of related render/functionality code
+    * [ ] `LoginScreen`
+    * [ ] `MessagingScreen`
+* {FEAT} Client commands
+    * [ ] `:ping` ~ ping user by username and print user info
 #### 0.3.1
 * [ ] {UPDATE} make `Action` and `Command` a shared library between server and client src code
 * [x] {UPDATE} finish implementaton of `:exit` action ~ handle COMM_END response
@@ -160,12 +165,12 @@ zig build client -- <subcommand>
 * {FEAT} Introduce `ClientActions`
     * [ ] bad-request-action
     * [ ] clean-peer-pool-action
-    * [ ] comm-action
-    * [ ] comm-end-action
+    * [x] comm-action
+    * [x] comm-end-action
     * [ ] get-peer-action
-    * [ ] msg-action
+    * [x] msg-action
     * [ ] ntfy-kill-action
-* [ ] {FEAT} Introduce `ClientCommands`
+* [x] {FEAT} Introduce `ClientCommands`
 #### 0.2.2
 * [x] {FIX} when exiting duuring `connection succesful` the program deadlocks
 * [x] {FEAT} consume `-fp` for setting location to the font 

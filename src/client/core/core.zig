@@ -11,6 +11,13 @@ pub const SharedData = struct {
     should_exit: bool,
     messages: std.ArrayList(ui.Display.Message),
     client: Client = undefined, // Client gets defined after the username is entered
+    connected: bool,
+
+    pub fn setConnected(self: *@This(), val: bool) void {
+        self.m.lock();
+        defer self.m.unlock();
+        self.connected = val;
+    }
 
     pub fn setShouldExit(self: *@This(), should: bool) void {
         self.m.lock();

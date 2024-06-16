@@ -7,11 +7,11 @@ const net = std.net;
 const SharedData = core.SharedData;
 const Peer = core.Peer;
 
-pub fn executor(_: ?[]const u8, sd: ?*SharedData) void {
+pub fn executor(_: ?[]const u8, cd: ?core.CommandData) void {
     aids.TextColor.clearScreen();
-    sd.?.server.printServerRunning();
+    cd.?.sd.server.printServerRunning();
 }
 
-pub const COMMAND = aids.Stab.Command(SharedData){
+pub const COMMAND = aids.Stab.Command(core.CommandData){
     .executor = executor,
 };

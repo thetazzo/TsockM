@@ -7,7 +7,7 @@ const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
 // TODO: try if sd.server.net_server can get the connection instead if in_conn param
-fn collectRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
+fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
     _ = in_conn;
     const opt_peer_ref = core.PeerCore.peerRefFromId(sd.peer_pool, protocol.sender_id);
     if (opt_peer_ref) |peer_ref| {

@@ -4,7 +4,7 @@ const core = @import("../core/core.zig");
 const SharedData = core.SharedData;
 
 // TODO use shared data when printing server commands ~ sd.Commander.usageList().print();
-pub fn executor(_: ?[]const u8, _: ?*SharedData) void {
+pub fn executor(_: ?[]const u8, _: ?core.CommandData) void {
     std.debug.print("COMMANDS:\n", .{});
     std.debug.print("    * :c .............................. clear screen\n", .{});
     std.debug.print("    * :info ........................... print server statiistics\n", .{});
@@ -17,7 +17,7 @@ pub fn executor(_: ?[]const u8, _: ?*SharedData) void {
     std.debug.print("    * :kill <peer_id> | all ........... kill peer/s\n", .{});
 }
 
-pub const COMMAND = aids.Stab.Command(SharedData){
+pub const COMMAND = aids.Stab.Command(core.CommandData){
     .executor = executor,
 };
 

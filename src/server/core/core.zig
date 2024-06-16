@@ -47,6 +47,10 @@ pub const SharedData = struct {
     }
 };
 
+pub const CommandData = struct {
+    sd: *SharedData,
+};
+
 pub const Server = struct {
     hostname: []const u8,
     port: u16,
@@ -56,7 +60,7 @@ pub const Server = struct {
     start_time: std.time.Instant = undefined,
     net_server: std.net.Server = undefined,
     Actioner: Stab.Actioner(SharedData),
-    Commander: Stab.Commander(Stab.Command(SharedData)),
+    Commander: Stab.Commander(Stab.Command(CommandData)),
     __version__: []const u8,
     pub fn init(
         allocator: std.mem.Allocator,
@@ -70,7 +74,7 @@ pub const Server = struct {
             std.posix.exit(1);
         };
         const actioner = Stab.Actioner(SharedData).init(allocator);
-        const commander = Stab.Commander(Stab.Command(SharedData)).init(allocator);
+        const commander = Stab.Commander(Stab.Command(CommandData)).init(allocator);
         return Server {
             .hostname = hostname,
             .port = port,

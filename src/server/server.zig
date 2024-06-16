@@ -57,10 +57,10 @@ fn commander(sd: *SharedData) !void {
             var splits = mem.splitScalar(u8, user_input, ' ');
             if (splits.next()) |ui| {
                 if (sd.server.Commander.get(ui)) |cmd| {
-                    cmd.executor(user_input, sd);
+                    cmd.executor(user_input, core.CommandData{.sd = sd});
                 } else {
                     std.log.err("Unknown command: `{s}`\n", .{user_input});
-                    ServerCommand.PRINT_PROGRAM_USAGE.executor(null, sd);
+                    ServerCommand.PRINT_PROGRAM_USAGE.executor(null, core.CommandData{.sd = sd});
                 }
             }
         } else {

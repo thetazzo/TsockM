@@ -1,5 +1,9 @@
 const std = @import("std");
 const aids = @import("aids");
+const core = @import("./core/core.zig");
+const ClientCommand = @import("./commands/commands.zig");
+const ClientAction = @import("./actions/actions.zig");
+const Client =  core.Client;
 const Protocol = aids.Protocol;
 const Logging = aids.Logging;
 const cmn = aids.cmn;
@@ -14,299 +18,7 @@ const print = std.debug.print;
 
 const str_allocator = std.heap.page_allocator;
 
-const LOG_LEVEL = Logging.Level.DEV;
-
-const Client = struct {
-    id: []const u8,
-    username: []const u8,
-    stream: net.Stream,
-    server_addr: net.Address,
-    client_addr: Protocol.Addr,
-
-    pub fn dump(self: @This()) void {
-        print("------------------------------------\n", .{});
-        print("Client {{\n", .{});
-        print("    id: `{s}`\n", .{self.id});
-        print("    username: `{s}`\n", .{self.username});
-        print("    server_addr: `{s}`\n", .{cmn.address_as_str(self.server_addr)});
-        print("    client_addr: `{s}`\n", .{self.client_addr});
-        print("}}\n", .{});
-        print("------------------------------------\n", .{});
-    }
-};
-
-fn clientStats(client: Client) ![]const u8 {
-    const username    = try std.fmt.allocPrint(str_allocator, "username: {s}\n", .{client.username});
-    defer str_allocator.free(username);
-    const id          = try std.fmt.allocPrint(str_allocator, "id: {s}\n", .{client.id});
-    defer str_allocator.free(id);
-    const server_addr = try std.fmt.allocPrint(str_allocator, "server_address: {s}\n", .{cmn.address_as_str(client.server_addr)});
-    defer str_allocator.free(server_addr);
-    const client_addr = try std.fmt.allocPrint(str_allocator, "client address: {s}\n", .{client.client_addr});
-    defer str_allocator.free(client_addr);
-    const stats = try std.fmt.allocPrint(str_allocator, "{s}{s}{s}{s}", .{username, id, server_addr, client_addr});
-    return stats;
-}
-
-fn print_usage() void {
-    print("COMMANDS:\n", .{});
-    print("    * :msg <message> .... boradcast the message to all users\n", .{});
-    print("    * :gp <peer_id> ..... request peer data from server\n", .{});
-    print("    * :exit ............. terminate the program\n", .{});
-    print("    * :info ............. print information about the client\n", .{});
-    print("    * :cc ,,............. clear screen\n", .{});
-}
-
-fn request_connection(address: []const u8, port: u16, username: []const u8) !Client {
-    const addr = try net.Address.resolveIp(address, port);
-    print("Requesting connection to `{s}`\n", .{cmn.address_as_str(addr)});
-    const stream = try net.tcpConnectToAddress(addr);
-    const dst_addr = cmn.address_as_str(addr);
-    // request connection
-    const reqp = Protocol.init(
-        Protocol.Typ.REQ,
-        Protocol.Act.COMM,
-        Protocol.StatusCode.OK,
-        "client",
-        "client",
-        dst_addr,
-        username,
-    );
-    reqp.dump(LOG_LEVEL);
-    _ = Protocol.transmit(stream, reqp);
-
-    const resp = try Protocol.collect(str_allocator, stream);
-    resp.dump(LOG_LEVEL);
-
-    if (resp.status_code == Protocol.StatusCode.OK) {
-        var peer_spl = mem.split(u8, resp.body, "|");
-        const id = peer_spl.next().?;
-        const username_ = peer_spl.next().?;
-
-        // construct the client
-        return Client{
-            .id = id,
-            .username = username_,
-            .stream = stream,
-            .server_addr = addr,
-            .client_addr = resp.dst,
-        };
-    } else {
-        std.log.err("server error when creating client", .{});
-        std.posix.exit(1);
-    }
-}
-
-fn send_request(addr: net.Address, req: Protocol) !void {
-    // Open a sterm to the server
-    const req_stream = try net.tcpConnectToAddress(addr);
-    defer req_stream.close();
-
-    // send protocol to server
-    req.dump(LOG_LEVEL);
-    _ = Protocol.transmit(req_stream, req);
-}
-
-// Data to share between threads
-const SharedData = struct {
-    m: std.Thread.Mutex,
-    should_exit: bool,
-    messages: std.ArrayList(Display.Message),
-
-    pub fn setShouldExit(self: *@This(), should: bool) void {
-        self.m.lock();
-        defer self.m.unlock();
-
-        self.should_exit = should;
-    }
-
-    pub fn pushMessage(self: *@This(), msg: Display.Message) !void {
-        self.m.lock();
-        defer self.m.unlock();
-        try self.messages.append(msg);
-    }
-};
-
-fn listen_for_comms(sd: *SharedData, client: *Client) !void {
-    const addr_str = cmn.address_as_str(client.server_addr);
-    while (true) {
-        const resp = try Protocol.collect(str_allocator, client.stream);
-        resp.dump(LOG_LEVEL);
-        if (resp.is_response()) {
-            if (resp.is_action(Protocol.Act.COMM_END)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    client.stream.close();
-                    print("Server connection terminated.\n", .{});
-                    break;
-                }
-            } else if (resp.is_action(Protocol.Act.GET_PEER)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    const peer_name = resp.body;
-                    print("Peer name is: {s}\n", .{peer_name});
-                }
-            } else if (resp.is_action(Protocol.Act.MSG)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    // construct protocol to get peer data
-                    const reqp = Protocol.init(
-                        Protocol.Typ.REQ, // type
-                        Protocol.Act.GET_PEER, // action
-                        Protocol.StatusCode.OK, // status code
-                        client.id, // sender id
-                        client.client_addr, // src address
-                        addr_str, // destination address
-                        resp.sender_id, //body
-                    );
-                    try send_request(client.server_addr, reqp);
-
-                    // collect GET_PEER response
-                    const np = try Protocol.collect(str_allocator, client.stream);
-                    np.dump(LOG_LEVEL);
-
-                    var un_spl = mem.split(u8, np.body, "#");
-                    const unn = un_spl.next().?; // user name
-                    const unh = un_spl.next().?; // username hash
-
-                    // print recieved message
-                    print("{s}" ++ tclr.paint_hex("#555555", "#{s}") ++ ": {s}\n", .{ unn, unh, resp.body });
-                } else {
-                    resp.dump(LOG_LEVEL);
-                }
-            }
-        } else if (resp.is_request()) {
-            if (resp.is_action(Protocol.Act.COMM)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    // protocol to say communication is OK
-                    const msgp = Protocol.init(
-                        Protocol.Typ.RES,
-                        Protocol.Act.COMM,
-                        Protocol.StatusCode.OK,
-                        client.id,
-                        client.client_addr,
-                        addr_str,
-                        "OK"
-                    );
-                    try send_request(client.server_addr, msgp);
-                }
-            } else if (resp.is_action(Protocol.Act.NTFY_KILL)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    // construct protocol to get peer data
-                    const reqp = Protocol.init(
-                        Protocol.Typ.REQ, // type
-                        Protocol.Act.GET_PEER, // action
-                        Protocol.StatusCode.OK, // status code
-                        client.id, // sender id
-                        client.client_addr, // src address
-                        addr_str, // destination address
-                        resp.body, //body
-                    );
-                    try send_request(client.server_addr, reqp);
-
-                    // collect GET_PEER response
-                    const np = try Protocol.collect(str_allocator, client.stream);
-                    np.dump(LOG_LEVEL);
-
-                    var un_spl = mem.split(u8, np.body, "#");
-                    const unn = un_spl.next().?; // user name
-                    const unh = un_spl.next().?; // username hash
-                    print("Peer `{s}" ++ tclr.paint_hex("#555555", "#{s}") ++ "` has died\n", .{unn, unh});
-                }
-            } else if (resp.is_action(Protocol.Act.COMM_END)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    client.stream.close();
-                    print("Server connection terminated. Press <ENTER> to close the program.\n", .{});
-                    break;
-                }
-            } 
-        } else if (resp.type == Protocol.Typ.ERR) {
-            //client.stream.close();
-            resp.dump(LOG_LEVEL);
-            break;
-        }
-    }
-    sd.setShouldExit(true);
-}
-
-fn extract_command_val(cs: []const u8, cmd: []const u8) []const u8 {
-    var splits = mem.split(u8, cs, cmd);
-    _ = splits.next().?; // the `:msg` part
-    const val = mem.trimLeft(u8, splits.next().?, " \n");
-    if (val.len <= 0) {
-        std.log.err("missing action value", .{});
-        print_usage();
-    }
-    return val;
-}
-
-fn read_cmd(sd: *SharedData, client: *Client) !void {
-    const addr_str = cmn.address_as_str(client.server_addr);
-    print("Enter action here:\n", .{});
-    while (!sd.should_exit) {
-        // read for command
-        var buf: [256]u8 = undefined;
-        const stdin = std.io.getStdIn().reader();
-        if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
-            if (sd.should_exit) {
-                break;
-            }
-            // Handle different commands
-            if (mem.startsWith(u8, user_input, ":msg")) {
-                const msg = extract_command_val(user_input, ":msg");
-                // construct message protocol
-                const reqp = Protocol.init(
-                    Protocol.Typ.REQ,
-                    Protocol.Act.MSG,
-                    Protocol.StatusCode.OK,
-                    client.id,
-                    client.client_addr,
-                    addr_str,
-                    msg,
-                );
-                try send_request(client.server_addr, reqp);
-            } else if (mem.startsWith(u8, user_input, ":gp")) {
-                const pid = extract_command_val(user_input, ":gp");
-                // construct message protocol
-                const reqp = Protocol.init(
-                    Protocol.Typ.REQ,
-                    Protocol.Act.GET_PEER,
-                    Protocol.StatusCode.OK,
-                    client.id,
-                    client.client_addr,
-                    addr_str,
-                    pid,
-                );
-                try send_request(client.server_addr, reqp);
-            } else if (mem.eql(u8, user_input, ":info")) {
-                client.dump();
-            } else if (mem.eql(u8, user_input, ":exit")) {
-                const reqp = Protocol.init(
-                    Protocol.Typ.REQ,
-                    Protocol.Act.COMM_END,
-                    Protocol.StatusCode.OK,
-                    client.id,
-                    client.client_addr,
-                    addr_str,
-                    "",
-                );
-                //sd.setShouldExit(true);
-                try send_request(client.server_addr, reqp);
-            } else if (mem.eql(u8, user_input, ":cc")) {
-                try cmn.screen_clear();
-                client.dump();
-            } else if (mem.eql(u8, user_input, ":help")) {
-                print_usage();
-            } else {
-                print("Unknown command: `{s}`\n", .{user_input});
-                print_usage();
-            }
-        } else {
-            print("Unreachable, maybe?\n", .{});
-        }
-    }
-    print("exiting read_cmd\n", .{});
-}
-
-fn isKeyPressed() bool
-{
+fn isKeyPressed() bool {
     var keyPressed: bool = false;
     const key = rl.getKeyPressed();
 
@@ -321,189 +33,36 @@ fn loadExternalFont(font_name: [:0]const u8) rl.Font {
 return font;
 }
 
-fn request_connection_from_input(input_box: *InputBox, server_addr: []const u8, server_port: u16) !Client {
-    // request connection
-    const username = mem.sliceTo(&input_box.value, 0);
-    const client = try request_connection(server_addr, server_port, username);
-    _ = input_box.setEnabled(false);
-    return client;
-}
-
-fn accept_connections(sd: *SharedData, client: *Client, messages: *std.ArrayList(Display.Message)) !void {
-    const addr_str = cmn.address_as_str(client.server_addr);
+/// I am thread
+fn accept_connections(sd: *core.SharedData) !void {
     while (!sd.should_exit) {
-        const resp = try Protocol.collect(str_allocator, client.stream);
-        resp.dump(LOG_LEVEL);
-        if (resp.is_response()) {
-            if (resp.is_action(Protocol.Act.COMM_END)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    sd.setShouldExit(true);
-                }
-            } else if (resp.is_action(Protocol.Act.GET_PEER)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    std.log.err("not implemented", .{});
-                }
-            } else if (resp.is_action(Protocol.Act.MSG)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    // construct protocol to get peer data
-                    const reqp = Protocol.init(
-                        Protocol.Typ.REQ, // type
-                        Protocol.Act.GET_PEER, // action
-                        Protocol.StatusCode.OK, // status code
-                        client.id, // sender id
-                        client.client_addr, // src address
-                        addr_str, // destination address
-                        resp.sender_id, //body
-                    );
-                    try send_request(client.server_addr, reqp);
-
-                    // collect GET_PEER response
-                    const np = try Protocol.collect(str_allocator, client.stream);
-                    np.dump(LOG_LEVEL);
-
-                    var un_spl = mem.split(u8, np.body, "#");
-                    const unn = un_spl.next().?; // user name
-                    //const unh = un_spl.next().?; // username hash
-
-                    // print recieved message
-                    //const msg_text = try std.fmt.allocPrint(
-                    //    str_allocator,
-                    //    "{s}" ++ tclr.paint_hex("#555555", "#{s}") ++ ": {s}\n",
-                    //    .{ unn, unh, resp.body }
-                    //);
-                    const msg_text = try std.fmt.allocPrint(
-                        str_allocator,
-                        "{s}",
-                        .{ resp.body }
-                    );
-                    const message = Display.Message{ .author=unn, .text = msg_text };
-                    _ = try messages.append(message);
-                } else {
-                    resp.dump(LOG_LEVEL);
+        const resp = try Protocol.collect(str_allocator, sd.client.stream);
+        const opt_action = sd.client.Actioner.get(aids.Stab.parseAct(resp.action));
+        if (opt_action) |act| {
+            resp.dump(sd.client.log_level);
+            switch (resp.type) {
+                // TODO: better handling of optional types
+                .REQ => act.collect.?.request(null, sd, resp),
+                .RES => act.collect.?.response(sd, resp),
+                .ERR => act.collect.?.err(),
+                else => {
+                    std.log.err("`therad::listener`: unknown protocol type!", .{});
+                    unreachable;
                 }
             }
-        } else if (resp.is_request()) {
-            if (resp.is_action(Protocol.Act.COMM)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    std.log.err("not implemented", .{});
-                }
-            } else if (resp.is_action(Protocol.Act.NTFY_KILL)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    std.log.err("not implemented", .{});
-                }
-            } else if (resp.is_action(Protocol.Act.COMM_END)) {
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    sd.setShouldExit(true);
-                    return;
-               }
-            } 
-        } else if (resp.type == Protocol.Typ.ERR) {
-            //client.stream.close();
-            resp.dump(LOG_LEVEL);
-            break;
         }
     }
+    print("Ending `accepting_connection`\n", .{});
 }
 
-fn exitClient(client: Client, message_box: *InputBox, message_display: *Display) void {
-    _ = message_box;
-    _ = message_display;
-    const reqp = Protocol.init(
-        Protocol.Typ.REQ,
-        Protocol.Act.COMM_END,
-        Protocol.StatusCode.OK,
-        client.id,
-        client.client_addr,
-        cmn.address_as_str(client.server_addr),
-        "OK",
-    );
-    send_request(client.server_addr, reqp) catch |err| {
-        std.log.err("`send_request`: {any}", .{err});
-        std.posix.exit(1);
-    };
+fn establishConnection(sd: *core.SharedData, thread_pool: *[1]std.Thread, username: []const u8, hostname: []const u8, port: u16) !void {
+    sd.client.setUsername(username);
+    sd.client.connect(str_allocator, hostname, port);
+    sd.setConnected(true);
+    thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ sd });
 }
 
-fn sendMessage(client: Client, message_box: *InputBox, message_display: *Display) void {
-    const msg = message_box.getCleanValue();
-    // handle sending a message
-    const reqp = Protocol.init(
-        Protocol.Typ.REQ,
-        Protocol.Act.MSG,
-        Protocol.StatusCode.OK,
-        client.id,
-        client.client_addr,
-        cmn.address_as_str(client.server_addr),
-        msg,
-    );
-    send_request(client.server_addr, reqp) catch |err| {
-        std.log.err("`send_request`: {any}", .{err});
-        std.posix.exit(1);
-    };
-    const q = std.fmt.allocPrint(str_allocator, "{s}", .{msg}) catch |err| {
-        std.log.err("`allocPrint`: {any}", .{err});
-        std.posix.exit(1);
-    };
-
-    var un_spl = mem.split(u8, client.username, "#");
-    const unn = un_spl.next().?; // user name
-    //const unh = un_spl.next().?; // username hash
-    const message = Display.Message{
-        .author=unn,
-        .text=q,
-    };
-    _ = message_display.messages.append(message) catch |err| {
-        std.log.err("`message_display`: {any}", .{err});
-        std.posix.exit(1);
-    };
-    _ = message_box.clean();
-}
-
-fn pingClient(client: Client, message_box: *InputBox, message_display: *Display) void {
-    _ = client;
-    _ = message_display;
-    var splits = mem.splitScalar(u8, message_box.getCleanValue(), ' ');
-    _ = splits.next(); // action caller
-    const opt_username = splits.next();
-    if (opt_username) |username| {
-        if (username.len > 0) {
-            std.log.warn("un: `{s}`", .{username});
-            std.log.err("`pingClient` not implemented", .{});
-            std.posix.exit(1);
-        } else {
-            std.log.warn("missing peer username", .{});
-        }
-        //const reqp = Protocol.init(
-        //    Protocol.Typ.REQ,
-        //    Protocol.Act.PING,
-        //    Protocol.StatusCode.OK,
-        //    client.id,
-        //    client.client_addr,
-        //    cmn.address_as_str(client.server_addr),
-        //    username,
-        //);
-        //send_request(client.server_addr, reqp) catch |err| {
-        //    std.log.err("`send_request`: {any}", .{err});
-        //    std.posix.exit(1);
-        //};
-        // TODO: collect response
-        // TODO: print peer data to message_display
-        //const message = rld.Message{
-        //    .author=unn,
-        //    .text=q,
-        //};
-        //_ = message_display.messages.append(message) catch |err| {
-        //    std.log.err("`message_display`: {any}", .{err});
-        //    std.posix.exit(1);
-        //};
-        //_ = message_box.clean();
-    } else {
-        std.log.warn("missing peer username", .{});
-    }
-}
-
-const Action = *const fn (Client, *InputBox, *Display) void;
-
-pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8) !void {
+pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8, log_level: Logging.Level) !void {
     const SW = @as(i32, @intCast(16*screen_scale));
     const SH = @as(i32, @intCast(9*screen_scale));
     rl.initWindow(SW, SH, "TsockM");
@@ -516,12 +75,16 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
 
-    var client_acts = std.StringHashMap(Action).init(gpa_allocator);
-    defer client_acts.deinit();
+    var client = core.Client.init(gpa_allocator, log_level);
+    defer client.deinit();
 
-    _ = try client_acts.put(":msg", sendMessage);
-    _ = try client_acts.put(":ping", pingClient);
-    _ = try client_acts.put(":exit", exitClient);
+    client.Commander.add(":exit", ClientCommand.EXIT_CLIENT);
+    client.Commander.add(":ping", ClientCommand.PING_CLIENT);
+
+    client.Actioner.add(aids.Stab.Act.COMM_END, ClientAction.COMM_END);
+    client.Actioner.add(aids.Stab.Act.MSG, ClientAction.MSG);
+    client.Actioner.add(aids.Stab.Act.NTFY_KILL, ClientAction.NTFY_KILL);
+    client.Actioner.add(aids.Stab.Act.NONE, ClientAction.BAD_REQUEST);
 
     // Loading font
     const self_path = try std.fs.selfExePathAlloc(gpa_allocator);
@@ -540,27 +103,24 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     const FPS = 30;
     rl.setTargetFPS(FPS);
 
-    var client: Client = undefined;
-    var connected = false;
     var response_counter: usize = FPS*1;
     var frame_counter: usize = 0;
-
-    var message_box = InputBox{};
-    var user_login_box = InputBox{};
-    var user_login_btn = rlb.Button{ .text="Enter", .color = rl.Color.light_gray };
+    // ui elements
+    var message_box     = InputBox{};
+    var user_login_box  = InputBox{};
+    var user_login_btn  = rlb.Button{ .text="Enter", .color = rl.Color.light_gray };
     var message_display = Display{};
-    message_display.allocMessages(gpa_allocator);
-    defer message_display.messages.deinit();
-
-    // I think detaching and or joining threads is not needed becuse I handle ending of threads with SharedData.should_exit
+    // I think detaching and or joining threads is not needed becuse I handle ending of threads with core.SharedData.should_exit
     var thread_pool: [1]std.Thread = undefined;
-
-    var sd = SharedData{
+    const messages = std.ArrayList(Display.Message).init(gpa_allocator);
+    var sd = core.SharedData{
         .m = std.Thread.Mutex{},
         .should_exit = false,
-        .messages = message_display.messages,
+        .messages = messages,
+        .client = client,
+        .connected = false,
     };
-
+    // Render loop
     while (!rl.windowShouldClose() and !sd.should_exit) {
         const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
         const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
@@ -574,32 +134,34 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
         frame_counter += 1;
 
         // Enable writing to the input box
-        if (connected) {
+        if (sd.connected) {
             _ = message_box.setRec(20, sh - 100 - font_size/2, sw - 40, 50 + font_size/2); 
             _ = message_display.setRec(20, 200, sw - 40, sh - 400); 
             if (message_box.isClicked()) {
-                _ = message_box.setEnabled(true);
+                message_box.setEnabled(true);
             } else {
                 if (rl.isMouseButtonPressed(.mouse_button_left)) {
-                    _ = message_box.setEnabled(false);
+                    message_box.setEnabled(false);
                 }
             }
         } else {
+            // login screen
             _ = user_login_box.setRec(sw/2 - sw/4, 200 + font_size/2, sw/2, 50 + font_size/2); 
             user_login_btn.setRec(user_login_box.rec.x + sw/5.5, user_login_box.rec.y+140, sw/8, 90);
             if (user_login_box.isClicked()) {
-                _ = user_login_box.setEnabled(true);
+                user_login_box.setEnabled(true);
             } else {
                 if (rl.isMouseButtonPressed(.mouse_button_left)) {
-                    _ = user_login_box.setEnabled(false);
+                    user_login_box.setEnabled(false);
                 }
             }
             if (user_login_btn.isMouseOver()) {
                 user_login_btn.color = rl.Color.dark_gray;
                 if (user_login_btn.isClicked()) {
-                    client = try request_connection_from_input(&user_login_box, server_addr, server_port);
-                    connected = true;
-                    _ = message_box.setEnabled(true);
+                    const username = mem.sliceTo(&user_login_box.value, 0);
+                    try establishConnection(&sd, &thread_pool, username, server_addr, server_port);
+                    message_box.setEnabled(true);
+                    user_login_box.setEnabled(false);
                 }
             } else {
                 user_login_btn.color = rl.Color.light_gray;
@@ -620,54 +182,63 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             key = rl.getCharPressed();
         }
         if (user_login_box.enabled) {
+            // remove char from input box
             if (rl.isKeyPressed(.key_backspace)) {
                 _ = user_login_box.pop();
             } 
             if (rl.isKeyDown(.key_enter)) {
-                // Start the a separate thread that listens for inncomming messages from the server
-                client = try request_connection_from_input(&user_login_box, server_addr, server_port);
-                connected = true;
-                thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd, &client, &message_display.messages });
-                //errdefer thread_pool[0].join();
+                const username = mem.sliceTo(&user_login_box.value, 0);
+                try establishConnection(&sd, &thread_pool, username, server_addr, server_port);
+                message_box.setEnabled(true);
+                user_login_box.setEnabled(false);
             }
         }
         if (message_box.enabled) {
             if (message_box.isKeyPressed(.key_backspace)) {
-                // remove char from message box
+                // remove char from input box
                 _ = message_box.pop();
             } 
+            // Handle message_box input ~ client command handling
             if (message_box.isKeyPressed(.key_enter)) {
                 // handle client actions
                 const mcln = message_box.getCleanValue();
                 if (mcln.len > 0) {
                     var splits = mem.splitScalar(u8, mcln, ' ');
                     if (splits.next()) |frst| {
-                        if (client_acts.get(frst)) |action| {
-                            action(client, &message_box, &message_display);
+                        if (client.Commander.get(frst)) |action| {
+                            action.executor(frst, core.CommandData{
+                                .sd = &sd,
+                                .body = splits.rest(),
+                            });
                         } else {
-                            // default action
-                            sendMessage(client, &message_box, &message_display);
+                            const msg = message_box.getCleanValue();
+                            ClientAction.MSG.transmit.?.request(Protocol.TransmitionMode.UNICAST, &sd, msg);
+                            _ = message_box.clean();
                         }
                     }
                 }
             }
         }
+        // Rendering begins here
         rl.clearBackground(rl.Color.init(18, 18, 18, 255));
-        if (connected) {
+        if (sd.connected) {
             // Messaging screen
             // Draw successful connection
             var buf: [256]u8 = undefined;
-            const succ_str = try std.fmt.bufPrintZ(&buf, "Client connected successfully to `{s}:{d}` :)\n", .{server_addr, server_port});
+            const succ_str = try std.fmt.bufPrintZ(&buf,
+                "Client connected successfully to `{s}:{d}` :)\n",
+                .{server_addr, server_port}
+            );
             if (response_counter > 0) {
                 const sslen = rl.measureTextEx(font, succ_str, font_size, 0).x;
                 rl.drawTextEx(font, succ_str, rl.Vector2{.x=sw/2 - sslen/2, .y=sh/2 - sh/4}, font_size, 0, rl.Color.green);
                 response_counter -= 1;
             } else {
                 // Draw client information
-                const client_stats = try clientStats(client);
+                const client_stats = sd.client.asStr(str_allocator);
                 defer str_allocator.free(client_stats);
                 const client_str  = try std.fmt.bufPrintZ(&buf, "{s}\n", .{client_stats});
-                try message_display.render(str_allocator, font, font_size, frame_counter);
+                try message_display.render(sd.messages, str_allocator, font, font_size, frame_counter);
                 rl.drawTextEx(font, client_str, rl.Vector2{.x=40, .y=20}, font_size/2, 0, rl.Color.light_gray);
                 try message_box.render(window_extended, font, font_size, frame_counter);
             }
@@ -697,23 +268,4 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
         }
     }
     print("Ending the client\n", .{});
-
-    //var buf: [256]u8 = undefined;
-    //const stdin = std.io.getStdIn().reader();
-    //if (try stdin.readUntilDelimiterOrEof(buf[0..], '\n')) |user_input| {
-    //    // communication request
-    //    defer print("Client stopped\n", .{});
-    //    var sd = SharedData{
-    //        .m = std.Thread.Mutex{},
-    //        .should_exit = false,
-    //    };
-    //    {
-    //        const t1 = try std.Thread.spawn(.{}, listen_for_comms, .{ &sd, &client });
-    //        defer t1.join();
-    //        errdefer t1.join();
-    //        const t2 = try std.Thread.spawn(.{}, read_cmd, .{ &sd, &client });
-    //        defer t2.join();
-    //        errdefer t2.join();
-    //    }
-    //}
 }

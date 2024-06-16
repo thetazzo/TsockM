@@ -3,11 +3,11 @@ const aids = @import("aids");
 const core = @import("../core/core.zig");
 const SharedData = core.SharedData;
 
-pub fn executor(_: ?[]const u8, _: ?*SharedData) void {
+pub fn executor(_: ?[]const u8, _: ?core.CommandData) void {
     std.debug.print("Exiting server ...\n", .{});
     std.posix.exit(0);
 }
 
-pub const COMMAND = aids.Stab.Command(SharedData){
+pub const COMMAND = aids.Stab.Command(core.CommandData){
     .executor = executor,
 };

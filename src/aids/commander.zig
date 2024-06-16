@@ -4,7 +4,7 @@ const CMD = []const u8;
 
 pub fn Command(comptime T: type) type {
     return struct {
-        executor: *const fn (?[]const u8, ?*T) void,
+        executor: *const fn (?[]const u8, ?T) void,
     };
 }
 

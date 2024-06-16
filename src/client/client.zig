@@ -34,8 +34,7 @@ return font;
 }
 
 /// I am thread
-fn accept_connections(sd: *core.SharedData, messages: *std.ArrayList(Display.Message)) !void {
-    const addr_str = sd.client.server_addr_str;
+fn accept_connections(sd: *core.SharedData) !void {
     while (!sd.should_exit) {
         const resp = try Protocol.collect(str_allocator, sd.client.stream);
         resp.dump(sd.client.log_level);
@@ -52,54 +51,12 @@ fn accept_connections(sd: *core.SharedData, messages: *std.ArrayList(Display.Mes
                 }
             }
         }
-        if (resp.is_response()) {
-            if (resp.is_action(Protocol.Act.MSG)) {
-                // TODO: MSG client action
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    // construct protocol to get peer data
-                    const reqp = Protocol.init(
-                    Protocol.Typ.REQ, // type
-                    Protocol.Act.GET_PEER, // action
-                    Protocol.StatusCode.OK, // status code
-                    sd.client.id, // sender id
-                    sd.client.client_addr_str, // src address
-                    addr_str, // destination address
-                    resp.sender_id, //body
-                );
-                    sd.client.sendRequestToServer(reqp);
-
-                    // collect GET_PEER response
-                    const np = try Protocol.collect(str_allocator, sd.client.stream);
-                    np.dump(sd.client.log_level);
-
-                    var un_spl = mem.split(u8, np.body, "#");
-                    const unn = un_spl.next().?; // user name
-                    // TODO: this is relevant for the terminal implementation
-                    //const unh = un_spl.next().?; // username hash
-                    // print recieved message
-                    //const msg_text = try std.fmt.allocPrint(
-                    //    str_allocator,
-                    //    "{s}" ++ tclr.paint_hex("#555555", "#{s}") ++ ": {s}\n",
-                    //    .{ unn, unh, resp.body }
-                    //);
-                    const msg_text = try std.fmt.allocPrint(
-                    str_allocator,
-                    "{s}",
-                    .{ resp.body }
-                );
-                    const message = Display.Message{ .author=unn, .text = msg_text };
-                    _ = try messages.append(message);
-                } else {
-                    resp.dump(sd.client.log_level);
-                }
-            }
-        } 
     }
     print("Ending `accepting_connection`\n", .{});
 }
 
 /// TODO: convert to client action
-fn sendMessage(client: Client, message_box: *InputBox, message_display: *Display) void {
+fn sendMessage(client: Client, message_box: *InputBox) void {
     const msg = message_box.getCleanValue();
     // handle sending a message
     const reqp = Protocol.init(
@@ -112,22 +69,22 @@ fn sendMessage(client: Client, message_box: *InputBox, message_display: *Display
         msg,
     );
     client.sendRequestToServer(reqp);
-    const q = std.fmt.allocPrint(str_allocator, "{s}", .{msg}) catch |err| {
-        std.log.err("`allocPrint`: {any}", .{err});
-        std.posix.exit(1);
-    };
+    //const q = std.fmt.allocPrint(str_allocator, "{s}", .{msg}) catch |err| {
+    //    std.log.err("`allocPrint`: {any}", .{err});
+    //    std.posix.exit(1);
+    //};
 
-    var un_spl = mem.split(u8, client.username, "#");
-    const unn = un_spl.next().?; // user name
+    //var un_spl = mem.split(u8, client.username, "#");
+    //const unn = un_spl.next().?; // user name
     //const unh = un_spl.next().?; // username hash
-    const message = Display.Message{
-        .author=unn,
-        .text=q,
-    };
-    _ = message_display.messages.append(message) catch |err| {
-        std.log.err("`message_display`: {any}", .{err});
-        std.posix.exit(1);
-    };
+    //const message = Display.Message{
+    //    .author=unn,
+    //    .text=q,
+    //};
+    //_ = message_display.messages.append(message) catch |err| {
+    //    std.log.err("`message_display`: {any}", .{err});
+    //    std.posix.exit(1);
+    //};
     _ = message_box.clean();
 }
 
@@ -175,25 +132,6 @@ fn pingClient(client: Client, message_box: *InputBox, message_display: *Display)
     }
 }
 
-fn renderMessage(sd: *core.SharedData, message_box: *InputBox, message_display: *Display, msg: []const u8) void {
-    const baked_msg = std.fmt.allocPrint(str_allocator, "{s}", .{msg}) catch |err| {
-        std.log.err("`allocPrint`: {any}", .{err});
-        std.posix.exit(1);
-    };
-    var un_spl = std.mem.split(u8, sd.client.username, "#");
-    const unn = un_spl.next().?; // user name
-    //const unh = un_spl.next().?; // username hash
-    const message = Display.Message{
-        .author=unn,
-        .text=baked_msg,
-    };
-    _ = message_display.messages.append(message) catch |err| {
-        std.log.err("`message_display`: {any}", .{err});
-        std.posix.exit(1);
-    };
-    _ = message_box.clean();
-}
-
 /// TODO: introduce client action
 const Action = *const fn (*core.SharedData, *InputBox, *Display) void;
 
@@ -216,7 +154,9 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     //_ = try client_acts.put(":msg", sendMessage);
     //_ = try client_acts.put(":ping", pingClient);
     client.Commander.add(":exit", ClientCommand.EXIT_CLIENT);
+
     client.Actioner.add(aids.Stab.Act.COMM_END, ClientAction.COMM_END);
+    client.Actioner.add(aids.Stab.Act.MSG, ClientAction.MSG);
 
     // Loading font
     const self_path = try std.fs.selfExePathAlloc(gpa_allocator);
@@ -242,14 +182,13 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     var user_login_box = InputBox{};
     var user_login_btn = rlb.Button{ .text="Enter", .color = rl.Color.light_gray };
     var message_display = Display{};
-    message_display.allocMessages(gpa_allocator);
-    defer message_display.messages.deinit();
     // I think detaching and or joining threads is not needed becuse I handle ending of threads with core.SharedData.should_exit
     var thread_pool: [1]std.Thread = undefined;
+    const messages = std.ArrayList(Display.Message).init(gpa_allocator);
     var sd = core.SharedData{
         .m = std.Thread.Mutex{},
         .should_exit = false,
-        .messages = message_display.messages,
+        .messages = messages,
         .client = client,
     };
     while (!rl.windowShouldClose() and !sd.should_exit) {
@@ -294,7 +233,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                     connected = true;
                     _ = message_box.setEnabled(true);
                     _ = user_login_box.setEnabled(false);
-                    thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd, &message_display.messages });
+                    thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd } );
                 }
             } else {
                 user_login_btn.color = rl.Color.light_gray;
@@ -326,7 +265,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 connected = true;
                 _ = message_box.setEnabled(true);
                 _ = user_login_box.setEnabled(false);
-                thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd, &message_display.messages });
+                thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd });
             }
         }
         if (message_box.enabled) {
@@ -334,6 +273,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 // remove char from message box
                 _ = message_box.pop();
             } 
+            // Handle message_box input ~ client command handling
             if (message_box.isKeyPressed(.key_enter)) {
                 // handle client actions
                 const mcln = message_box.getCleanValue();
@@ -343,15 +283,15 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                         if (client.Commander.get(frst)) |action| {
                             action.executor(frst, &sd);
                         } else {
-                            // default action
                             const msg = message_box.getCleanValue();
                             ClientAction.MSG.transmit.?.request(Protocol.TransmitionMode.UNICAST, &sd, msg);
-                            renderMessage(&sd, &message_box, &message_display, msg);
+                            _ = message_box.clean();
                         }
                     }
                 }
             }
         }
+        // Rendering begins here
         rl.clearBackground(rl.Color.init(18, 18, 18, 255));
         if (connected) {
             // Messaging screen
@@ -370,7 +310,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 const client_stats = sd.client.asStr(str_allocator);
                 defer str_allocator.free(client_stats);
                 const client_str  = try std.fmt.bufPrintZ(&buf, "{s}\n", .{client_stats});
-                try message_display.render(str_allocator, font, font_size, frame_counter);
+                try message_display.render(sd.messages, str_allocator, font, font_size, frame_counter);
                 rl.drawTextEx(font, client_str, rl.Vector2{.x=40, .y=20}, font_size/2, 0, rl.Color.light_gray);
                 try message_box.render(window_extended, font, font_size, frame_counter);
             }

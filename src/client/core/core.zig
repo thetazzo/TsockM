@@ -22,6 +22,7 @@ pub const SharedData = struct {
         self.m.lock();
         defer self.m.unlock();
         try self.messages.append(msg);
+        std.debug.print("adding msg\n", .{});
     }
 };
 

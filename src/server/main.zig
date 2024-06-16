@@ -9,7 +9,7 @@ const SERVER_PORT = 6969; // default port
 fn print_usage(program: []const u8) void {
     std.debug.print("{s}: <subcommand>\n", .{program});
     std.debug.print("SUBCOMMANDS:\n", .{});
-    std.debug.print("    help ...................,,,,,,,,.. print program usage\n", .{});
+    std.debug.print("    help ............................. print program usage\n", .{});
     std.debug.print("    start <flag> ..................... start the server\n", .{});
     std.debug.print("        --log-level <level> .......... DEV|D or SILENT|S or COMPACT|C (default: COMPACT)\n", .{});
     std.debug.print("        --addr <hostname:port> ....... specify server address (default: 127.0.0.1:6969)\n", .{});

@@ -84,6 +84,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     client.Actioner.add(aids.Stab.Act.COMM_END, ClientAction.COMM_END);
     client.Actioner.add(aids.Stab.Act.MSG, ClientAction.MSG);
     client.Actioner.add(aids.Stab.Act.NTFY_KILL, ClientAction.NTFY_KILL);
+    client.Actioner.add(aids.Stab.Act.NONE, ClientAction.BAD_REQUEST);
 
     // Loading font
     const self_path = try std.fs.selfExePathAlloc(gpa_allocator);

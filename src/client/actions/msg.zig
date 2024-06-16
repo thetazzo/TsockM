@@ -2,6 +2,7 @@ const std = @import("std");
 const aids = @import("aids");
 const ui = @import("../ui/ui.zig");
 const core = @import("../core/core.zig");
+const ClientAction = @import("actions.zig");
 const Message = @import("../ui/display.zig").Message;
 const Protocol = aids.Protocol;
 const net = std.net;
@@ -18,19 +19,10 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Pr
 fn collectRespone(sd: *SharedData, protocol: Protocol) void {
     // TODO: MSG client action
     if (protocol.status_code == Protocol.StatusCode.OK) {
-        // construct protocol to get peer data
-        const reqp = Protocol.init(
-        Protocol.Typ.REQ, // type
-        Protocol.Act.GET_PEER, // action
-        Protocol.StatusCode.OK, // status code
-        sd.client.id, // sender id
-        sd.client.client_addr_str, // src address
-        sd.client.server_addr_str, // destination address
-        protocol.sender_id, //body
-    );
-        sd.client.sendRequestToServer(reqp);
-
+        ClientAction.GET_PEER.transmit.?.request(aids.Protocol.TransmitionMode.UNICAST, sd, protocol.sender_id);
         // collect GET_PEER response
+        // TODO: maybe collect* functions should return the protocol they collected?
+        // TODO: GET_PEER.collect.response
         const collocator = std.heap.page_allocator;
         const np = Protocol.collect(collocator, sd.client.stream) catch |err| {
             std.log.err("actions::msg::collectRespose: {any}", .{err});

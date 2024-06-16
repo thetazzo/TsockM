@@ -48,26 +48,28 @@ pub fn pop(self: *@This()) u8 {
     self.value[self.letter_count] = 170;
     return chr;
 }
-pub fn render(self: @This(), window_extended: bool, font: rl.Font, font_size: f32, frame_counter: usize) !void {
-    rl.drawRectangleRounded(self.rec, 0.35, 0, rl.Color.light_gray);
-    var pos = rl.Vector2{
-        .x = self.rec.x + 18,
-        .y = self.rec.y + self.rec.height/10,
-    };
+pub fn render(self: *@This(), window_extended: bool, font: rl.Font, font_size: f32, frame_counter: usize) !void {
+    rl.drawRectangleRounded(self.rec, 0.0, 0, rl.Color.light_gray);
     if (!window_extended) {
-        pos.y += 2;
+        self.rec.y += 2;
     }
     var buf2: [512]u8 = undefined;
     const mcln = std.mem.sliceTo(&self.value, 170);
     const mssg2 = try std.fmt.bufPrintZ(&buf2, "{s}", .{mcln});
+    const txt_height = rl.measureTextEx(font, mssg2, font_size, 0).y;
+    const txt_hpad = 18;
+    const txt_pos = rl.Vector2{
+        .x = self.rec.x + txt_hpad,
+        .y = self.rec.y + self.rec.height/2 - txt_height/2
+    };
     if (self.enabled) {
-        const pos2 = rl.Vector2{
-            .x = pos.x + rl.measureTextEx(font, mssg2, font_size, 0).x,
-            .y = pos.y,
+        const cur_pos = rl.Vector2{
+            .x = txt_pos.x + rl.measureTextEx(font, mssg2, font_size, 0).x,
+            .y = txt_pos.y,
         };
         // Draw blinking cursor
-        if ((frame_counter/8) % 2 == 0) rl.drawTextEx(font, "_",  pos2, font_size, 0, rl.Color.black);
-        // Draw input text
+        if ((frame_counter/8) % 2 == 0) rl.drawTextEx(font, "_",  cur_pos, font_size, 0, rl.Color.black);
     }
-    rl.drawTextEx(font, mssg2, pos, font_size, 0, rl.Color.black);
+    // Draw input text
+    rl.drawTextEx(font, mssg2, txt_pos, font_size, 0, rl.Color.black);
 }

@@ -29,7 +29,7 @@ pub const Client = struct {
     id: []const u8 = undefined,
     username: []const u8 = undefined,
     Commander: Stab.Commander(Stab.Command(SharedData)),
-    Actioner: Stab.Actioner(Stab.Action(SharedData)),
+    Actioner: Stab.Actioner(SharedData),
     log_level: Logging.Level,
     // Should the client be it's own server ?
     stream: std.net.Stream = undefined,
@@ -39,7 +39,7 @@ pub const Client = struct {
     client_addr_str: []const u8 = "404: not found",
     pub fn init(allocator: std.mem.Allocator, log_level: Logging.Level) Client {
         const commander = Stab.Commander(Stab.Command(SharedData)).init(allocator);
-        const actioner = Stab.Actioner(Stab.Action(SharedData)).init(allocator);
+        const actioner = Stab.Actioner(SharedData).init(allocator);
         return Client{
             .log_level = log_level,
             .Commander = commander,

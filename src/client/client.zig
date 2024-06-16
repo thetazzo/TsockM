@@ -39,30 +39,33 @@ fn accept_connections(sd: *core.SharedData, messages: *std.ArrayList(Display.Mes
     while (!sd.should_exit) {
         const resp = try Protocol.collect(str_allocator, sd.client.stream);
         resp.dump(sd.client.log_level);
+        const opt_action = sd.client.Actioner.get(aids.Stab.parseAct(resp.action));
+        if (opt_action) |act| {
+            switch (resp.type) {
+                // TODO: better handling of optional types
+                .REQ => act.collect.?.request(null, sd, resp),
+                .RES => act.collect.?.response(sd, resp),
+                .ERR => act.collect.?.err(),
+                else => {
+                    std.log.err("`therad::listener`: unknown protocol type!", .{});
+                    unreachable;
+                }
+            }
+        }
         if (resp.is_response()) {
-            if (resp.is_action(Protocol.Act.COMM_END)) {
-                // TODO: COMM client action
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    sd.setShouldExit(true);
-                }
-            } else if (resp.is_action(Protocol.Act.GET_PEER)) {
-                // TODO: GET_PEER client action
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    std.log.err("not implemented", .{});
-                }
-            } else if (resp.is_action(Protocol.Act.MSG)) {
+            if (resp.is_action(Protocol.Act.MSG)) {
                 // TODO: MSG client action
                 if (resp.status_code == Protocol.StatusCode.OK) {
                     // construct protocol to get peer data
                     const reqp = Protocol.init(
-                        Protocol.Typ.REQ, // type
-                        Protocol.Act.GET_PEER, // action
-                        Protocol.StatusCode.OK, // status code
-                        sd.client.id, // sender id
-                        sd.client.client_addr_str, // src address
-                        addr_str, // destination address
-                        resp.sender_id, //body
-                    );
+                    Protocol.Typ.REQ, // type
+                    Protocol.Act.GET_PEER, // action
+                    Protocol.StatusCode.OK, // status code
+                    sd.client.id, // sender id
+                    sd.client.client_addr_str, // src address
+                    addr_str, // destination address
+                    resp.sender_id, //body
+                );
                     sd.client.sendRequestToServer(reqp);
 
                     // collect GET_PEER response
@@ -71,8 +74,8 @@ fn accept_connections(sd: *core.SharedData, messages: *std.ArrayList(Display.Mes
 
                     var un_spl = mem.split(u8, np.body, "#");
                     const unn = un_spl.next().?; // user name
+                    // TODO: this is relevant for the terminal implementation
                     //const unh = un_spl.next().?; // username hash
-
                     // print recieved message
                     //const msg_text = try std.fmt.allocPrint(
                     //    str_allocator,
@@ -80,39 +83,17 @@ fn accept_connections(sd: *core.SharedData, messages: *std.ArrayList(Display.Mes
                     //    .{ unn, unh, resp.body }
                     //);
                     const msg_text = try std.fmt.allocPrint(
-                        str_allocator,
-                        "{s}",
-                        .{ resp.body }
-                    );
+                    str_allocator,
+                    "{s}",
+                    .{ resp.body }
+                );
                     const message = Display.Message{ .author=unn, .text = msg_text };
                     _ = try messages.append(message);
                 } else {
                     resp.dump(sd.client.log_level);
                 }
             }
-        } else if (resp.is_request()) {
-            if (resp.is_action(Protocol.Act.COMM)) {
-                // TODO: COMM client action
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    std.log.err("not implemented", .{});
-                }
-            } else if (resp.is_action(Protocol.Act.NTFY_KILL)) {
-                // TODO: NTFY_KILL client action
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    std.log.err("not implemented", .{});
-                }
-            } else if (resp.is_action(Protocol.Act.COMM_END)) {
-                // TODO: COMM_END client action
-                if (resp.status_code == Protocol.StatusCode.OK) {
-                    sd.setShouldExit(true);
-                    return;
-               }
-            } 
-        } else if (resp.type == Protocol.Typ.ERR) {
-            //sd.client.stream.close();
-            resp.dump(sd.client.log_level);
-            break;
-        }
+        } 
     }
     print("Ending `accepting_connection`\n", .{});
 }
@@ -235,6 +216,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     //_ = try client_acts.put(":msg", sendMessage);
     //_ = try client_acts.put(":ping", pingClient);
     client.Commander.add(":exit", ClientCommand.EXIT_CLIENT);
+    client.Actioner.add(aids.Stab.Act.COMM_END, ClientAction.COMM_END);
 
     // Loading font
     const self_path = try std.fs.selfExePathAlloc(gpa_allocator);

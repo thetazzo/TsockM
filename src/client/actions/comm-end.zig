@@ -7,17 +7,17 @@ const net = std.net;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
-fn collectRequest(in_conn: net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
-    _ = in_conn;
-    _ = sd;
-    _ = protocol;
-    std.log.err("not implemented", .{});
+fn collectRequest(_: ?net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
+    if (protocol.status_code == Protocol.StatusCode.OK) {
+        sd.setShouldExit(true);
+        return;
+    }
 }
 
 fn collectRespone(sd: *SharedData, protocol: Protocol) void {
-    _ = sd;
-    _ = protocol;
-    std.log.err("not implemented", .{});
+    if (protocol.status_code == Protocol.StatusCode.OK) {
+        sd.setShouldExit(true);
+    }
 }
 
 fn collectError() void {
@@ -29,12 +29,12 @@ fn transmitRequest(_: Protocol.TransmitionMode, sd: *SharedData, _: []const u8) 
         aids.Protocol.Typ.REQ,
         aids.Protocol.Act.COMM_END,
         aids.Protocol.StatusCode.OK,
-        sd.?.client.id,
-        sd.?.client.client_addr_str,
-        sd.?.client.server_addr_str,
+        sd.client.id,
+        sd.client.client_addr_str,
+        sd.client.server_addr_str,
         "OK",
     );
-    sd.?.client.sendRequestToServer(reqp); 
+    sd.client.sendRequestToServer(reqp); 
 }
 
 fn transmitRespone() void {

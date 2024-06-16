@@ -217,20 +217,20 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             _ = message_box.setRec(20, sh - 100 - font_size/2, sw - 40, 50 + font_size/2); 
             _ = message_display.setRec(20, 200, sw - 40, sh - 400); 
             if (message_box.isClicked()) {
-                _ = message_box.setEnabled(true);
+                message_box.setEnabled(true);
             } else {
                 if (rl.isMouseButtonPressed(.mouse_button_left)) {
-                    _ = message_box.setEnabled(false);
+                    message_box.setEnabled(false);
                 }
             }
         } else {
             _ = user_login_box.setRec(sw/2 - sw/4, 200 + font_size/2, sw/2, 50 + font_size/2); 
             user_login_btn.setRec(user_login_box.rec.x + sw/5.5, user_login_box.rec.y+140, sw/8, 90);
             if (user_login_box.isClicked()) {
-                _ = user_login_box.setEnabled(true);
+                user_login_box.setEnabled(true);
             } else {
                 if (rl.isMouseButtonPressed(.mouse_button_left)) {
-                    _ = user_login_box.setEnabled(false);
+                    user_login_box.setEnabled(false);
                 }
             }
             if (user_login_btn.isMouseOver()) {
@@ -238,8 +238,8 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 if (user_login_btn.isClicked()) {
                     const username = mem.sliceTo(&user_login_box.value, 0);
                     try establishConnection(&sd, &thread_pool, username, server_addr, server_port);
-                    _ = message_box.setEnabled(true);
-                    _ = user_login_box.setEnabled(false);
+                    message_box.setEnabled(true);
+                    user_login_box.setEnabled(false);
                 }
             } else {
                 user_login_btn.color = rl.Color.light_gray;
@@ -267,8 +267,8 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             if (rl.isKeyDown(.key_enter)) {
                 const username = mem.sliceTo(&user_login_box.value, 0);
                 try establishConnection(&sd, &thread_pool, username, server_addr, server_port);
-                _ = message_box.setEnabled(true);
-                _ = user_login_box.setEnabled(false);
+                message_box.setEnabled(true);
+                user_login_box.setEnabled(false);
             }
         }
         if (message_box.enabled) {

@@ -55,92 +55,12 @@ fn accept_connections(sd: *core.SharedData) !void {
     print("Ending `accepting_connection`\n", .{});
 }
 
-/// TODO: convert to client action
-fn sendMessage(client: Client, message_box: *InputBox) void {
-    const msg = message_box.getCleanValue();
-    // handle sending a message
-    const reqp = Protocol.init(
-        Protocol.Typ.REQ,
-        Protocol.Act.MSG,
-        Protocol.StatusCode.OK,
-        client.id,
-        client.client_addr_str,
-        client.server_addr_str,
-        msg,
-    );
-    client.sendRequestToServer(reqp);
-    //const q = std.fmt.allocPrint(str_allocator, "{s}", .{msg}) catch |err| {
-    //    std.log.err("`allocPrint`: {any}", .{err});
-    //    std.posix.exit(1);
-    //};
-
-    //var un_spl = mem.split(u8, client.username, "#");
-    //const unn = un_spl.next().?; // user name
-    //const unh = un_spl.next().?; // username hash
-    //const message = Display.Message{
-    //    .author=unn,
-    //    .text=q,
-    //};
-    //_ = message_display.messages.append(message) catch |err| {
-    //    std.log.err("`message_display`: {any}", .{err});
-    //    std.posix.exit(1);
-    //};
-    _ = message_box.clean();
-}
-
-/// TODO: convert to client action
-fn pingClient(client: Client, message_box: *InputBox, message_display: *Display) void {
-    _ = client;
-    _ = message_display;
-    var splits = mem.splitScalar(u8, message_box.getCleanValue(), ' ');
-    _ = splits.next(); // action caller
-    const opt_username = splits.next();
-    if (opt_username) |username| {
-        if (username.len > 0) {
-            std.log.warn("un: `{s}`", .{username});
-            std.log.err("`pingClient` not implemented", .{});
-            std.posix.exit(1);
-        } else {
-            std.log.warn("missing peer username", .{});
-        }
-        //const reqp = Protocol.init(
-        //    Protocol.Typ.REQ,
-        //    Protocol.Act.PING,
-        //    Protocol.StatusCode.OK,
-        //    client.id,
-        //    client.client_addr,
-        //    cmn.address_as_str(client.server_addr),
-        //    username,
-        //);
-        //send_request(client.server_addr, reqp) catch |err| {
-        //    std.log.err("`send_request`: {any}", .{err});
-        //    std.posix.exit(1);
-        //};
-        // TODO: collect response
-        // TODO: print peer data to message_display
-        //const message = rld.Message{
-        //    .author=unn,
-        //    .text=q,
-        //};
-        //_ = message_display.messages.append(message) catch |err| {
-        //    std.log.err("`message_display`: {any}", .{err});
-        //    std.posix.exit(1);
-        //};
-        //_ = message_box.clean();
-    } else {
-        std.log.warn("missing peer username", .{});
-    }
-}
-
 fn establishConnection(sd: *core.SharedData, thread_pool: *[1]std.Thread, username: []const u8, hostname: []const u8, port: u16) !void {
     sd.client.setUsername(username);
     sd.client.connect(str_allocator, hostname, port);
     sd.setConnected(true);
     thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ sd });
 }
-
-/// TODO: introduce client action
-const Action = *const fn (*core.SharedData, *InputBox, *Display) void;
 
 pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8, log_level: Logging.Level) !void {
     const SW = @as(i32, @intCast(16*screen_scale));
@@ -158,9 +78,8 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     var client = core.Client.init(gpa_allocator, log_level);
     defer client.deinit();
 
-    //_ = try client_acts.put(":msg", sendMessage);
-    //_ = try client_acts.put(":ping", pingClient);
     client.Commander.add(":exit", ClientCommand.EXIT_CLIENT);
+    client.Commander.add(":ping", ClientCommand.PING_CLIENT);
 
     client.Actioner.add(aids.Stab.Act.COMM_END, ClientAction.COMM_END);
     client.Actioner.add(aids.Stab.Act.MSG, ClientAction.MSG);
@@ -184,9 +103,10 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
 
     var response_counter: usize = FPS*1;
     var frame_counter: usize = 0;
-    var message_box = InputBox{};
-    var user_login_box = InputBox{};
-    var user_login_btn = rlb.Button{ .text="Enter", .color = rl.Color.light_gray };
+    // ui elements
+    var message_box     = InputBox{};
+    var user_login_box  = InputBox{};
+    var user_login_btn  = rlb.Button{ .text="Enter", .color = rl.Color.light_gray };
     var message_display = Display{};
     // I think detaching and or joining threads is not needed becuse I handle ending of threads with core.SharedData.should_exit
     var thread_pool: [1]std.Thread = undefined;
@@ -198,7 +118,6 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
         .client = client,
         .connected = false,
     };
-
     // Render loop
     while (!rl.windowShouldClose() and !sd.should_exit) {
         const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
@@ -224,6 +143,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 }
             }
         } else {
+            // login screen
             _ = user_login_box.setRec(sw/2 - sw/4, 200 + font_size/2, sw/2, 50 + font_size/2); 
             user_login_btn.setRec(user_login_box.rec.x + sw/5.5, user_login_box.rec.y+140, sw/8, 90);
             if (user_login_box.isClicked()) {
@@ -284,7 +204,10 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                     var splits = mem.splitScalar(u8, mcln, ' ');
                     if (splits.next()) |frst| {
                         if (client.Commander.get(frst)) |action| {
-                            action.executor(frst, &sd);
+                            action.executor(frst, core.CommandData{
+                                .sd = &sd,
+                                .body = splits.rest(),
+                            });
                         } else {
                             const msg = message_box.getCleanValue();
                             ClientAction.MSG.transmit.?.request(Protocol.TransmitionMode.UNICAST, &sd, msg);

@@ -132,6 +132,13 @@ fn pingClient(client: Client, message_box: *InputBox, message_display: *Display)
     }
 }
 
+fn establishConnection(sd: *core.SharedData, thread_pool: *[1]std.Thread, username: []const u8, hostname: []const u8, port: u16) !void {
+    sd.client.setUsername(username);
+    sd.client.connect(str_allocator, hostname, port);
+    sd.setConnected(true);
+    thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ sd });
+}
+
 /// TODO: introduce client action
 const Action = *const fn (*core.SharedData, *InputBox, *Display) void;
 
@@ -175,7 +182,6 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     const FPS = 30;
     rl.setTargetFPS(FPS);
 
-    var connected = false;
     var response_counter: usize = FPS*1;
     var frame_counter: usize = 0;
     var message_box = InputBox{};
@@ -190,7 +196,10 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
         .should_exit = false,
         .messages = messages,
         .client = client,
+        .connected = false,
     };
+
+    // Render loop
     while (!rl.windowShouldClose() and !sd.should_exit) {
         const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
         const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
@@ -204,7 +213,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
         frame_counter += 1;
 
         // Enable writing to the input box
-        if (connected) {
+        if (sd.connected) {
             _ = message_box.setRec(20, sh - 100 - font_size/2, sw - 40, 50 + font_size/2); 
             _ = message_display.setRec(20, 200, sw - 40, sh - 400); 
             if (message_box.isClicked()) {
@@ -228,12 +237,9 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 user_login_btn.color = rl.Color.dark_gray;
                 if (user_login_btn.isClicked()) {
                     const username = mem.sliceTo(&user_login_box.value, 0);
-                    sd.client.setUsername(username);
-                    sd.client.connect(str_allocator, server_addr, server_port);
-                    connected = true;
+                    try establishConnection(&sd, &thread_pool, username, server_addr, server_port);
                     _ = message_box.setEnabled(true);
                     _ = user_login_box.setEnabled(false);
-                    thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd } );
                 }
             } else {
                 user_login_btn.color = rl.Color.light_gray;
@@ -254,23 +260,20 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             key = rl.getCharPressed();
         }
         if (user_login_box.enabled) {
+            // remove char from input box
             if (rl.isKeyPressed(.key_backspace)) {
                 _ = user_login_box.pop();
             } 
             if (rl.isKeyDown(.key_enter)) {
-                // Start the a separate thread that listens for inncomming messages from the server
                 const username = mem.sliceTo(&user_login_box.value, 0);
-                sd.client.setUsername(username);
-                sd.client.connect(str_allocator, server_addr, server_port);
-                connected = true;
+                try establishConnection(&sd, &thread_pool, username, server_addr, server_port);
                 _ = message_box.setEnabled(true);
                 _ = user_login_box.setEnabled(false);
-                thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd });
             }
         }
         if (message_box.enabled) {
             if (message_box.isKeyPressed(.key_backspace)) {
-                // remove char from message box
+                // remove char from input box
                 _ = message_box.pop();
             } 
             // Handle message_box input ~ client command handling
@@ -293,7 +296,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
         }
         // Rendering begins here
         rl.clearBackground(rl.Color.init(18, 18, 18, 255));
-        if (connected) {
+        if (sd.connected) {
             // Messaging screen
             // Draw successful connection
             var buf: [256]u8 = undefined;

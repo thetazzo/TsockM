@@ -33,10 +33,15 @@ pub const SharedData = struct {
     }
 };
 
+pub const CommandData = struct {
+    sd: *SharedData,
+    body: []const u8,
+};
+
 pub const Client = struct {
     id: []const u8 = undefined,
     username: []const u8 = undefined,
-    Commander: Stab.Commander(Stab.Command(SharedData)),
+    Commander: Stab.Commander(Stab.Command(CommandData)),
     Actioner: Stab.Actioner(SharedData),
     log_level: Logging.Level,
     // Should the client be it's own server ?
@@ -46,7 +51,7 @@ pub const Client = struct {
     client_addr: std.net.Address = undefined,
     client_addr_str: []const u8 = "404: not found",
     pub fn init(allocator: std.mem.Allocator, log_level: Logging.Level) Client {
-        const commander = Stab.Commander(Stab.Command(SharedData)).init(allocator);
+        const commander = Stab.Commander(Stab.Command(CommandData)).init(allocator);
         const actioner = Stab.Actioner(SharedData).init(allocator);
         return Client{
             .log_level = log_level,

@@ -64,14 +64,6 @@ fn accept_connections(sd: *core.SharedData) !void {
     print("Ending `accepting_connection`\n", .{});
 }
 
-fn establishConnection(sd: *core.SharedData, username: []const u8, hostname: []const u8, port: u16) !void {
-    sd.client.setUsername(username);
-    sd.client.connect(str_allocator, hostname, port);
-    sd.setConnected(true);
-    sd.cond.signal();
-    //thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ sd });
-}
-
 pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8, log_level: Logging.Level) !void {
     const SW = @as(i32, @intCast(16*screen_scale));
     const SH = @as(i32, @intCast(9*screen_scale));
@@ -173,7 +165,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 user_login_btn.color = rl.Color.dark_gray;
                 if (user_login_btn.isClicked()) {
                     const username = mem.sliceTo(&user_login_box.value, 0);
-                    try establishConnection(&sd, username, server_addr, server_port);
+                    sd.establishConnection(username, server_addr, server_port);
                     message_box.setEnabled(true);
                     user_login_box.setEnabled(false);
                 }
@@ -202,7 +194,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             }
             if (user_login_box.isKeyPressed(.key_enter)) {
                 const username = mem.sliceTo(&user_login_box.value, 0);
-                try establishConnection(&sd, username, server_addr, server_port);
+                sd.establishConnection(username, server_addr, server_port);
                 message_box.setEnabled(true);
                 user_login_box.setEnabled(false);
             }

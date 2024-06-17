@@ -8,9 +8,7 @@ const Protocol = aids.Protocol;
 const Logging = aids.Logging;
 const cmn = aids.cmn;
 const tclr = aids.TextColor;
-const InputBox = @import("ui/input-box.zig");
-const rlb = @import("ui/button.zig");
-const Display = @import("ui/display.zig");
+const ui = @import("./ui/ui.zig");
 const rl = @import("raylib");
 const mem = std.mem;
 const net = std.net;
@@ -106,13 +104,13 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     var response_counter: usize = FPS*1;
     var frame_counter: usize = 0;
     // ui elements
-    var message_box     = InputBox{};
-    var user_login_box  = InputBox{};
-    var user_login_btn  = rlb.Button{ .text="Enter", .color = rl.Color.light_gray };
-    var message_display = Display{};
+    var message_box     = ui.InputBox{};
+    var user_login_box  = ui.InputBox{};
+    var user_login_btn  = ui.Button{ .text="Enter", .color = rl.Color.light_gray };
+    var message_display = ui.Display{};
     // I think detaching and or joining threads is not needed becuse I handle ending of threads with core.SharedData.should_exit
     var thread_pool: [1]std.Thread = undefined;
-    const messages = std.ArrayList(Display.Message).init(gpa_allocator);
+    const messages = std.ArrayList(ui.Display.Message).init(gpa_allocator);
     var sd = core.SharedData{
         .m = std.Thread.Mutex{},
         .should_exit = false,
@@ -183,10 +181,10 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
         }
         if (user_login_box.enabled) {
             // remove char from input box
-            if (rl.isKeyPressed(.key_backspace)) {
+            if (user_login_box.isKeyPressed(.key_backspace)) {
                 _ = user_login_box.pop();
-            } 
-            if (rl.isKeyDown(.key_enter)) {
+            }
+            if (user_login_box.isKeyPressed(.key_enter)) {
                 const username = mem.sliceTo(&user_login_box.value, 0);
                 try establishConnection(&sd, &thread_pool, username, server_addr, server_port);
                 message_box.setEnabled(true);
@@ -194,8 +192,8 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             }
         }
         if (message_box.enabled) {
+            // remove char from input box
             if (message_box.isKeyPressed(.key_backspace)) {
-                // remove char from input box
                 _ = message_box.pop();
             } 
             // Handle message_box input ~ client command handling

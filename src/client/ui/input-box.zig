@@ -27,7 +27,7 @@ pub fn isClicked(self: @This()) bool {
 }
 pub fn isKeyPressed(self: @This(), key: rl.KeyboardKey) bool {
     _ = self;
-    return rl.isKeyPressed(key);
+    return rl.isKeyPressed(key) or rl.isKeyPressedRepeat(key);
 }
 pub fn clean(self: *@This()) [256]u8 {
     for (0..255) |i| {

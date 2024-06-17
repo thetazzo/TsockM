@@ -32,6 +32,13 @@ pub const SharedData = struct {
         try self.messages.append(msg);
         std.debug.print("adding msg\n", .{});
     }
+
+    pub fn establishConnection(self: *@This(), username: []const u8, hostname: []const u8, port: u16) void {
+        self.client.setUsername(username);
+        self.client.connect(std.heap.page_allocator, hostname, port);
+        self.setConnected(true);
+        self.cond.signal();
+    }
 };
 
 pub const CommandData = struct {

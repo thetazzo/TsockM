@@ -33,6 +33,17 @@ return font;
 
 /// I am thread
 fn accept_connections(sd: *core.SharedData) !void {
+    {
+        sd.m.lock();
+        defer sd.m.unlock();
+        while (!sd.connected) {
+            // wait for client to connect
+            print("Waiting for connection\n", .{});
+            sd.cond.wait(&sd.m);
+        }
+        print("haleluja\n", .{});
+    }
+
     while (!sd.should_exit) {
         const resp = try Protocol.collect(str_allocator, sd.client.stream);
         const opt_action = sd.client.Actioner.get(aids.Stab.parseAct(resp.action));
@@ -53,11 +64,12 @@ fn accept_connections(sd: *core.SharedData) !void {
     print("Ending `accepting_connection`\n", .{});
 }
 
-fn establishConnection(sd: *core.SharedData, thread_pool: *[1]std.Thread, username: []const u8, hostname: []const u8, port: u16) !void {
+fn establishConnection(sd: *core.SharedData, username: []const u8, hostname: []const u8, port: u16) !void {
     sd.client.setUsername(username);
     sd.client.connect(str_allocator, hostname, port);
     sd.setConnected(true);
-    thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ sd });
+    sd.cond.signal();
+    //thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ sd });
 }
 
 pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8, log_level: Logging.Level) !void {
@@ -113,11 +125,15 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
     const messages = std.ArrayList(ui.Display.Message).init(gpa_allocator);
     var sd = core.SharedData{
         .m = std.Thread.Mutex{},
+        .cond = std.Thread.Condition{},
         .should_exit = false,
         .messages = messages,
         .client = client,
         .connected = false,
     };
+
+    thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd });
+
     // Render loop
     while (!rl.windowShouldClose() and !sd.should_exit) {
         const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
@@ -157,7 +173,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 user_login_btn.color = rl.Color.dark_gray;
                 if (user_login_btn.isClicked()) {
                     const username = mem.sliceTo(&user_login_box.value, 0);
-                    try establishConnection(&sd, &thread_pool, username, server_addr, server_port);
+                    try establishConnection(&sd, username, server_addr, server_port);
                     message_box.setEnabled(true);
                     user_login_box.setEnabled(false);
                 }
@@ -186,7 +202,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             }
             if (user_login_box.isKeyPressed(.key_enter)) {
                 const username = mem.sliceTo(&user_login_box.value, 0);
-                try establishConnection(&sd, &thread_pool, username, server_addr, server_port);
+                try establishConnection(&sd, username, server_addr, server_port);
                 message_box.setEnabled(true);
                 user_login_box.setEnabled(false);
             }

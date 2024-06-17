@@ -12,6 +12,7 @@ pub const SharedData = struct {
     messages: std.ArrayList(ui.Display.Message),
     client: Client = undefined, // Client gets defined after the username is entered
     connected: bool,
+    cond: std.Thread.Condition,
 
     pub fn setConnected(self: *@This(), val: bool) void {
         self.m.lock();

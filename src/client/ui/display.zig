@@ -7,9 +7,8 @@ pub const Message = struct {
 };
 
 rec: rl.Rectangle = undefined,
-pub fn setRec(self: *@This(), x: f32, y: f32, w: f32, h: f32) rl.Rectangle {
+pub fn setRec(self: *@This(), x: f32, y: f32, w: f32, h: f32) void {
     self.rec = rl.Rectangle.init(x, y, w, h);
-    return self.rec;
 }
 pub fn isClicked(self: @This()) bool {
     if (rl.checkCollisionPointRec(rl.getMousePosition(), self.rec)) {

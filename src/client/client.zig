@@ -3,6 +3,9 @@ const aids = @import("aids");
 const core = @import("./core/core.zig");
 const ClientCommand = @import("./commands/commands.zig");
 const ClientAction = @import("./actions/actions.zig");
+const sc = @import("./screen/screen.zig");
+const LoginScreen = sc.LOGIN_SCREEN;
+const MessagingScreen = sc.MESSAGING_SCREEN;
 const Client =  core.Client;
 const Protocol = aids.Protocol;
 const Logging = aids.Logging;
@@ -126,13 +129,21 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
 
     thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd });
 
+    const UI = sc.UI_ELEMENTS{
+        .username_input = &user_login_box,
+        .login_btn = &user_login_btn,
+        .message_input = &message_box,
+        .message_display = &message_display,
+    };
+    var SIZING = sc.UI_SIZING{};
+
     // Render loop
     while (!rl.windowShouldClose() and !sd.should_exit) {
         const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
         const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
-        const window_extended = sh > @as(f32, @floatFromInt(SH));
         const window_extended_vert = sh > sw;
         const font_size = if (window_extended_vert) sw * 0.03 else sh * 0.05;
+        SIZING.update(SW, SH);
 
         rl.beginDrawing();
         defer rl.endDrawing();
@@ -141,89 +152,9 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
 
         // Enable writing to the input box
         if (sd.connected) {
-            _ = message_box.setRec(20, sh - 100 - font_size/2, sw - 40, 50 + font_size/2); 
-            _ = message_display.setRec(20, 200, sw - 40, sh - 400); 
-            if (message_box.isClicked()) {
-                message_box.setEnabled(true);
-            } else {
-                if (rl.isMouseButtonPressed(.mouse_button_left)) {
-                    message_box.setEnabled(false);
-                }
-            }
+            MessagingScreen.update(UI, SIZING, &sd, .{.server_hostname = server_addr, .server_port=server_port});
         } else {
-            // login screen
-            _ = user_login_box.setRec(sw/2 - sw/4, 200 + font_size/2, sw/2, 50 + font_size/2); 
-            user_login_btn.setRec(user_login_box.rec.x + sw/5.5, user_login_box.rec.y+140, sw/8, 90);
-            if (user_login_box.isClicked()) {
-                user_login_box.setEnabled(true);
-            } else {
-                if (rl.isMouseButtonPressed(.mouse_button_left)) {
-                    user_login_box.setEnabled(false);
-                }
-            }
-            if (user_login_btn.isMouseOver()) {
-                user_login_btn.color = rl.Color.dark_gray;
-                if (user_login_btn.isClicked()) {
-                    const username = mem.sliceTo(&user_login_box.value, 0);
-                    sd.establishConnection(username, server_addr, server_port);
-                    message_box.setEnabled(true);
-                    user_login_box.setEnabled(false);
-                }
-            } else {
-                user_login_btn.color = rl.Color.light_gray;
-            }
-        }
-        var key = rl.getCharPressed();
-        while (key > 0) {
-            if ((key >= 32) and (key <= 125)) {
-                const s = @as(u8, @intCast(key));
-                if (user_login_box.enabled) {
-                    user_login_box.push(s);
-                } 
-                if (message_box.enabled) {
-                    message_box.push(s);
-                }
-            }
-
-            key = rl.getCharPressed();
-        }
-        if (user_login_box.enabled) {
-            // remove char from input box
-            if (user_login_box.isKeyPressed(.key_backspace)) {
-                _ = user_login_box.pop();
-            }
-            if (user_login_box.isKeyPressed(.key_enter)) {
-                const username = mem.sliceTo(&user_login_box.value, 0);
-                sd.establishConnection(username, server_addr, server_port);
-                message_box.setEnabled(true);
-                user_login_box.setEnabled(false);
-            }
-        }
-        if (message_box.enabled) {
-            // remove char from input box
-            if (message_box.isKeyPressed(.key_backspace)) {
-                _ = message_box.pop();
-            } 
-            // Handle message_box input ~ client command handling
-            if (message_box.isKeyPressed(.key_enter)) {
-                // handle client actions
-                const mcln = message_box.getCleanValue();
-                if (mcln.len > 0) {
-                    var splits = mem.splitScalar(u8, mcln, ' ');
-                    if (splits.next()) |frst| {
-                        if (client.Commander.get(frst)) |action| {
-                            action.executor(frst, core.CommandData{
-                                .sd = &sd,
-                                .body = splits.rest(),
-                            });
-                        } else {
-                            const msg = message_box.getCleanValue();
-                            ClientAction.MSG.transmit.?.request(Protocol.TransmitionMode.UNICAST, &sd, msg);
-                            _ = message_box.clean();
-                        }
-                    }
-                }
-            }
+            LoginScreen.update(UI, SIZING, &sd, .{.server_hostname = server_addr, .server_port=server_port});
         }
         // Rendering begins here
         rl.clearBackground(rl.Color.init(18, 18, 18, 255));
@@ -240,37 +171,10 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
                 rl.drawTextEx(font, succ_str, rl.Vector2{.x=sw/2 - sslen/2, .y=sh/2 - sh/4}, font_size, 0, rl.Color.green);
                 response_counter -= 1;
             } else {
-                // Draw client information
-                const client_stats = sd.client.asStr(str_allocator);
-                defer str_allocator.free(client_stats);
-                const client_str  = try std.fmt.bufPrintZ(&buf, "{s}\n", .{client_stats});
-                try message_display.render(sd.messages, str_allocator, font, font_size, frame_counter);
-                rl.drawTextEx(font, client_str, rl.Vector2{.x=40, .y=20}, font_size/2, 0, rl.Color.light_gray);
-                try message_box.render(window_extended, font, font_size, frame_counter);
+                MessagingScreen.render(UI, SIZING, &sd, font, &frame_counter);
             }
         } else {
-            // Login screen
-            var buf: [256]u8 = undefined;
-            const title_str = try std.fmt.bufPrintZ(&buf, "TsockM", .{});
-            rl.drawTextEx(
-                font,
-                title_str,
-                rl.Vector2{.x=20, .y=25},
-                font_size * 1.75,
-                0,
-                rl.Color.light_gray
-            );
-            const succ_str = try std.fmt.bufPrintZ(&buf, "Enter your username:", .{});
-            rl.drawTextEx(
-                font,
-                succ_str,
-                rl.Vector2{.x=user_login_box.rec.x, .y=user_login_box.rec.y - user_login_box.rec.height},
-                font_size,
-                0,
-                rl.Color.light_gray
-            );
-            try user_login_box.render(window_extended, font, font_size, frame_counter);
-            try user_login_btn.render(font, font_size);
+            LoginScreen.render(UI, SIZING, &sd, font, &frame_counter);
         }
     }
     print("Ending the client\n", .{});

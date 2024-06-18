@@ -4,15 +4,13 @@ const core = @import("./core/core.zig");
 const ClientCommand = @import("./commands/commands.zig");
 const ClientAction = @import("./actions/actions.zig");
 const sc = @import("./screen/screen.zig");
+const ui = @import("./ui/ui.zig");
+const rl = @import("raylib");
 const LoginScreen = sc.LOGIN_SCREEN;
 const MessagingScreen = sc.MESSAGING_SCREEN;
 const Client =  core.Client;
 const Protocol = aids.Protocol;
 const Logging = aids.Logging;
-const cmn = aids.cmn;
-const tclr = aids.TextColor;
-const ui = @import("./ui/ui.zig");
-const rl = @import("raylib");
 const mem = std.mem;
 const net = std.net;
 const print = std.debug.print;
@@ -29,9 +27,12 @@ fn isKeyPressed() bool {
 }
 
 fn loadExternalFont(font_name: [:0]const u8) rl.Font {
-    var tmp = [128]i32{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127 };
+    var tmp = [_]i32{0} ** 128;
+    for (0..127) |i| {
+        tmp[i] = @as(i32, @intCast(i));
+    }
     const font = rl.loadFontEx(font_name, 60, &tmp);
-return font;
+    return font;
 }
 
 /// I am thread
@@ -41,10 +42,8 @@ fn accept_connections(sd: *core.SharedData) !void {
         defer sd.m.unlock();
         while (!sd.connected) {
             // wait for client to connect
-            print("Waiting for connection\n", .{});
             sd.cond.wait(&sd.m);
         }
-        print("haleluja\n", .{});
     }
 
     while (!sd.should_exit) {
@@ -67,7 +66,7 @@ fn accept_connections(sd: *core.SharedData) !void {
     print("Ending `accepting_connection`\n", .{});
 }
 
-pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8, log_level: Logging.Level) !void {
+pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8, log_level: Logging.Level) !void {
     const SW = @as(i32, @intCast(16*screen_scale));
     const SH = @as(i32, @intCast(9*screen_scale));
     rl.initWindow(SW, SH, "TsockM");
@@ -152,9 +151,9 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
 
         // Enable writing to the input box
         if (sd.connected) {
-            MessagingScreen.update(UI, SIZING, &sd, .{.server_hostname = server_addr, .server_port=server_port});
+            MessagingScreen.update(UI, SIZING, &sd, .{.server_hostname = server_hostname, .server_port=server_port});
         } else {
-            LoginScreen.update(UI, SIZING, &sd, .{.server_hostname = server_addr, .server_port=server_port});
+            LoginScreen.update(UI, SIZING, &sd, .{.server_hostname = server_hostname, .server_port=server_port});
         }
         // Rendering begins here
         rl.clearBackground(rl.Color.init(18, 18, 18, 255));
@@ -164,7 +163,7 @@ pub fn start(server_addr: []const u8, server_port: u16, screen_scale: usize, fon
             var buf: [256]u8 = undefined;
             const succ_str = try std.fmt.bufPrintZ(&buf,
                 "Client connected successfully to `{s}:{d}` :)\n",
-                .{server_addr, server_port}
+                .{server_hostname, server_port}
             );
             if (response_counter > 0) {
                 const sslen = rl.measureTextEx(font, succ_str, font_size, 0).x;

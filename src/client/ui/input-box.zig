@@ -1,10 +1,18 @@
 const std = @import("std");
 const rl = @import("raylib");
+const kybrd = @import("../core/keyboard.zig");
 
 rec: rl.Rectangle = undefined,
 enabled: bool = false,
 value: [256]u8 = undefined,
 letter_count: usize = 0,
+opts: struct {
+    clipboard: bool,
+    backspace_removal: bool,
+} = .{
+    .clipboard = true,           // clipboard support
+    .backspace_removal = true,   // backspace removal support
+},
 
 // reanme getMessageSlice
 pub fn getCleanValue(self: *@This()) []const u8 {
@@ -25,21 +33,55 @@ pub fn isClicked(self: @This()) bool {
     }
     return false;
 }
-pub fn isKeyPressed(self: @This(), key: rl.KeyboardKey) bool {
-    _ = self;
-    return rl.isKeyPressed(key) or rl.isKeyPressedRepeat(key);
-}
-pub fn clean(self: *@This()) [256]u8 {
-    for (0..255) |i| {
-        self.value[i] = 170;
+// Handle user input
+pub fn consumeInput(self: *@This()) void {
+    if (self.enabled) {
+        var key = rl.getCharPressed();
+        while (key > 0) {
+            if ((key >= 32) and (key <= 125)) {
+                const s = @as(u8, @intCast(key));
+                self.push(s);
+            }
+            key = rl.getCharPressed();
+        }
+        if (self.opts.clipboard) {
+            self.serveClipboardPaste();
+        }
+        if (self.opts.backspace_removal) {
+            self.backspace_removal();
+        }
+    } else {
+        std.log.err("input-box::consumeInput: Trying to consume when input is disabled!", .{});
+        std.posix.exit(1);
     }
-    self.letter_count = 0;
-    return self.value;
 }
+// Handle of clipboard paste
+fn serveClipboardPaste(self: *@This()) void {
+    if (kybrd.isValidConrolCombination()) {
+        if (rl.isKeyPressed(.key_v)) {
+            self.pushSlice(rl.getClipboardText());
+        }
+    }
+}
+// handle backspace removal
+fn backspace_removal(self: *@This()) void {
+    if (kybrd.isPressedAndOrHeld(.key_backspace)) {
+        _ = self.pop();
+    } 
+}
+// push a single character
 pub fn push(self: *@This(), char: u8) void {
     self.value[self.letter_count] = char;
     self.letter_count += 1;
 }
+// push a whole string of characters
+pub fn pushSlice(self: *@This(), slice: [:0]const u8) void {
+    for (0..slice.len) |i| {
+        self.value[self.letter_count] = slice[i];
+        self.letter_count += 1;
+    }
+}
+// Remove the last character
 pub fn pop(self: *@This()) u8 {
     if (self.letter_count > 0) {
         self.letter_count -= 1;
@@ -47,6 +89,14 @@ pub fn pop(self: *@This()) u8 {
     const chr = self.value[self.letter_count];
     self.value[self.letter_count] = 170;
     return chr;
+}
+// Remove all characters 
+pub fn clean(self: *@This()) [256]u8 {
+    for (0..255) |i| {
+        self.value[i] = 170;
+    }
+    self.letter_count = 0;
+    return self.value;
 }
 pub fn render(self: *@This(), window_extended: bool, font: rl.Font, font_size: f32, frame_counter: usize) !void {
     rl.drawRectangleRounded(self.rec, 0.0, 0, rl.Color.light_gray);

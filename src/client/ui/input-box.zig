@@ -7,11 +7,17 @@ enabled: bool = false,
 value: [256]u8 = undefined,
 letter_count: usize = 0,
 opts: struct {
+    mouse: bool,
+    keyboard: bool,
     clipboard: bool,
     backspace_removal: bool,
+    bg_color: rl.Color,
 } = .{
-    .clipboard = true,           // clipboard support
-    .backspace_removal = true,   // backspace removal support
+    .mouse = true,                    // default mouse support
+    .keyboard = true,                 // default keyboard support
+    .clipboard = true,                // clipboard support
+    .backspace_removal = true,        // backspace removal support
+    .bg_color = rl.Color.light_gray,  // background color
 },
 
 // reanme getMessageSlice
@@ -33,8 +39,39 @@ pub fn isClicked(self: @This()) bool {
     }
     return false;
 }
+// check mouse pointer and input box collision
+pub fn isMouseOver(self: @This()) bool {
+    if (rl.checkCollisionPointRec(rl.getMousePosition(), self.rec)) {
+        return true;
+    }
+    return false;
+}
 // Handle user input
-pub fn consumeInput(self: *@This()) void {
+fn consumeMouse(self: *@This()) void {
+    if (!self.enabled) {
+        if (self.isMouseOver()) {
+            rl.setMouseCursor(@intFromEnum(rl.MouseCursor.mouse_cursor_pointing_hand));
+            self.opts.bg_color = rl.Color.gray;
+        } else {
+            rl.setMouseCursor(@intFromEnum(rl.MouseCursor.mouse_cursor_default));
+            self.opts.bg_color = rl.Color.light_gray;
+        }
+    } else {
+        rl.setMouseCursor(@intFromEnum(rl.MouseCursor.mouse_cursor_default));
+        self.opts.bg_color = rl.Color.light_gray;
+    }
+    if (self.isClicked()) {
+        self.setEnabled(true);
+        return;
+    } else {
+        if (rl.isMouseButtonPressed(.mouse_button_left)) {
+            self.setEnabled(false);
+            return;
+        }
+    }
+}
+// Handle user keyboard input
+fn consumeKeyboard(self: *@This()) void {
     if (self.enabled) {
         var key = rl.getCharPressed();
         while (key > 0) {
@@ -50,9 +87,6 @@ pub fn consumeInput(self: *@This()) void {
         if (self.opts.backspace_removal) {
             self.backspace_removal();
         }
-    } else {
-        std.log.err("input-box::consumeInput: Trying to consume when input is disabled!", .{});
-        std.posix.exit(1);
     }
 }
 // Handle of clipboard paste
@@ -98,8 +132,16 @@ pub fn clean(self: *@This()) [256]u8 {
     self.letter_count = 0;
     return self.value;
 }
+pub fn update(self: *@This()) void {
+    if (self.opts.keyboard) {
+        self.consumeKeyboard();
+    }
+    if (self.opts.mouse) {
+        self.consumeMouse();
+    }
+}
 pub fn render(self: *@This(), window_extended: bool, font: rl.Font, font_size: f32, frame_counter: usize) !void {
-    rl.drawRectangleRounded(self.rec, 0.0, 0, rl.Color.light_gray);
+    rl.drawRectangleRounded(self.rec, 0.0, 0, self.opts.bg_color);
     if (!window_extended) {
         self.rec.y += 2;
     }

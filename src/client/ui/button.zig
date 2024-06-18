@@ -4,7 +4,13 @@ const rl = @import("raylib");
 pub const Button = struct {
     rec: rl.Rectangle = undefined,
     text: []const u8,
-    color: rl.Color,
+    opts: struct {
+        bg_color: rl.Color,
+        mouse: bool,
+    } = .{
+        .bg_color = rl.Color.light_gray,
+        .mouse = true // default mouse support
+    },
     pub fn setText(self: *@This(), text: []const u8) void {
         self.text = text;
     }
@@ -25,13 +31,26 @@ pub const Button = struct {
         }
         return false;
     }
+    fn consumeMouse(self: *@This()) void {
+        if (self.isMouseOver()) {
+            self.opts.bg_color = rl.Color.dark_gray;
+            rl.setMouseCursor(@intFromEnum(rl.MouseCursor.mouse_cursor_pointing_hand));
+        } else {
+            self.opts.bg_color = rl.Color.light_gray;
+        }
+    }
+    pub fn update(self: *@This()) void {
+        if (self.opts.mouse) {
+            self.consumeMouse();
+        }
+    }
     pub fn render(self: @This(), font: rl.Font, font_size: f32) !void {
         rl.drawRectangle(
             @intFromFloat(self.rec.x),
             @intFromFloat(self.rec.y),
             @intFromFloat(self.rec.width),
             @intFromFloat(self.rec.height),
-            self.color,
+            self.opts.bg_color,
         );
         var buf: [256] u8 = undefined;
         const btext = try std.fmt.bufPrintZ(&buf, "{s}", .{self.text});

@@ -50,15 +50,15 @@ pub fn isMouseOver(self: @This()) bool {
 fn consumeMouse(self: *@This()) void {
     if (!self.enabled) {
         if (self.isMouseOver()) {
-            rl.setMouseCursor(@intFromEnum(rl.MouseCursor.mouse_cursor_pointing_hand));
             self.opts.bg_color = rl.Color.gray;
+            rl.setMouseCursor(@intFromEnum(rl.MouseCursor.mouse_cursor_pointing_hand));
         } else {
-            rl.setMouseCursor(@intFromEnum(rl.MouseCursor.mouse_cursor_default));
             self.opts.bg_color = rl.Color.light_gray;
+            rl.setMouseCursor(@intFromEnum(rl.MouseCursor.mouse_cursor_default));
         }
     } else {
-        rl.setMouseCursor(@intFromEnum(rl.MouseCursor.mouse_cursor_default));
         self.opts.bg_color = rl.Color.light_gray;
+        rl.setMouseCursor(@intFromEnum(rl.MouseCursor.mouse_cursor_default));
     }
     if (self.isClicked()) {
         self.setEnabled(true);

@@ -127,6 +127,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     var username_input  = ui.InputBox{.enabled = true};
     var login_btn  = ui.Button{ .text="Login", .color = rl.Color.light_gray };
     var message_display = ui.Display{};
+
     thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd });
 
     const UI = sc.UI_ELEMENTS{

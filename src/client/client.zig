@@ -100,7 +100,8 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
         const font_pathZ = try std.fmt.allocPrintZ(str_allocator, "{s}", .{font_path}); 
         font = loadExternalFont(font_pathZ);
     } else if (opt_self_dirname) |exe_dir| {
-        const font_pathZ = try std.fmt.allocPrintZ(str_allocator, "{s}/{s}", .{exe_dir, "fonts/IosevkaTermSS02-SemiBold.ttf"}); 
+        const fp = "fonts/IosevkaTermSS02-SemiBold.ttf";
+        const font_pathZ = try std.fmt.allocPrintZ(str_allocator, "{s}/{s}", .{exe_dir, fp}); 
         font = loadExternalFont(font_pathZ);
     }
 
@@ -110,10 +111,6 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     var response_counter: usize = FPS*1;
     var frame_counter: usize = 0;
     // ui elements
-    var message_box     = ui.InputBox{};
-    var user_login_box  = ui.InputBox{};
-    var user_login_btn  = ui.Button{ .text="Enter", .color = rl.Color.light_gray };
-    var message_display = ui.Display{};
     // I think detaching and or joining threads is not needed becuse I handle ending of threads with core.SharedData.should_exit
     var thread_pool: [1]std.Thread = undefined;
     const messages = std.ArrayList(ui.Display.Message).init(gpa_allocator);
@@ -126,11 +123,15 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
         .connected = false,
     };
 
+    var message_box     = ui.InputBox{};
+    var username_input  = ui.InputBox{.enabled = true};
+    var login_btn  = ui.Button{ .text="Login", .color = rl.Color.light_gray };
+    var message_display = ui.Display{};
     thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd });
 
     const UI = sc.UI_ELEMENTS{
-        .username_input = &user_login_box,
-        .login_btn = &user_login_btn,
+        .username_input = &username_input,
+        .login_btn = &login_btn,
         .message_input = &message_box,
         .message_display = &message_display,
     };

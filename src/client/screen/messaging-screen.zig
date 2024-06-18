@@ -1,6 +1,7 @@
 const rl = @import("raylib");
 const std = @import("std");
 const core = @import("../core/core.zig");
+const kybrd = @import("../core/keyboard.zig");
 const ClientAction = @import("../actions/actions.zig");
 const Protocol = @import("aids").Protocol;
 const sc = @import("screen.zig");
@@ -18,25 +19,13 @@ fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: Me
             uie.message_input.setEnabled(false);
         }
     }
+    uie.message_input.consumeInput();
 // ------------------------------------------------------------
-// Handle input
+// Handle custom input
 // ------------------------------------------------------------
     if (uie.message_input.enabled) {
-        var key = rl.getCharPressed();
-        while (key > 0) {
-            if ((key >= 32) and (key <= 125)) {
-                const s = @as(u8, @intCast(key));
-                uie.message_input.push(s);
-            }
-
-            key = rl.getCharPressed();
-        }
-        // remove char from input box
-        if (uie.message_input.isKeyPressed(.key_backspace)) {
-            _ = uie.message_input.pop();
-        } 
         // Handle uis.message_input input ~ client command handling
-        if (uie.message_input.isKeyPressed(.key_enter)) {
+        if (rl.isKeyPressed(.key_enter)) {
             // handle client actions
             const mcln = uie.message_input.getCleanValue();
             if (mcln.len > 0) {

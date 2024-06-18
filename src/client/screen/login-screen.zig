@@ -1,6 +1,7 @@
 const rl = @import("raylib");
 const std = @import("std");
 const core = @import("../core/core.zig");
+const kybrd = @import("../core/keyboard.zig");
 const sc = @import("screen.zig");
 
 const LoginUD = struct{server_hostname: []const u8, server_port: u16};
@@ -33,24 +34,12 @@ fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: Lo
     } else {
         uie.login_btn.color = rl.Color.light_gray;
     }
-    // remove char from input box
-    if (uie.username_input.isKeyPressed(.key_backspace)) {
-        _ = uie.username_input.pop();
-    }
-    
+    uie.username_input.consumeInput();
 // -------------------------------------------------------------------------
-// Handle input
+// Handle custom input
 // -------------------------------------------------------------------------
     if (uie.username_input.enabled) {
-        var key = rl.getCharPressed();
-        while (key > 0) {
-            if ((key >= 32) and (key <= 125)) {
-                const s = @as(u8, @intCast(key));
-                uie.username_input.push(s);
-            } 
-            key = rl.getCharPressed();
-        }
-        if (uie.username_input.isKeyPressed(.key_enter)) {
+        if (rl.isKeyPressed(.key_enter)) {
             const username = std.mem.sliceTo(&uie.username_input.value, 0);
             sd.establishConnection(username, data.server_hostname, data.server_port);
             uie.message_input.setEnabled(true);

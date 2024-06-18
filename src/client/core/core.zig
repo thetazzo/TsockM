@@ -30,7 +30,6 @@ pub const SharedData = struct {
         self.m.lock();
         defer self.m.unlock();
         try self.messages.append(msg);
-        std.debug.print("adding msg\n", .{});
     }
 
     pub fn establishConnection(self: *@This(), username: []const u8, hostname: []const u8, port: u16) void {

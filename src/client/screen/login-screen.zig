@@ -16,21 +16,17 @@ fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: Lo
         uie.username_input.rec.x + uis.screen_width/5.5,
         uie.username_input.rec.y+140, uis.screen_width/8, 90
     );
-    if (uie.login_btn.isMouseOver()) {
-        uie.login_btn.color = rl.Color.dark_gray;
-        if (uie.login_btn.isClicked()) {
-            const username = std.mem.sliceTo(&uie.username_input.value, 0);
-            sd.establishConnection(username, data.server_hostname, data.server_port);
-            uie.message_input.setEnabled(true);
-            uie.username_input.setEnabled(false);
-        }
-    } else {
-        uie.login_btn.color = rl.Color.light_gray;
-    }
     uie.username_input.update();
+    uie.login_btn.update();
 // -------------------------------------------------------------------------
 // Handle custom input
 // -------------------------------------------------------------------------
+    if (uie.login_btn.isClicked()) {
+        const username = std.mem.sliceTo(&uie.username_input.value, 0);
+        sd.establishConnection(username, data.server_hostname, data.server_port);
+        uie.message_input.setEnabled(true);
+        uie.username_input.setEnabled(false);
+    }
     if (uie.username_input.enabled) {
         if (rl.isKeyPressed(.key_enter)) {
             const username = std.mem.sliceTo(&uie.username_input.value, 0);

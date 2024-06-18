@@ -69,7 +69,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(server.exe);
     const run_server_exe = b.addRunArtifact(server.exe);
 
-    const run_server_step = b.step("run-server", "Run the SERVER");
+    const run_server_step = b.step("server", "Run the SERVER");
     // add command line arguments
     if (b.args) |args| {
         run_server_exe.addArgs(args);

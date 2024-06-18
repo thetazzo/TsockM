@@ -6,10 +6,9 @@ const ClientAction = @import("../actions/actions.zig");
 const Protocol = @import("aids").Protocol;
 const sc = @import("screen.zig");
 
-const MessagingUD = struct{server_hostname: []const u8, server_port: u16};
+const MessagingUD = struct{font: rl.Font};
 
 fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: MessagingUD) void {
-    _ = data;
     uie.message_input.setRec(20, uis.screen_height - 100 - uis.font_size/2, uis.screen_width - 40, 50 + uis.font_size/2); 
     uie.message_display.setRec(20, 200, uis.screen_width - 40, uis.screen_height - 400); 
     uie.message_input.update();
@@ -28,6 +27,8 @@ fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: Me
                         action.executor(frst, core.CommandData{
                             .sd = sd,
                             .body = splits.rest(),
+                            .sizing = uis,
+                            .font = data.font,
                         });
                     } else {
                         const msg = uie.message_input.getCleanValue();

@@ -83,6 +83,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     defer client.deinit();
 
     client.Commander.add(":exit", ClientCommand.EXIT_CLIENT);
+    client.Commander.add(":popup", ClientCommand.POPUP);
     client.Commander.add(":ping", ClientCommand.PING_CLIENT);
 
     client.Actioner.add(aids.Stab.Act.COMM_END, ClientAction.COMM_END);
@@ -125,7 +126,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
 
     var message_box     = ui.InputBox{};
     var username_input  = ui.InputBox{.enabled = true};
-    var login_btn  = ui.Button{ .text="Login", .color = rl.Color.light_gray };
+    var login_btn  = ui.Button{ .text="Login" };
     var message_display = ui.Display{};
 
     thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd });
@@ -153,7 +154,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
 
         // Enable writing to the input box
         if (sd.connected) {
-            MessagingScreen.update(UI, SIZING, &sd, .{.server_hostname = server_hostname, .server_port=server_port});
+            MessagingScreen.update(UI, SIZING, &sd, .{.font = font});
         } else {
             LoginScreen.update(UI, SIZING, &sd, .{.server_hostname = server_hostname, .server_port=server_port});
         }

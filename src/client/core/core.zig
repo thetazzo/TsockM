@@ -1,5 +1,7 @@
 const std = @import("std");
 const ui = @import("../ui/ui.zig");
+const rl = @import("raylib");
+const sc = @import("../screen/screen.zig");
 const aids = @import("aids");
 const Protocol = aids.Protocol;
 const Logging = aids.Logging;
@@ -43,6 +45,8 @@ pub const SharedData = struct {
 pub const CommandData = struct {
     sd: *SharedData,
     body: []const u8,
+    sizing: sc.UI_SIZING,
+    font: rl.Font,
 };
 
 pub const Client = struct {
@@ -122,12 +126,13 @@ pub const Client = struct {
         }
     }
 
-    pub fn asStr(self: @This(), allocator: std.mem.Allocator) []const u8 {
-        const stats = std.fmt.allocPrint(allocator,
-            "username: {s}\n" ++
-            "id: {s}\n" ++
-            "server_address: {s}\n" ++
-            "client_address: {s}\n",
+    pub fn asStr(self: @This(), allocator: std.mem.Allocator) [:0]const u8 {
+        const stats = std.fmt.allocPrintZ(allocator,
+            "Client:\n" ++
+            "    username: {s}\n" ++
+            "    id: {s}\n" ++
+            "    server_address: {s}\n" ++
+            "    client_address: {s}",
             .{self.username, self.id, self.server_addr_str, self.client_addr_str}
         ) catch |err| {
             std.log.err("client::asStr: {any}", .{err});

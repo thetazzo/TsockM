@@ -16,7 +16,7 @@ fn Sqids(b: *std.Build) struct { module: *std.Build.Module } {
     return .{ .module = mod, };
 }
 
-fn Raylib(b: *std.Build, target: std.Build.ResolvedTarget ,optimize: std.builtin.OptimizeMode) struct { module: *std.Build.Module, artifact: *std.Build.Step.Compile } {
+fn Raylib(b: *std.Build, target: std.Build.ResolvedTarget ,optimize: std.builtin.OptimizeMode) struct { module: *std.Build.Module, artifact: *std.Build.Step.Compile, dependency: *std.Build.Dependency } {
     const raylib_optimize = b.option(
         std.builtin.OptimizeMode,
         "raylib-optimize",
@@ -29,10 +29,10 @@ fn Raylib(b: *std.Build, target: std.Build.ResolvedTarget ,optimize: std.builtin
     });
 
     const raylib = raylib_dep.module("raylib"); // main raylib module
-    //const raygui = raylib_dep.module("raygui"); // raygui module
     const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
     return .{
         .module= raylib,
+        .dependency = raylib_dep,
         .artifact= raylib_artifact,
     };
 }
@@ -83,9 +83,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const raygui = raylib.dependency.module("raygui"); // raygui module
     client.exe.linkLibrary(raylib.artifact);
     client.module.addImport("raylib", raylib.module);
-    //client_exe.root_module.addImport("raygui", raylib.raygui);
+    client.module.addImport("raygui", raygui);
 
     //b.installArtifact(client_exe);
     const build_client = b.addInstallArtifact(client.exe, .{});

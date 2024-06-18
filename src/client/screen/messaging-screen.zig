@@ -12,14 +12,7 @@ fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: Me
     _ = data;
     uie.message_input.setRec(20, uis.screen_height - 100 - uis.font_size/2, uis.screen_width - 40, 50 + uis.font_size/2); 
     uie.message_display.setRec(20, 200, uis.screen_width - 40, uis.screen_height - 400); 
-    if (uie.message_input.isClicked()) {
-        uie.message_input.setEnabled(true);
-    } else {
-        if (rl.isMouseButtonPressed(.mouse_button_left)) {
-            uie.message_input.setEnabled(false);
-        }
-    }
-    uie.message_input.consumeInput();
+    uie.message_input.update();
 // ------------------------------------------------------------
 // Handle custom input
 // ------------------------------------------------------------

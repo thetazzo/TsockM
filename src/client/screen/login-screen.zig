@@ -16,13 +16,6 @@ fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: Lo
         uie.username_input.rec.x + uis.screen_width/5.5,
         uie.username_input.rec.y+140, uis.screen_width/8, 90
     );
-    if (uie.username_input.isClicked()) {
-        uie.username_input.setEnabled(true);
-    } else {
-        if (rl.isMouseButtonPressed(.mouse_button_left)) {
-            uie.username_input.setEnabled(false);
-        }
-    }
     if (uie.login_btn.isMouseOver()) {
         uie.login_btn.color = rl.Color.dark_gray;
         if (uie.login_btn.isClicked()) {
@@ -34,7 +27,7 @@ fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: Lo
     } else {
         uie.login_btn.color = rl.Color.light_gray;
     }
-    uie.username_input.consumeInput();
+    uie.username_input.update();
 // -------------------------------------------------------------------------
 // Handle custom input
 // -------------------------------------------------------------------------

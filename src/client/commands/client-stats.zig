@@ -6,17 +6,12 @@ const ui = @import("../ui/ui.zig");
 
 pub fn executor(_: ?[]const u8, cd: ?core.CommandData) void {
     const txt = cd.?.sd.client.asStr(std.heap.page_allocator);
-    const txt_size = rl.measureTextEx(cd.?.font, txt, cd.?.sizing.font_size, 0);
-    const TPAD = 60;
-
-    var popup = ui.Popup{
-        .rec = rl.Rectangle{.x=cd.?.sizing.screen_width / 2 - txt_size.x/2, .y=50, .width = txt_size.x + 2*TPAD, .height = txt_size.y + 2*TPAD},
-        .lifespan = 30*3,
-        .opts = .{ .endless = true }
+    var stats_popup = ui.SimplePopup.init(cd.?.font, cd.?.sizing, 30*4);
+    stats_popup.text = txt;
+    _ = cd.?.sd.popups.append(stats_popup) catch |err| {
+        std.log.err("client-stats::executor::append: {any}", .{err});
+        std.posix.exit(1);
     };
-    popup.setFont(cd.?.font, cd.?.sizing.font_size);
-    popup.setText(txt);
-    popup.render();
 }
 
 pub const COMMAND = aids.Stab.Command(core.CommandData){

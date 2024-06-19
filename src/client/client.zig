@@ -83,7 +83,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     defer client.deinit();
 
     client.Commander.add(":exit", ClientCommand.EXIT_CLIENT);
-    client.Commander.add(":popup", ClientCommand.POPUP);
+    client.Commander.add(":info", ClientCommand.CLIENT_STATS);
     client.Commander.add(":ping", ClientCommand.PING_CLIENT);
 
     client.Actioner.add(aids.Stab.Act.COMM_END, ClientAction.COMM_END);

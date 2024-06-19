@@ -12,6 +12,7 @@ fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: Me
     uie.message_input.setRec(20, uis.screen_height - 100 - uis.font_size/2, uis.screen_width - 40, 50 + uis.font_size/2); 
     uie.message_display.setRec(20, 200, uis.screen_width - 40, uis.screen_height - 400); 
     uie.message_input.update();
+    uie.message_input.opts.keyboard = true;
 // ------------------------------------------------------------
 // Handle custom input
 // ------------------------------------------------------------
@@ -24,17 +25,19 @@ fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: Me
                 var splits = std.mem.splitScalar(u8, mcln, ' ');
                 if (splits.next()) |frst| {
                     if (sd.client.Commander.get(frst)) |action| {
+                        uie.message_input.opts.keyboard = false;
                         action.executor(frst, core.CommandData{
                             .sd = sd,
                             .body = splits.rest(),
                             .sizing = uis,
+                            .ui_elements = uie,
                             .font = data.font,
                         });
                     } else {
                         const msg = uie.message_input.getCleanValue();
                         ClientAction.MSG.transmit.?.request(Protocol.TransmitionMode.UNICAST, sd, msg);
-                        _ = uie.message_input.clean();
                     }
+                    _ = uie.message_input.clean();
                 }
             }
         }
@@ -44,19 +47,22 @@ fn render(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, font: rl
     var buf: [256]u8 = undefined;
     // Draw client information
     const str_allocator = std.heap.page_allocator;
-    const client_stats = sd.client.asStr(str_allocator);
-    defer str_allocator.free(client_stats);
-    const client_str  = std.fmt.bufPrintZ(&buf, "{s}\n", .{client_stats}) catch |err| {
+    const cmds_str  = std.fmt.bufPrintZ(
+        &buf,
+        "`:info` ... print information about the client\n" ++ 
+        "`:exit` ... terminate the client",
+        .{}
+    ) catch |err| {
         std.log.err("MessagingScreen::render: {any}", .{err});
         std.posix.exit(1);
     };
     uie.message_display.render(sd.messages, str_allocator, font, uis.font_size, frame_counter.*) catch |err| {
-        std.log.err("MessagingScreen::render: {any}", .{err});
+        std.log.err("MessagingScreen::render::message_display: {any}", .{err});
         std.posix.exit(1);
     };
-    rl.drawTextEx(font, client_str, rl.Vector2{.x=40, .y=20}, uis.font_size/2, 0, rl.Color.light_gray);
+    rl.drawTextEx(font, cmds_str, rl.Vector2{.x=40, .y=20}, uis.font_size/2, 0, rl.Color.light_gray);
     uie.message_input.render(uis.window_extended, font, uis.font_size, frame_counter.*) catch |err| {
-        std.log.err("MessagingScreen::render: {any}", .{err});
+        std.log.err("MessagingScreen::render::cmds_str: {any}", .{err});
         std.posix.exit(1);
     };
 }

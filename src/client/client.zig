@@ -115,11 +115,15 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     // I think detaching and or joining threads is not needed becuse I handle ending of threads with core.SharedData.should_exit
     var thread_pool: [1]std.Thread = undefined;
     const messages = std.ArrayList(ui.Display.Message).init(gpa_allocator);
+    defer messages.deinit();
+    const popups = std.ArrayList(ui.SimplePopup).init(gpa_allocator);
+    defer popups.deinit();
     var sd = core.SharedData{
         .m = std.Thread.Mutex{},
         .cond = std.Thread.Condition{},
         .should_exit = false,
         .messages = messages,
+        .popups = popups,
         .client = client,
         .connected = false,
     };
@@ -177,6 +181,24 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
             }
         } else {
             LoginScreen.render(UI, SIZING, &sd, font, &frame_counter);
+        }
+
+        var i = sd.popups.items.len;
+        while (i > 0) {
+            var popup = &sd.popups.items[i-1];
+            popup.SIZING.update(SW, SH);
+            if (i >= 2) {
+                const popup_prev = sd.popups.items[i-2];
+                popup.update();
+                try popup.render(popup_prev);
+            } else {
+                popup.update();
+                try popup.render(null);
+            }
+            if (popup.lifetime <= 0) {
+                _ = sd.popups.orderedRemove(i-1);
+            }
+            i -= 1;
         }
     }
     print("Ending the client\n", .{});

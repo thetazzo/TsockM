@@ -15,6 +15,7 @@ pub const SharedData = struct {
     client: Client = undefined, // Client gets defined after the username is entered
     connected: bool,
     cond: std.Thread.Condition,
+    popups: std.ArrayList(ui.SimplePopup),
 
     pub fn setConnected(self: *@This(), val: bool) void {
         self.m.lock();

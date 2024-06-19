@@ -46,6 +46,7 @@ pub const CommandData = struct {
     sd: *SharedData,
     body: []const u8,
     sizing: sc.UI_SIZING,
+    ui_elements: sc.UI_ELEMENTS,
     font: rl.Font,
 };
 

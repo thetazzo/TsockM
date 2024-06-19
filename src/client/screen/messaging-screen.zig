@@ -8,9 +8,17 @@ const sc = @import("screen.zig");
 
 const MessagingUD = struct{font: rl.Font};
 
+const str_allocator = std.heap.page_allocator;
+const cmds_str  = std.fmt.comptimePrint(
+    "`:info` ... print information about the client\n" ++ 
+    "`:ping` ... ping another client\n" ++
+    "`:exit` ... terminate the client",
+    .{}
+) ;
 fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: MessagingUD) void {
-    uie.message_input.setRec(20, uis.screen_height - 100 - uis.font_size/2, uis.screen_width - 40, 50 + uis.font_size/2); 
-    uie.message_display.setRec(20, 200, uis.screen_width - 40, uis.screen_height - 400); 
+    const cmds_size = rl.measureTextEx(data.font, cmds_str, uis.font_size * 3/4, 0);
+    uie.message_input.setRec(20, uis.screen_height - uis.screen_height*0.12, uis.screen_width - 40, uis.screen_height*0.075); 
+    uie.message_display.setRec(20, cmds_size.y + 40, uis.screen_width - 40, uie.message_input.rec.y - uis.screen_height*0.02 - (cmds_size.y + 40)); 
     uie.message_input.update();
     uie.message_input.opts.keyboard = true;
 // ------------------------------------------------------------
@@ -44,23 +52,14 @@ fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: Me
     }
 }
 fn render(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
-    var buf: [256]u8 = undefined;
     // Draw client information
-    const str_allocator = std.heap.page_allocator;
-    const cmds_str  = std.fmt.bufPrintZ(
-        &buf,
-        "`:info` ... print information about the client\n" ++ 
-        "`:exit` ... terminate the client",
-        .{}
-    ) catch |err| {
-        std.log.err("MessagingScreen::render: {any}", .{err});
-        std.posix.exit(1);
-    };
     uie.message_display.render(sd.messages, str_allocator, font, uis.font_size, frame_counter.*) catch |err| {
         std.log.err("MessagingScreen::render::message_display: {any}", .{err});
         std.posix.exit(1);
     };
-    rl.drawTextEx(font, cmds_str, rl.Vector2{.x=40, .y=20}, uis.font_size/2, 0, rl.Color.light_gray);
+    // TODO: cocmmand as str should be more groupped together 
+    // TODO: font scale for commands font size (3/4 is current) make it a constant variable
+    rl.drawTextEx(font, cmds_str, rl.Vector2{.x=40, .y=20}, uis.font_size * 3/4, 0, rl.Color.light_gray);
     uie.message_input.render(uis.window_extended, font, uis.font_size, frame_counter.*) catch |err| {
         std.log.err("MessagingScreen::render::cmds_str: {any}", .{err});
         std.posix.exit(1);

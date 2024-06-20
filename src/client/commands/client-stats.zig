@@ -6,7 +6,7 @@ const ui = @import("../ui/ui.zig");
 
 pub fn executor(_: ?[]const u8, cd: ?core.CommandData) void {
     const txt = cd.?.sd.client.asStr(std.heap.page_allocator);
-    var stats_popup = ui.SimplePopup.init(cd.?.font, cd.?.sizing, 30*4);
+    var stats_popup = ui.SimplePopup.init(cd.?.font, &cd.?.sd.sizing, 30*4);
     stats_popup.text = txt;
     _ = cd.?.sd.popups.append(stats_popup) catch |err| {
         std.log.err("client-stats::executor::append: {any}", .{err});

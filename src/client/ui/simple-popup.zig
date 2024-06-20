@@ -5,13 +5,13 @@ const sc = @import("../screen/screen.zig");
 pub const SimplePopup = struct {
     text: []const u8 = "",
     lifetime: usize,
-    SIZING: sc.UI_SIZING,
+    SIZING: *sc.UI_SIZING,
     rec: rl.Rectangle = undefined,
     options: struct {
         default_lifetime: usize,
         font: rl.Font,
     },
-    pub fn init(font: rl.Font, sizing: sc.UI_SIZING, lifetime: usize) SimplePopup {
+    pub fn init(font: rl.Font, sizing: *sc.UI_SIZING, lifetime: usize) SimplePopup {
         return SimplePopup{
             .lifetime = lifetime,
             .SIZING = sizing,

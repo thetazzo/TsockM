@@ -1,4 +1,5 @@
 const std = @import("std");
+const server_version = @import("./src/server/main.zig").SERVER_VERSION;
 
 /// ==================================================
 ///             modules and dependencies
@@ -50,6 +51,33 @@ pub fn Program(b: *std.Build, opts: std.Build.ExecutableOptions) struct { exe: *
     };
 }
 
+fn release_build_server(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step) void {
+    const sqids  = Sqids(b);
+
+    const str_allocator = std.heap.page_allocator;
+    const arch = target.result.linuxTriple(str_allocator) catch |err| {
+        std.log.err("59::release_build_server: {any}", .{err});
+        std.posix.exit(1);
+    };
+    defer str_allocator.free(arch);
+    const pname = std.fmt.allocPrint(std.heap.page_allocator, "tsockm-server-{s}-{s}", .{server_version, arch}) catch |err| {
+        std.log.err("64::release_build_server: {any}", .{err});
+        std.posix.exit(1);
+    };
+    defer str_allocator.free(pname);
+
+    const server = Program(b, .{
+        .name=pname,
+        .root_source_file = b.path("./src/server/main.zig"),
+        .target = target,
+        .optimize = optimize
+    });
+    server.module.addImport("sqids", sqids.module);
+
+    const bs = b.addInstallArtifact(server.exe, .{});
+    step.dependOn(&bs.step);
+}
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
 
@@ -99,4 +127,7 @@ pub fn build(b: *std.Build) void {
     }
     const run_client_step = b.step("run", "Run the CLIENT");
     run_client_step.dependOn(&run_client_exe.step);
+
+    const tmp = b.step("release-server", "release build server");
+    release_build_server(b, target, optimize, tmp);
 }

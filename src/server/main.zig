@@ -10,10 +10,13 @@ fn print_usage(program: []const u8) void {
     std.debug.print("{s}: <subcommand>\n", .{program});
     std.debug.print("SUBCOMMANDS:\n", .{});
     std.debug.print("    help ............................. print program usage\n", .{});
+    std.debug.print("    version .......................... print program version\n", .{});
     std.debug.print("    start <flag> ..................... start the server\n", .{});
     std.debug.print("        --log-level <level> .......... DEV|D or SILENT|S or COMPACT|C (default: COMPACT)\n", .{});
     std.debug.print("        --addr <hostname:port> ....... specify server address (default: 127.0.0.1:6969)\n", .{});
 }
+
+pub const SERVER_VERSION = "0.3.2";
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -29,6 +32,8 @@ pub fn main() !void {
     if (subc) |subcommand| {
         if (std.mem.eql(u8, subcommand, "help")) {
             print_usage(program);
+        } else if (std.mem.eql(u8, subcommand, "version")) {
+            std.debug.print("{s}\n", .{SERVER_VERSION});
         } else if (std.mem.eql(u8, subcommand, "start")) {
             if (argv.next()) |arg| {
                 if (std.mem.eql(u8, arg, "--addr")) {

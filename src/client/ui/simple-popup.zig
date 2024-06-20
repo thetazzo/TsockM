@@ -46,8 +46,8 @@ pub const SimplePopup = struct {
             drawRekt.y += (prev.rec.height+50);
         }
         self.rec = drawRekt;
-        rl.drawRectangleRounded(drawRekt, 0.3, 1, rl.Color.init(41, 41, 41, 255));
-        rl.drawRectangleRoundedLinesEx(drawRekt, 0.3, 1, self.SIZING.screen_height*0.02, rl.Color.init(31, 31, 31, 255));
+        rl.drawRectangleRec(drawRekt, rl.Color.init(41, 41, 41, 255));
+        rl.drawRectangleLinesEx(drawRekt, std.math.clamp(self.SIZING.screen_height*0.02, 10, 15), rl.Color.init(31, 31, 31, 255));
         const txt_size = rl.measureTextEx(self.options.font, txt, self.SIZING.font_size, 0);
         const txt_pos = rl.Vector2{
             .x = drawRekt.x + drawRekt.width/2 - txt_size.x/2,

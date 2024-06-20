@@ -27,10 +27,15 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Pr
         std.log.err("ntfy-kill::collectRequest: {any}", .{err});
         std.posix.exit(1);
     };
+    // TODO: death message not needed ??
     const death_msg = Message{
         .author = "[server]",
         .text = msg_txt,
     };
+    // TODO: add FPS prop to client structure 
+    var death_popup = ui.SimplePopup.init(sd.client.font, &sd.sizing, 30*3);
+    death_popup.text = msg_txt;
+    _ = sd.popups.append(death_popup) catch 1;
     sd.pushMessage(death_msg) catch |err| {
         std.log.err("ntfy-kill::collectRequest: {any}", .{err});
         std.posix.exit(1);

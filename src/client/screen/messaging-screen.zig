@@ -15,7 +15,9 @@ const cmds_str  = std.fmt.comptimePrint(
     "`:exit` ... terminate the client",
     .{}
 ) ;
-fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: MessagingUD) void {
+fn update(sd: *core.SharedData, data: MessagingUD) void {
+    const uis = sd.sizing;
+    const uie = sd.ui;
     const cmds_size = rl.measureTextEx(data.font, cmds_str, uis.font_size * 3/4, 0);
     uie.message_input.setRec(20, uis.screen_height - uis.screen_height*0.12, uis.screen_width - 40, uis.screen_height*0.075); 
     uie.message_display.setRec(20, cmds_size.y + 40, uis.screen_width - 40, uie.message_input.rec.y - uis.screen_height*0.02 - (cmds_size.y + 40)); 
@@ -37,7 +39,6 @@ fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: Me
                         action.executor(frst, core.CommandData{
                             .sd = sd,
                             .body = splits.rest(),
-                            .sizing = uis,
                             .ui_elements = uie,
                             .font = data.font,
                         });
@@ -51,7 +52,9 @@ fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: Me
         }
     }
 }
-fn render(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
+fn render(sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
+    const uis = sd.sizing;
+    const uie = sd.ui;
     // Draw client information
     uie.message_display.render(sd.messages, str_allocator, font, uis.font_size, frame_counter.*) catch |err| {
         std.log.err("MessagingScreen::render::message_display: {any}", .{err});

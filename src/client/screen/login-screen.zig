@@ -6,7 +6,9 @@ const sc = @import("screen.zig");
 
 const LoginUD = struct{server_hostname: []const u8, server_port: u16};
 
-fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: LoginUD) void {
+fn update(sd: *core.SharedData, data: LoginUD) void {
+    const uis = sd.sizing;
+    const uie = sd.ui;
     // login screen
     uie.username_input.setRec(
         uis.screen_width/2 - uis.screen_width/4, 200 + uis.font_size/2,
@@ -36,8 +38,9 @@ fn update(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, data: Lo
         }
     }
 }
-fn render(uie: sc.UI_ELEMENTS, uis: sc.UI_SIZING, sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
-    _ = sd;
+fn render(sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
+    const uis = sd.sizing;
+    const uie = sd.ui;
     // Login screen
     var buf: [256]u8 = undefined;
     const title_str = std.fmt.bufPrintZ(&buf, "TsockM", .{}) catch |err| {

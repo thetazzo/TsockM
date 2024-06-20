@@ -33,7 +33,7 @@ pub const UI_ELEMENTS = struct {
 
 pub fn Screen(comptime update_data_T: type) type {
     return struct {
-        update: *const fn (UI_ELEMENTS, UI_SIZING, *core.SharedData, update_data_T) void,
-        render: *const fn (UI_ELEMENTS, UI_SIZING, *core.SharedData, rl.Font, *usize) void,
+        update: *const fn (*core.SharedData, update_data_T) void,
+        render: *const fn (*core.SharedData, rl.Font, *usize) void,
     };
 }

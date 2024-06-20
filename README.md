@@ -145,21 +145,18 @@ zig build client -- <subcommand>
     * `\u;HELLO\` prints underlined text
     * `\c{#00FFAA};HELLO\` prints colored text based on hex value 
 * [ ] {FEAT} Multicolor support for message display
-#### 0.4.x
-* [ ] {FEAT} popups for warnings and errors
-* [ ] {FEAT} clipboard paste support
-* {FEAT} `ClientScreen` ~ groups of related render/functionality code
-    * [ ] `LoginScreen`
-    * [ ] `MessagingScreen`
+* [ ] {UPDATE} don't crash the the client wait for a connection to the server be available
 * {FEAT} Client commands
     * [ ] `:ping` ~ ping user by username and print user info
-#### 0.3.1
-* [ ] {UPDATE} make `Action` and `Command` a shared library between server and client src code
+#### 0.4.1
+* [x] {UPDATE} make `Action` and `Command` a shared library between server and client src code
 * [x] {UPDATE} finish implementaton of `:exit` action ~ handle COMM_END response
-* [ ] {UPDATE} transform functions to be camel case as per zig standrad
-* [ ] {UPDATE} transform variables to be snake case as per zig standrad
-* [ ] {UPDATE} better centering of text on input boxes ~ Use `msasuseTextEx(text).y`
-* [ ] {UPDATE} don't crash the the client wait for a connection to the server be available
+#### 0.4.x
+* [x] {FEAT} popups for warnings and errors
+* [x] {FEAT} clipboard paste support
+* {FEAT} `ClientScreen` ~ groups of related render/functionality code
+    * [x] `LoginScreen`
+    * [x] `MessagingScreen`
 #### 0.3.0
 * [x] {FEAT} print client termination
 * {FEAT} Introduce `ClientActions`

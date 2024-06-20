@@ -16,6 +16,14 @@ pub const SharedData = struct {
     connected: bool,
     cond: std.Thread.Condition,
     popups: std.ArrayList(ui.SimplePopup),
+    sizing: sc.UI_SIZING = sc.UI_SIZING{},
+    ui: sc.UI_ELEMENTS,
+
+    pub fn updateSizing(self: *@This(), SW: i32, SH: i32) void {
+        self.m.lock();
+        defer self.m.unlock();
+        self.sizing.update(SW, SH);
+    }
 
     pub fn setConnected(self: *@This(), val: bool) void {
         self.m.lock();
@@ -46,7 +54,6 @@ pub const SharedData = struct {
 pub const CommandData = struct {
     sd: *SharedData,
     body: []const u8,
-    sizing: sc.UI_SIZING,
     ui_elements: sc.UI_ELEMENTS,
     font: rl.Font,
 };

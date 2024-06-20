@@ -118,6 +118,12 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     defer messages.deinit();
     const popups = std.ArrayList(ui.SimplePopup).init(gpa_allocator);
     defer popups.deinit();
+
+
+    var message_box     = ui.InputBox{};
+    var username_input  = ui.InputBox{.enabled = true};
+    var login_btn  = ui.Button{ .text="Login" };
+    var message_display = ui.Display{};
     var sd = core.SharedData{
         .m = std.Thread.Mutex{},
         .cond = std.Thread.Condition{},
@@ -126,22 +132,15 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
         .popups = popups,
         .client = client,
         .connected = false,
+        .ui = sc.UI_ELEMENTS{
+            .username_input = &username_input,
+            .login_btn = &login_btn,
+            .message_input = &message_box,
+            .message_display = &message_display,
+        },
     };
-
-    var message_box     = ui.InputBox{};
-    var username_input  = ui.InputBox{.enabled = true};
-    var login_btn  = ui.Button{ .text="Login" };
-    var message_display = ui.Display{};
 
     thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd });
-
-    const UI = sc.UI_ELEMENTS{
-        .username_input = &username_input,
-        .login_btn = &login_btn,
-        .message_input = &message_box,
-        .message_display = &message_display,
-    };
-    var SIZING = sc.UI_SIZING{};
 
     // Render loop
     while (!rl.windowShouldClose() and !sd.should_exit) {
@@ -149,7 +148,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
         const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
         const window_extended_vert = sh > sw;
         const font_size = if (window_extended_vert) sw * 0.03 else sh * 0.05;
-        SIZING.update(SW, SH);
+        sd.updateSizing(SW, SH);
 
         rl.beginDrawing();
         defer rl.endDrawing();
@@ -158,9 +157,9 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
 
         // Enable writing to the input box
         if (sd.connected) {
-            MessagingScreen.update(UI, SIZING, &sd, .{.font = font});
+            MessagingScreen.update(&sd, .{.font = font});
         } else {
-            LoginScreen.update(UI, SIZING, &sd, .{.server_hostname = server_hostname, .server_port=server_port});
+            LoginScreen.update(&sd, .{.server_hostname = server_hostname, .server_port=server_port});
         }
         // Rendering begins here
         rl.clearBackground(rl.Color.init(18, 18, 18, 255));
@@ -177,16 +176,15 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
                 rl.drawTextEx(font, succ_str, rl.Vector2{.x=sw/2 - sslen/2, .y=sh/2 - sh/4}, font_size, 0, rl.Color.green);
                 response_counter -= 1;
             } else {
-                MessagingScreen.render(UI, SIZING, &sd, font, &frame_counter);
+                MessagingScreen.render(&sd, font, &frame_counter);
             }
         } else {
-            LoginScreen.render(UI, SIZING, &sd, font, &frame_counter);
+            LoginScreen.render(&sd, font, &frame_counter);
         }
 
         var i = sd.popups.items.len;
         while (i > 0) {
             var popup = &sd.popups.items[i-1];
-            popup.SIZING.update(SW, SH);
             if (i >= 2) {
                 const popup_prev = sd.popups.items[i-2];
                 popup.update();

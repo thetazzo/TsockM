@@ -55,7 +55,6 @@ pub const CommandData = struct {
     sd: *SharedData,
     body: []const u8,
     ui_elements: sc.UI_ELEMENTS,
-    font: rl.Font,
 };
 
 pub const Client = struct {
@@ -70,11 +69,13 @@ pub const Client = struct {
     server_addr_str: []const u8 = "404: not found",
     client_addr: std.net.Address = undefined,
     client_addr_str: []const u8 = "404: not found",
-    pub fn init(allocator: std.mem.Allocator, log_level: Logging.Level) Client {
+    font: rl.Font,
+    pub fn init(allocator: std.mem.Allocator, font: rl.Font, log_level: Logging.Level) Client {
         const commander = Stab.Commander(Stab.Command(CommandData)).init(allocator);
         const actioner = Stab.Actioner(SharedData).init(allocator);
         return Client{
             .log_level = log_level,
+            .font = font,
             .Commander = commander,
             .Actioner = actioner,
         };

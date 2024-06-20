@@ -79,18 +79,6 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
 
-    var client = core.Client.init(gpa_allocator, log_level);
-    defer client.deinit();
-
-    client.Commander.add(":exit", ClientCommand.EXIT_CLIENT);
-    client.Commander.add(":info", ClientCommand.CLIENT_STATS);
-    client.Commander.add(":ping", ClientCommand.PING_CLIENT);
-
-    client.Actioner.add(aids.Stab.Act.COMM_END, ClientAction.COMM_END);
-    client.Actioner.add(aids.Stab.Act.MSG, ClientAction.MSG);
-    client.Actioner.add(aids.Stab.Act.NTFY_KILL, ClientAction.NTFY_KILL);
-    client.Actioner.add(aids.Stab.Act.NONE, ClientAction.BAD_REQUEST);
-
     // Loading font
     const self_path = try std.fs.selfExePathAlloc(gpa_allocator);
     defer gpa_allocator.free(self_path);
@@ -105,6 +93,18 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
         const font_pathZ = try std.fmt.allocPrintZ(str_allocator, "{s}/{s}", .{exe_dir, fp}); 
         font = loadExternalFont(font_pathZ);
     }
+
+    var client = core.Client.init(gpa_allocator, font, log_level);
+    defer client.deinit();
+
+    client.Commander.add(":exit", ClientCommand.EXIT_CLIENT);
+    client.Commander.add(":info", ClientCommand.CLIENT_STATS);
+    client.Commander.add(":ping", ClientCommand.PING_CLIENT);
+
+    client.Actioner.add(aids.Stab.Act.COMM_END, ClientAction.COMM_END);
+    client.Actioner.add(aids.Stab.Act.MSG, ClientAction.MSG);
+    client.Actioner.add(aids.Stab.Act.NTFY_KILL, ClientAction.NTFY_KILL);
+    client.Actioner.add(aids.Stab.Act.NONE, ClientAction.BAD_REQUEST);
 
     const FPS = 30;
     rl.setTargetFPS(FPS);
@@ -157,7 +157,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
 
         // Enable writing to the input box
         if (sd.connected) {
-            MessagingScreen.update(&sd, .{.font = font});
+            MessagingScreen.update(&sd, .{});
         } else {
             LoginScreen.update(&sd, .{.server_hostname = server_hostname, .server_port=server_port});
         }

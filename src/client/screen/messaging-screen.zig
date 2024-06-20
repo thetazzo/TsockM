@@ -6,7 +6,7 @@ const ClientAction = @import("../actions/actions.zig");
 const Protocol = @import("aids").Protocol;
 const sc = @import("screen.zig");
 
-const MessagingUD = struct{font: rl.Font};
+const MessagingUD = struct{};
 
 const str_allocator = std.heap.page_allocator;
 const cmds_str  = std.fmt.comptimePrint(
@@ -15,10 +15,10 @@ const cmds_str  = std.fmt.comptimePrint(
     "`:exit` ... terminate the client",
     .{}
 ) ;
-fn update(sd: *core.SharedData, data: MessagingUD) void {
+fn update(sd: *core.SharedData, _: MessagingUD) void {
     const uis = sd.sizing;
     const uie = sd.ui;
-    const cmds_size = rl.measureTextEx(data.font, cmds_str, uis.font_size * 3/4, 0);
+    const cmds_size = rl.measureTextEx(sd.client.font, cmds_str, uis.font_size * 3/4, 0);
     uie.message_input.setRec(20, uis.screen_height - uis.screen_height*0.12, uis.screen_width - 40, uis.screen_height*0.075); 
     uie.message_display.setRec(20, cmds_size.y + 40, uis.screen_width - 40, uie.message_input.rec.y - uis.screen_height*0.02 - (cmds_size.y + 40)); 
     uie.message_input.update();
@@ -40,7 +40,6 @@ fn update(sd: *core.SharedData, data: MessagingUD) void {
                             .sd = sd,
                             .body = splits.rest(),
                             .ui_elements = uie,
-                            .font = data.font,
                         });
                     } else {
                         const msg = uie.message_input.getCleanValue();
@@ -53,17 +52,18 @@ fn update(sd: *core.SharedData, data: MessagingUD) void {
     }
 }
 fn render(sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
+    _ = font;
     const uis = sd.sizing;
     const uie = sd.ui;
     // Draw client information
-    uie.message_display.render(sd.messages, str_allocator, font, uis.font_size, frame_counter.*) catch |err| {
+    uie.message_display.render(sd.messages, str_allocator, sd.client.font, uis.font_size, frame_counter.*) catch |err| {
         std.log.err("MessagingScreen::render::message_display: {any}", .{err});
         std.posix.exit(1);
     };
     // TODO: cocmmand as str should be more groupped together 
     // TODO: font scale for commands font size (3/4 is current) make it a constant variable
-    rl.drawTextEx(font, cmds_str, rl.Vector2{.x=40, .y=20}, uis.font_size * 3/4, 0, rl.Color.light_gray);
-    uie.message_input.render(uis.window_extended, font, uis.font_size, frame_counter.*) catch |err| {
+    rl.drawTextEx(sd.client.font, cmds_str, rl.Vector2{.x=40, .y=20}, uis.font_size * 3/4, 0, rl.Color.light_gray);
+    uie.message_input.render(uis.window_extended, sd.client.font, uis.font_size, frame_counter.*) catch |err| {
         std.log.err("MessagingScreen::render::cmds_str: {any}", .{err});
         std.posix.exit(1);
     };

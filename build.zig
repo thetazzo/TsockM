@@ -48,50 +48,87 @@ pub fn Program(b: *std.Build, opts: std.Build.ExecutableOptions) struct { exe: *
     };
 }
 
-fn release_build_server(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step) !void {
+fn STEP_server_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step) !void {
     const sqids  = Sqids(b);
 
-    const arch = target.result.linuxTriple(b.allocator) catch |err| {
-        std.log.err("59::release_build_server: {any}", .{err});
-        std.posix.exit(1);
-    };
-
-    const pname = std.fmt.allocPrint(b.allocator, "tsockm-server-{s}-{s}", .{server_version, arch}) catch |err| {
-        std.log.err("64::release_build_server: {any}", .{err});
-        std.posix.exit(1);
-    };
-
-    const server = Program(b, .{
-        .name=pname,
+    const server_program = Program(b, .{
+        .name="tsockm-server",
         .root_source_file = b.path("./src/server/main.zig"),
         .target = target,
         .optimize = optimize
     });
-    server.module.addImport("sqids", sqids.module);
+    server_program.module.addImport("sqids", sqids.module);
 
-    const target_tripple = try target.result.linuxTriple(b.allocator);
-    const out_dir_path = try std.fmt.allocPrint(b.allocator, "tsock-server-{s}-{s}", .{server_version, target_tripple}); 
-
-    const target_output = b.addInstallArtifact(server.exe, .{
-        .dest_dir = .{
-            .override = .{
-                .custom = out_dir_path,
-            },
-        },
-    });
-
-    step.dependOn(&target_output.step);
+    // Build server
+    const server_artifact = b.addInstallArtifact(server_program.exe, .{});
+    // Run server
+    const run_server_artifact = b.addRunArtifact(server_program.exe);
+    // add command line arguments to run server step
+    if (b.args) |args| {
+        run_server_artifact.addArgs(args);
+    }
+    step.dependOn(&server_artifact.step);
+    step.dependOn(&run_server_artifact.step);
 }
 
-fn build_client_for_all_targets(b: *std.Build, target: std.Build.ResolvedTarget, step: *std.Build.Step) !void {
-    //const targets: []const std.Target.Query = &.{
-    //    //.{ .cpu_arch = .aarch64, .os_tag = .macos },
-    //    //.{ .cpu_arch = .aarch64, .os_tag = .linux },
-    //    .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu },
-    //    //.{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .musl },
-    //    //.{ .cpu_arch = .x86_64, .os_tag = .windows },
-    //};
-    //for (targets) |t| {
+fn STEP_client_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step) !void {
+    const raylib = Raylib(b, target, .ReleaseSafe);
+
+    // this target does not work with raylib
+    const client_program = Program(b, .{
+        .name = "tsockm-client",
+        .root_source_file = b.path("src/client/main.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const raygui = raylib.dependency.module("raygui"); // raygui module
+    client_program.exe.linkLibrary(raylib.artifact);
+    client_program.module.addImport("raylib", raylib.module);
+    client_program.module.addImport("raygui", raygui);
+
+    //b.installArtifact(client_exe);
+    const build_client_artifact = b.addInstallArtifact(client_program.exe, .{});
+    const run_client_artifact = b.addRunArtifact(client_program.exe);
+    // add command line arguments
+    if (b.args) |args| {
+        run_client_artifact.addArgs(args);
+    }
+    step.dependOn(&build_client_artifact.step);
+    step.dependOn(&run_client_artifact.step);
+}
+
+fn STEP_server_release(b: *std.Build, targets: []const std.Target.Query, step: *std.Build.Step) !void {
+    const sqids  = Sqids(b);
+
+    for (targets) |t| {
+        const target = b.resolveTargetQuery(t);
+        const server = Program(b, .{
+            .name="tsockm-server",
+            .root_source_file = b.path("./src/server/main.zig"),
+            .target = target,
+            .optimize = .ReleaseSafe,
+        });
+        server.module.addImport("sqids", sqids.module);
+        const target_tripple = try target.result.linuxTriple(b.allocator);
+        const out_dir_path = try std.fmt.allocPrint(
+            b.allocator,
+            "tsockm-server-{s}-{s}",
+            .{server_version, target_tripple}
+        ); 
+        const client_install = b.addInstallArtifact(server.exe, .{
+            .dest_dir = .{
+                .override = .{
+                    .custom = out_dir_path,
+                },
+            },
+        });
+        step.dependOn(&client_install.step);
+    }
+}
+
+fn STEP_release_client(b: *std.Build, target: std.Build.ResolvedTarget, step: *std.Build.Step) !void {
+    // Client release platform option
+    //     * what display manager to use 
     var ldbs: rlz.LinuxDisplayBackend = .X11; 
     const ldb_opt = b.option([]const u8, "platform", "build platform (X11 or Wayland)"); 
     if (ldb_opt) |ldb| {
@@ -101,100 +138,76 @@ fn build_client_for_all_targets(b: *std.Build, target: std.Build.ResolvedTarget,
             ldbs = .Wayland;
         }
     }
-    //for (ldbs) |linux_display_backend| {
-    //}
-        const raylib_dep = b.dependency("raylib-zig", .{
-            .target = target,
-            .optimize = .ReleaseSafe,
-            .linux_display_backend = ldbs,
-        });
-
-        const raylib = raylib_dep.module("raylib"); // main raylib module
-        const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
-
-        const client = Program(b, .{
-            .name = "tsockm-client",
-            .root_source_file = b.path("src/client/main.zig"),
-            .target = target,
-            .optimize = .ReleaseSafe,
-        });
-        const raygui = raylib_dep.module("raygui"); // raygui module
-        client.exe.linkLibrary(raylib_artifact);
-        client.module.addImport("raylib", raylib);
-        client.module.addImport("raygui", raygui);
-
-        const target_tripple = try target.result.linuxTriple(b.allocator);
-        const out_dir_path = try std.fmt.allocPrint(b.allocator, "tsock-client-{s}-{s}", .{target_tripple, @tagName(ldbs)}); 
-
-        const target_output = b.addInstallArtifact(client.exe, .{
-            .dest_dir = .{
-                .override = .{
-                    .custom = out_dir_path,
-                },
-            },
-        });
-        step.dependOn(&target_output.step);
-}
-
-pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
-
-    const optimize = b.standardOptimizeOption(.{});
-
-    const raylib_optimize = b.option(
-        std.builtin.OptimizeMode,
-        "raylib-optimize",
-        "Prioritize performance, safety, or binary size (-O flag), defaults to value of optimize option",
-    ) orelse .ReleaseSafe;
-
-    const raylib = Raylib(b, target, raylib_optimize);
-    const sqids  = Sqids(b);
-
-    const server = Program(b, .{
-        .name="tsock-server",
-        .root_source_file = b.path("./src/server/main.zig"),
+    const raylib_dep = b.dependency("raylib-zig", .{
         .target = target,
-        .optimize = optimize
+        .optimize = .ReleaseSafe,
+        .linux_display_backend = ldbs,
     });
-    server.module.addImport("sqids", sqids.module);
 
-    const server_art = b.addInstallArtifact(server.exe, .{});
-    const run_server_exe = b.addRunArtifact(server.exe);
+    const raylib = raylib_dep.module("raylib"); // main raylib module
+    const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
 
-    const run_server_step = b.step("dev-server", "Run the SERVER");
-    // add command line arguments
-    if (b.args) |args| {
-        run_server_exe.addArgs(args);
-    }
-    run_server_step.dependOn(&server_art.step);
-    run_server_step.dependOn(&run_server_exe.step);
-
-    // this target does not work with raylib
-    const client = Program(b, .{
+    const client_program = Program(b, .{
         .name = "tsockm-client",
         .root_source_file = b.path("src/client/main.zig"),
         .target = target,
-        .optimize = optimize,
+        .optimize = .ReleaseSafe,
     });
-    const raygui = raylib.dependency.module("raygui"); // raygui module
-    client.exe.linkLibrary(raylib.artifact);
-    client.module.addImport("raylib", raylib.module);
-    client.module.addImport("raygui", raygui);
+    const raygui = raylib_dep.module("raygui"); // raygui module
+    client_program.exe.linkLibrary(raylib_artifact);
+    client_program.module.addImport("raylib", raylib);
+    client_program.module.addImport("raygui", raygui);
 
-    //b.installArtifact(client_exe);
-    const build_client = b.addInstallArtifact(client.exe, .{});
-    const run_client_exe = b.addRunArtifact(client.exe);
-    // add command line arguments
-    if (b.args) |args| {
-        run_client_exe.addArgs(args);
-    }
-    const run_client_step = b.step("dev-client", "Run the CLIENT");
-    run_client_step.dependOn(&build_client.step);
-    run_client_step.dependOn(&run_client_exe.step);
+    const target_tripple = try target.result.linuxTriple(b.allocator);
+    const out_dir_path = try std.fmt.allocPrint(b.allocator, "tsockm-client-{s}-{s}-{s}", .{client_version, target_tripple, @tagName(ldbs)}); 
+    const full_out_path = try std.fmt.allocPrintZ(b.allocator, "zig-out/{s}", .{out_dir_path}); 
 
-    const tmp = b.step("release-server", "release build server");
-    _ = release_build_server(b, target, optimize, tmp) catch 1;
+    const client_install = b.addInstallArtifact(client_program.exe, .{
+        .dest_dir = .{
+            .override = .{
+                .custom = out_dir_path,
+            },
+        },
+    });
+    step.dependOn(&client_install.step);
 
-    const tmp2 = b.step("release-client", "release build server");
-    _ = build_client_for_all_targets(b, target, tmp2) catch 1;
+    // copy fonts to release build
+    const cpa = b.addSystemCommand(&.{
+        "cp", "-r", "src/assets/fonts", full_out_path
+    });
+    cpa.step.name = "copy font assets";
+    cpa.step.dependOn(&client_install.step);
+    step.dependOn(&cpa.step);
+}
+
+pub fn build(b: *std.Build) !void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    const dev_server_step = b.step("dev-server", "Use server for development run");
+    _ = STEP_server_dev(b, target, optimize, dev_server_step) catch |err| {
+        std.log.err("build::STEP_server_dev: {any}", .{err});
+        std.posix.exit(1);
+    };
+
+    const dev_client_step = b.step("dev-client", "Use client for development run");
+    _ = STEP_client_dev(b, target, optimize, dev_client_step) catch |err| {
+        std.log.err("build::STEP_client_dev: {any}", .{err});
+        std.posix.exit(1);
+    }; 
+
+    const release_server_step = b.step("release-server", "Release build server");
+    const server_targets: []const std.Target.Query = &.{
+        .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu },
+    };
+    _ = STEP_server_release(b, server_targets, release_server_step) catch |err| {
+        std.log.err("build::STEP_server_release: {any}", .{err});
+        std.posix.exit(1);
+    };
+
+    const release_client_step = b.step("release-client", "Release build client");
+    _ = STEP_release_client(b, target, release_client_step) catch |err| {
+        std.log.err("build::STEP_client_release: {any}", .{err});
+        std.posix.exit(1);
+    };
 }

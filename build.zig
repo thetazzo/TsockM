@@ -84,7 +84,7 @@ fn release_build_server(b: *std.Build, target: std.Build.ResolvedTarget, optimiz
     step.dependOn(&target_output.step);
 }
 
-fn build_client_for_all_targets(b: *std.Build, target: std.Build.ResolvedTarget,  optimize: std.builtin.OptimizeMode, step: *std.Build.Step) !void {
+fn build_client_for_all_targets(b: *std.Build, target: std.Build.ResolvedTarget, step: *std.Build.Step) !void {
     //const targets: []const std.Target.Query = &.{
     //    //.{ .cpu_arch = .aarch64, .os_tag = .macos },
     //    //.{ .cpu_arch = .aarch64, .os_tag = .linux },
@@ -93,16 +93,21 @@ fn build_client_for_all_targets(b: *std.Build, target: std.Build.ResolvedTarget,
     //    //.{ .cpu_arch = .x86_64, .os_tag = .windows },
     //};
     //for (targets) |t| {
-    const ldbs: []const rlz.LinuxDisplayBackend = &.{
-        .X11,
-        .Wayland,
-    }; 
+    var ldbs: rlz.LinuxDisplayBackend = .X11; 
+    const ldb_opt = b.option([]const u8, "platform", "build platform (X11 or Wayland)"); 
+    if (ldb_opt) |ldb| {
+        if (std.mem.eql(u8, ldb, "X11")) {
+            ldbs = .X11;
+        } else if (std.mem.eql(u8, ldb, "Wayland")) {
+            ldbs = .Wayland;
+        }
+    }
     //for (ldbs) |linux_display_backend| {
     //}
         const raylib_dep = b.dependency("raylib-zig", .{
             .target = target,
-            .optimize = optimize,
-            .linux_display_backend = ldbs[0],
+            .optimize = .ReleaseSafe,
+            .linux_display_backend = ldbs,
         });
 
         const raylib = raylib_dep.module("raylib"); // main raylib module
@@ -119,7 +124,7 @@ fn build_client_for_all_targets(b: *std.Build, target: std.Build.ResolvedTarget,
         client.module.addImport("raygui", raygui);
 
         const target_tripple = try target.result.linuxTriple(b.allocator);
-        const out_dir_path = try std.fmt.allocPrint(b.allocator, "tsock-client-{s}-{s}", .{target_tripple, @tagName(ldbs[0])}); 
+        const out_dir_path = try std.fmt.allocPrint(b.allocator, "tsock-client-{s}-{s}", .{target_tripple, @tagName(ldbs)}); 
 
         const target_output = b.addInstallArtifact(client.exe, .{
             .dest_dir = .{
@@ -140,7 +145,7 @@ pub fn build(b: *std.Build) void {
         std.builtin.OptimizeMode,
         "raylib-optimize",
         "Prioritize performance, safety, or binary size (-O flag), defaults to value of optimize option",
-    ) orelse optimize;
+    ) orelse .ReleaseSafe;
 
     const raylib = Raylib(b, target, raylib_optimize);
     const sqids  = Sqids(b);
@@ -191,5 +196,5 @@ pub fn build(b: *std.Build) void {
     _ = release_build_server(b, target, optimize, tmp) catch 1;
 
     const tmp2 = b.step("release-client", "release build server");
-    _ = build_client_for_all_targets(b, target, raylib_optimize, tmp2) catch 1;
+    _ = build_client_for_all_targets(b, target, tmp2) catch 1;
 }

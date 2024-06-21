@@ -180,6 +180,9 @@ fn STEP_release_client(b: *std.Build, target: std.Build.ResolvedTarget, step: *s
     step.dependOn(&cpa.step);
 }
 
+// TODO: client and server versioning
+//          * have a file where all versins get written
+//          * check that no already existing versions get overwritten
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});

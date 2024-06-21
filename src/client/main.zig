@@ -10,11 +10,14 @@ fn print_usage(program: []const u8) void {
     std.debug.print("{s}: <subcommand>\n", .{program});
     std.debug.print("SUBCOMMANDS:\n", .{});
     std.debug.print("    help ............................. print program usage\n", .{});
+    std.debug.print("    version .......................... print program version\n", .{});
     std.debug.print("    start <flag> ..................... start the client\n", .{});
     std.debug.print("        -fp <path> ................... specify font path (default: '')\n", .{});
     std.debug.print("        -F <factor> .................. screen size scaling factor (default: 180)\n", .{});
     std.debug.print("        --addr <address> <port> ...... TsockM server address (default: 127.0.0.1:6969)\n", .{});
 }
+
+pub const CLIENT_VERSION = "0.4.3";
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -32,6 +35,8 @@ pub fn main() !void {
     if (subc) |subcommand| {
         if (std.mem.eql(u8, subcommand, "help")) {
             print_usage(program);
+        } else if (std.mem.eql(u8, subcommand, "version")) {
+            std.debug.print("{s}\n", .{CLIENT_VERSION});
         } else if (std.mem.eql(u8, subcommand, "start")) {
             while (argv.next()) |sflag| {
                 if (std.mem.eql(u8, sflag, "-F")) {

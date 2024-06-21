@@ -1,5 +1,6 @@
 const std = @import("std");
 const server_version = @import("./src/server/main.zig").SERVER_VERSION;
+const client_version = @import("./src/client/main.zig").CLIENT_VERSION;
 const rlz = @import("raylib-zig");
 
 /// ==================================================
@@ -50,17 +51,15 @@ pub fn Program(b: *std.Build, opts: std.Build.ExecutableOptions) struct { exe: *
 fn release_build_server(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step) !void {
     const sqids  = Sqids(b);
 
-    const str_allocator = std.heap.page_allocator;
-    const arch = target.result.linuxTriple(str_allocator) catch |err| {
+    const arch = target.result.linuxTriple(b.allocator) catch |err| {
         std.log.err("59::release_build_server: {any}", .{err});
         std.posix.exit(1);
     };
-    defer str_allocator.free(arch);
-    const pname = std.fmt.allocPrint(std.heap.page_allocator, "tsockm-server-{s}-{s}", .{server_version, arch}) catch |err| {
+
+    const pname = std.fmt.allocPrint(b.allocator, "tsockm-server-{s}-{s}", .{server_version, arch}) catch |err| {
         std.log.err("64::release_build_server: {any}", .{err});
         std.posix.exit(1);
     };
-    defer str_allocator.free(pname);
 
     const server = Program(b, .{
         .name=pname,
@@ -112,6 +111,7 @@ fn build_client_for_all_targets(b: *std.Build, target: std.Build.ResolvedTarget,
 
         const raylib = raylib_dep.module("raylib"); // main raylib module
         const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
+
         const client = Program(b, .{
             .name = "tsockm-client",
             .root_source_file = b.path("src/client/main.zig"),
@@ -158,14 +158,15 @@ pub fn build(b: *std.Build) void {
     });
     server.module.addImport("sqids", sqids.module);
 
-    b.installArtifact(server.exe);
+    const server_art = b.addInstallArtifact(server.exe, .{});
     const run_server_exe = b.addRunArtifact(server.exe);
 
-    const run_server_step = b.step("server", "Run the SERVER");
+    const run_server_step = b.step("dev-server", "Run the SERVER");
     // add command line arguments
     if (b.args) |args| {
         run_server_exe.addArgs(args);
     }
+    run_server_step.dependOn(&server_art.step);
     run_server_step.dependOn(&run_server_exe.step);
 
     // this target does not work with raylib
@@ -182,14 +183,13 @@ pub fn build(b: *std.Build) void {
 
     //b.installArtifact(client_exe);
     const build_client = b.addInstallArtifact(client.exe, .{});
-    const build_client_step = b.step("client", "Build the client");
-    build_client_step.dependOn(&build_client.step);
     const run_client_exe = b.addRunArtifact(client.exe);
     // add command line arguments
     if (b.args) |args| {
         run_client_exe.addArgs(args);
     }
-    const run_client_step = b.step("run", "Run the CLIENT");
+    const run_client_step = b.step("dev-client", "Run the CLIENT");
+    run_client_step.dependOn(&build_client.step);
     run_client_step.dependOn(&run_client_exe.step);
 
     const tmp = b.step("release-server", "release build server");

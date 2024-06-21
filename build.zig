@@ -1,5 +1,6 @@
 const std = @import("std");
 const server_version = @import("./src/server/main.zig").SERVER_VERSION;
+const rlz = @import("raylib-zig");
 
 /// ==================================================
 ///             modules and dependencies
@@ -18,14 +19,9 @@ fn Sqids(b: *std.Build) struct { module: *std.Build.Module } {
 }
 
 fn Raylib(b: *std.Build, target: std.Build.ResolvedTarget ,optimize: std.builtin.OptimizeMode) struct { module: *std.Build.Module, artifact: *std.Build.Step.Compile, dependency: *std.Build.Dependency } {
-    const raylib_optimize = b.option(
-        std.builtin.OptimizeMode,
-        "raylib-optimize",
-        "Prioritize performance, safety, or binary size (-O flag), defaults to value of optimize option",
-    ) orelse optimize;
     const raylib_dep = b.dependency("raylib-zig", .{
         .target = target,
-        .optimize = raylib_optimize,
+        .optimize = optimize,
         .linux_display_backend = .X11,
     });
 
@@ -51,7 +47,7 @@ pub fn Program(b: *std.Build, opts: std.Build.ExecutableOptions) struct { exe: *
     };
 }
 
-fn release_build_server(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step) void {
+fn release_build_server(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step) !void {
     const sqids  = Sqids(b);
 
     const str_allocator = std.heap.page_allocator;
@@ -74,8 +70,65 @@ fn release_build_server(b: *std.Build, target: std.Build.ResolvedTarget, optimiz
     });
     server.module.addImport("sqids", sqids.module);
 
-    const bs = b.addInstallArtifact(server.exe, .{});
-    step.dependOn(&bs.step);
+    const target_tripple = try target.result.linuxTriple(b.allocator);
+    const out_dir_path = try std.fmt.allocPrint(b.allocator, "tsock-server-{s}-{s}", .{server_version, target_tripple}); 
+
+    const target_output = b.addInstallArtifact(server.exe, .{
+        .dest_dir = .{
+            .override = .{
+                .custom = out_dir_path,
+            },
+        },
+    });
+
+    step.dependOn(&target_output.step);
+}
+
+fn build_client_for_all_targets(b: *std.Build, target: std.Build.ResolvedTarget,  optimize: std.builtin.OptimizeMode, step: *std.Build.Step) !void {
+    //const targets: []const std.Target.Query = &.{
+    //    //.{ .cpu_arch = .aarch64, .os_tag = .macos },
+    //    //.{ .cpu_arch = .aarch64, .os_tag = .linux },
+    //    .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu },
+    //    //.{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .musl },
+    //    //.{ .cpu_arch = .x86_64, .os_tag = .windows },
+    //};
+    //for (targets) |t| {
+    const ldbs: []const rlz.LinuxDisplayBackend = &.{
+        .X11,
+        .Wayland,
+    }; 
+    //for (ldbs) |linux_display_backend| {
+    //}
+        const raylib_dep = b.dependency("raylib-zig", .{
+            .target = target,
+            .optimize = optimize,
+            .linux_display_backend = ldbs[0],
+        });
+
+        const raylib = raylib_dep.module("raylib"); // main raylib module
+        const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
+        const client = Program(b, .{
+            .name = "tsockm-client",
+            .root_source_file = b.path("src/client/main.zig"),
+            .target = target,
+            .optimize = .ReleaseSafe,
+        });
+        const raygui = raylib_dep.module("raygui"); // raygui module
+        client.exe.linkLibrary(raylib_artifact);
+        client.module.addImport("raylib", raylib);
+        client.module.addImport("raygui", raygui);
+
+        const target_tripple = try target.result.linuxTriple(b.allocator);
+        const out_dir_path = try std.fmt.allocPrint(b.allocator, "tsock-client-{s}-{s}", .{target_tripple, @tagName(ldbs[0])}); 
+
+        const target_output = b.addInstallArtifact(client.exe, .{
+            .dest_dir = .{
+                .override = .{
+                    .custom = out_dir_path,
+                },
+            },
+        });
+        step.dependOn(&target_output.step);
 }
 
 pub fn build(b: *std.Build) void {
@@ -83,7 +136,13 @@ pub fn build(b: *std.Build) void {
 
     const optimize = b.standardOptimizeOption(.{});
 
-    const raylib = Raylib(b, target, optimize);
+    const raylib_optimize = b.option(
+        std.builtin.OptimizeMode,
+        "raylib-optimize",
+        "Prioritize performance, safety, or binary size (-O flag), defaults to value of optimize option",
+    ) orelse optimize;
+
+    const raylib = Raylib(b, target, raylib_optimize);
     const sqids  = Sqids(b);
 
     const server = Program(b, .{
@@ -129,5 +188,8 @@ pub fn build(b: *std.Build) void {
     run_client_step.dependOn(&run_client_exe.step);
 
     const tmp = b.step("release-server", "release build server");
-    release_build_server(b, target, optimize, tmp);
+    _ = release_build_server(b, target, optimize, tmp) catch 1;
+
+    const tmp2 = b.step("release-client", "release build server");
+    _ = build_client_for_all_targets(b, target, raylib_optimize, tmp2) catch 1;
 }

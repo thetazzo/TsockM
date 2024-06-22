@@ -105,6 +105,20 @@ pub const SharedData = struct {
             self.client.server_addr_str = dst_addr;
             self.client.client_addr_str = resp.dst;
             self.connected = true;
+
+            const succ_str = std.fmt.allocPrintZ(allocator,
+                "Client connected successfully to `{s}` :)",
+                .{self.client.server_addr_str}
+            ) catch |err| {
+                std.log.err("SharedData::establishConnection::succ_str: {any}", .{err});
+                std.posix.exit(1);
+            };
+
+            // TODO: does SimplePopup free allocated text ??
+            var succ_conn_popup = ui.SimplePopup.init(self.client.font, &self.sizing, 30*3); // TODO :self.client.FPS
+            succ_conn_popup.text = succ_str; // TODO: SimplePopup.setText
+            succ_conn_popup.setTextColor(rl.Color.green);
+            _ = self.popups.append(succ_conn_popup) catch 1; // TODO: sd.pushPopup
         } else {
             self.connected = false;
             std.log.err("server error when creating client", .{});

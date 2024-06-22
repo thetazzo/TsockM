@@ -151,17 +151,19 @@ zig build client -- <subcommand>
     * `setText`
     * assert `popup.text.len > 0`, popups with no text should not be allowed
 * [ ] {BUG} input filed click detection too high for `server_ip_input`
+* [ ] {BUG} only two popups are displayed at a time, there should be more
 #### 0.4.5
 * [ ] {UPDATE} Render layout stack
     * you append items to the stack
     * enables to automatically calculate relative positions of elements in the stack
 * [ ] {UPDATE} Input box should accept a label
 * [ ] {UPDATE} Input box should accept placeholder "ghost" text
+* [ ] {UPDATE} Replace succesful connection screen with a popup
 #### 0.4.4
 * [x] {UPDATE} don't allow login if login name is empy or ip is not defined
 * [x] {UPDATE} ask for server ip before login
 * [x] {UPDATE} report connection request blocked (unsuccessful conection)
-* [ ] {UPDATE} don't crash the the client wait for a connection to the server be available
+* [x] {FEAT} server termination handler (bad-request::collectError)
 #### 0.4.3
 * {UPDATE} Multicolor support for message display
     * [x] `SimplePopup`

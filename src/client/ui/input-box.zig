@@ -3,6 +3,7 @@ const rl = @import("raylib");
 const kybrd = @import("../core/keyboard.zig");
 
 rec: rl.Rectangle = undefined,
+label_size: rl.Vector2 = undefined,
 enabled: bool = false,
 value: [256]u8 = undefined,
 letter_count: usize = 0,
@@ -12,14 +13,16 @@ opts: struct {
     clipboard: bool,                  // clipboard support        
     backspace_removal: bool,          // backspace removal support
     bg_color: rl.Color,               // background color         
-    placeholder: [:0]const u8,        // placeholder text         
+    placeholder: [:0]const u8,        // placeholder text (visbile when defined and string length is > 0)
+    label: [:0]const u8,              // input box label (visible when defined and string lenght is > 0)
 } = .{
     .mouse = true,                    
     .keyboard = true,                 
     .clipboard = true,                
     .backspace_removal = true,        
     .bg_color = rl.Color.light_gray,   
-    .placeholder = "",                 
+    .placeholder = undefined,                 
+    .label = undefined,
 },
 
 // reanme getMessageSlice
@@ -153,8 +156,9 @@ pub fn render(self: *@This(), window_extended: bool, font: rl.Font, font_size: f
         .x = self.rec.x + txt_hpad,
         .y = self.rec.y + self.rec.height/2 - txt_height/2 + txt_vpad,
     };
-    const drawRekt = rl.Rectangle.init(self.rec.x, self.rec.y, self.rec.width + 2*txt_hpad, self.rec.height + 2*txt_vpad);
-    rl.drawRectangleRounded(drawRekt, 0.0, 0, self.opts.bg_color);
+    self.rec.width = self.rec.width + 2*txt_hpad;
+    self.rec.height = self.rec.height + 2*txt_vpad;
+    rl.drawRectangleRounded(self.rec, 0.0, 0, self.opts.bg_color);
     if (!window_extended) {
         self.rec.y += 2;
     }
@@ -165,6 +169,14 @@ pub fn render(self: *@This(), window_extended: bool, font: rl.Font, font_size: f
         };
         // Draw blinking cursor
         if ((frame_counter/8) % 2 == 0) rl.drawTextEx(font, "_",  cur_pos, font_size, 0, rl.Color.black);
+    }
+    if (self.opts.label.len > 0) {
+        self.label_size = rl.measureTextEx(font, self.opts.label, font_size, 0);
+        const label_pos = rl.Vector2{
+            .x = self.rec.x,
+            .y = self.rec.y - self.label_size.y,
+        };
+        rl.drawTextEx(font, self.opts.label, label_pos, font_size, 0, rl.Color.ray_white);
     }
     if (mcln.len <= 0) {
         if (self.opts.placeholder.len > 0) {

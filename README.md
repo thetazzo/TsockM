@@ -156,7 +156,7 @@ zig build client -- <subcommand>
 #### 0.4.5
 * [x] {UPDATE} Replace succesful connection screen with a popupdon't crash the the client wait for a connection to the server be available
 * [x] {UPDATE} Input box should accept placeholder "ghost" text
-* [ ] {UPDATE} Input box should accept a label
+* [x] {UPDATE} Input box should accept a label
 * [ ] {UPDATE} Render layout stack
     * you append items to the stack
     * enables to automatically calculate relative positions of elements in the stack

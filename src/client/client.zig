@@ -127,8 +127,10 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
 
     var username_input = ui.InputBox{.enabled = true};
     username_input.opts.placeholder = "Username";
+    username_input.opts.label = "Enter your username:";
     var server_ip_input = ui.InputBox{};
     server_ip_input.opts.placeholder = "hostname:port";
+    server_ip_input.opts.label = "Enter TsockM server IP:";
     var login_btn = ui.Button{ .text="Login" };
     var message_input = ui.InputBox{};
     message_input.opts.placeholder = "Message";

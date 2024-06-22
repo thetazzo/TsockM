@@ -48,7 +48,7 @@ fn update(sd: *core.SharedData, data: LoginUD) void {
     ); 
     uie.server_ip_input.setRec(
         uie.username_input.rec.x, 
-        uie.username_input.rec.y + uie.username_input.rec.height + 120, // TODO: LABEL must be a part of input-box
+        uie.username_input.rec.y + uie.username_input.rec.height + uie.server_ip_input.label_size.y + uis.screen_height*0.04, // TODO: LABEL must be a part of input-box
         uie.username_input.rec.width,
         uie.username_input.rec.height,
     ); 
@@ -89,43 +89,14 @@ fn render(sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
         0,
         rl.Color.light_gray
     );
-    const username_input_label = std.fmt.allocPrintZ(str_allocator, "Enter your username:", .{}) catch |err| {
-        std.log.err("LoginScreen::render: {any}", .{err});
-        std.posix.exit(1);
-    };
-    defer str_allocator.free(username_input_label);
-    const ui_size = rl.measureTextEx(font, username_input_label, uis.font_size, 0);
-    const server_ip_input_label = std.fmt.allocPrintZ(str_allocator, "Enter TsockM server IP:", .{}) catch |err| {
-        std.log.err("LoginScreen::render: {any}", .{err});
-        std.posix.exit(1);
-    };
-    defer str_allocator.free(server_ip_input_label);
-    const sip_size = rl.measureTextEx(font, server_ip_input_label, uis.font_size, 0);
-    //uie.server_ip_input.rec.y += sip_size.y + 30;   
     uie.login_btn.setRec(
         uie.server_ip_input.rec.x + uis.screen_width/5.5,
         uie.server_ip_input.rec.y+140, uis.screen_width/8, 90
-    );
-    rl.drawTextEx(
-        font,
-        username_input_label,
-        rl.Vector2{.x=uie.username_input.rec.x, .y=uie.username_input.rec.y - ui_size.y},
-        uis.font_size,
-        0,
-        rl.Color.light_gray
     );
     uie.username_input.render(uis.window_extended, font, uis.font_size, frame_counter.*) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };
-    rl.drawTextEx(
-        font,
-        server_ip_input_label,
-        rl.Vector2{.x=uie.server_ip_input.rec.x, .y=uie.server_ip_input.rec.y - sip_size.y},
-        uis.font_size,
-        0,
-        rl.Color.light_gray
-    );
     uie.server_ip_input.render(uis.window_extended, font, uis.font_size, frame_counter.*) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);

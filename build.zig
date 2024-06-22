@@ -19,19 +19,56 @@ fn Sqids(b: *std.Build) struct { module: *std.Build.Module } {
     return .{ .module = mod, };
 }
 
-fn Raylib(b: *std.Build, target: std.Build.ResolvedTarget ,optimize: std.builtin.OptimizeMode) struct { module: *std.Build.Module, artifact: *std.Build.Step.Compile, dependency: *std.Build.Dependency } {
+const MAD = struct {
+    module: *std.Build.Module,
+    artifact: *std.Build.Step.Compile,
+    dependency: *std.Build.Dependency,
+    LDB: rlz.LinuxDisplayBackend,
+};
+fn Raylib(b: *std.Build, target: std.Build.ResolvedTarget ,optimize: std.builtin.OptimizeMode, ldb: rlz.LinuxDisplayBackend) MAD {
     const raylib_dep = b.dependency("raylib-zig", .{
         .target = target,
         .optimize = optimize,
-        .linux_display_backend = .X11,
+        .linux_display_backend = ldb,
     });
 
-    const raylib = raylib_dep.module("raylib"); // main raylib module
-    const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
+    const raylib = raylib_dep.module("raylib");
+    const raylib_artifact = raylib_dep.artifact("raylib");
+
+    //web exports are completely separate
+    if (target.query.os_tag == .emscripten) {
+        const exe_lib = rlz.emcc.compileForEmscripten(b, "tsockm-client", "src/client/main.zig", target, optimize);
+
+        exe_lib.linkLibrary(raylib_artifact);
+        exe_lib.root_module.addImport("raylib", raylib);
+
+        // Note that raylib itself is not actually added to the exe_lib output file, so it also needs to be linked with emscripten.
+        const link_step = rlz.emcc.linkWithEmscripten(b, &[_]*std.Build.Step.Compile{ exe_lib, raylib_artifact }) catch |err| {
+            std.log.err("41::Raylib: {any}", .{err});
+            std.posix.exit(1);
+        };
+
+        b.getInstallStep().dependOn(&link_step.step);
+        const run_step = rlz.emcc.emscriptenRunStep(b) catch |err| {
+            std.log.err("47::Raylib: {any}", .{err});
+            std.posix.exit(1);
+        };
+        run_step.step.dependOn(&link_step.step);
+        const run_option = b.step("run", "Run nnp");
+        run_option.dependOn(&run_step.step);
+        return .{
+            .module= raylib,
+            .dependency = raylib_dep,
+            .artifact= raylib_artifact,
+            .LDB = ldb,
+        };
+    }
+
     return .{
         .module= raylib,
         .dependency = raylib_dep,
         .artifact= raylib_artifact,
+        .LDB = ldb,
     };
 }
 
@@ -71,9 +108,7 @@ fn STEP_server_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: st
     step.dependOn(&run_server_artifact.step);
 }
 
-fn STEP_client_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step) !void {
-    const raylib = Raylib(b, target, .ReleaseSafe);
-
+fn STEP_client_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step, raylib: MAD) !void {
     // this target does not work with raylib
     const client_program = Program(b, .{
         .name = "tsockm-client",
@@ -97,7 +132,7 @@ fn STEP_client_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: st
     step.dependOn(&run_client_artifact.step);
 }
 
-fn STEP_server_release(b: *std.Build, targets: []const std.Target.Query, step: *std.Build.Step) !void {
+fn STEP_release_server(b: *std.Build, targets: []const std.Target.Query, step: *std.Build.Step) !void {
     const sqids  = Sqids(b);
 
     for (targets) |t| {
@@ -126,40 +161,21 @@ fn STEP_server_release(b: *std.Build, targets: []const std.Target.Query, step: *
     }
 }
 
-fn STEP_release_client(b: *std.Build, target: std.Build.ResolvedTarget, step: *std.Build.Step) !void {
+fn STEP_release_client(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step, raylib: MAD) !void {
     // Client release platform option
     //     * what display manager to use 
-    var ldbs: rlz.LinuxDisplayBackend = .X11; 
-    const ldb_opt = b.option([]const u8, "platform", "build platform (X11 or Wayland)"); 
-    if (ldb_opt) |ldb| {
-        if (std.mem.eql(u8, ldb, "X11")) {
-            ldbs = .X11;
-        } else if (std.mem.eql(u8, ldb, "Wayland")) {
-            ldbs = .Wayland;
-        }
-    }
-    const raylib_dep = b.dependency("raylib-zig", .{
-        .target = target,
-        .optimize = .ReleaseSafe,
-        .linux_display_backend = ldbs,
-    });
-
-    const raylib = raylib_dep.module("raylib"); // main raylib module
-    const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
-
     const client_program = Program(b, .{
         .name = "tsockm-client",
-        .root_source_file = b.path("src/client/main.zig"),
+        .root_source_file = b.path("./src/client/main.zig"),
         .target = target,
-        .optimize = .ReleaseSafe,
+        .optimize = optimize,
     });
-    const raygui = raylib_dep.module("raygui"); // raygui module
-    client_program.exe.linkLibrary(raylib_artifact);
-    client_program.module.addImport("raylib", raylib);
-    client_program.module.addImport("raygui", raygui);
+
+    client_program.exe.linkLibrary(raylib.artifact);
+    client_program.exe.root_module.addImport("raylib", raylib.module);
 
     const target_tripple = try target.result.linuxTriple(b.allocator);
-    const out_dir_path = try std.fmt.allocPrint(b.allocator, "tsockm-client-{s}-{s}-{s}", .{client_version, target_tripple, @tagName(ldbs)}); 
+    const out_dir_path = try std.fmt.allocPrint(b.allocator, "tsockm-client-{s}-{s}-{s}", .{client_version, target_tripple, @tagName(raylib.LDB)}); 
     const full_out_path = try std.fmt.allocPrintZ(b.allocator, "zig-out/{s}", .{out_dir_path}); 
 
     const client_install = b.addInstallArtifact(client_program.exe, .{
@@ -187,6 +203,9 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const ldb_opt = b.option(rlz.LinuxDisplayBackend, "RLDB", "linux display backend that Raylib should use") orelse .X11;
+    const raylib = Raylib(b, target, optimize, ldb_opt);
+
     const dev_server_step = b.step("dev-server", "Use server for development run");
     _ = STEP_server_dev(b, target, optimize, dev_server_step) catch |err| {
         std.log.err("build::STEP_server_dev: {any}", .{err});
@@ -194,7 +213,7 @@ pub fn build(b: *std.Build) !void {
     };
 
     const dev_client_step = b.step("dev-client", "Use client for development run");
-    _ = STEP_client_dev(b, target, optimize, dev_client_step) catch |err| {
+    _ = STEP_client_dev(b, target, optimize, dev_client_step, raylib) catch |err| {
         std.log.err("build::STEP_client_dev: {any}", .{err});
         std.posix.exit(1);
     }; 
@@ -203,14 +222,13 @@ pub fn build(b: *std.Build) !void {
     const server_targets: []const std.Target.Query = &.{
         .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu },
     };
-    _ = STEP_server_release(b, server_targets, release_server_step) catch |err| {
-        std.log.err("build::STEP_server_release: {any}", .{err});
+    _ = STEP_release_server(b, server_targets, release_server_step) catch |err| {
+        std.log.err("build::STEP_release_server: {any}", .{err});
         std.posix.exit(1);
     };
-
     const release_client_step = b.step("release-client", "Release build client");
-    _ = STEP_release_client(b, target, release_client_step) catch |err| {
-        std.log.err("build::STEP_client_release: {any}", .{err});
+    _ = STEP_release_client(b, target, optimize, release_client_step, raylib) catch |err| {
+        std.log.err("build::STEP_release_client: {any}", .{err});
         std.posix.exit(1);
     };
 }

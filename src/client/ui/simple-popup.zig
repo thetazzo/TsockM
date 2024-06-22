@@ -10,6 +10,7 @@ pub const SimplePopup = struct {
     options: struct {
         default_lifetime: usize,
         font: rl.Font,
+        text_color: rl.Color,
     },
     pub fn init(font: rl.Font, sizing: *sc.UI_SIZING, lifetime: usize) SimplePopup {
         return SimplePopup{
@@ -18,8 +19,12 @@ pub const SimplePopup = struct {
             .options = .{
                 .default_lifetime = lifetime,
                 .font = font,
+                .text_color = rl.Color.init(181, 181, 181, 255),
             },
         };
+    }
+    pub fn setTextColor(self: *@This(), color: rl.Color) void {
+        self.options.text_color = color;
     }
     pub fn reset(self: *@This()) void {
         self.lifetime = self.options.default_lifetime;
@@ -53,6 +58,6 @@ pub const SimplePopup = struct {
             .x = drawRekt.x + drawRekt.width/2 - txt_size.x/2,
             .y = drawRekt.y + drawRekt.height/2 - txt_size.y/2 ,
         };
-        rl.drawTextEx(self.options.font, txt, txt_pos, self.SIZING.font_size, 0, rl.Color.init(181, 181, 181, 255));
+        rl.drawTextEx(self.options.font, txt, txt_pos, self.SIZING.font_size, 0, self.options.text_color);
     }
 };

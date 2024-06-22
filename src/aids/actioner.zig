@@ -6,7 +6,7 @@ pub fn Action(comptime T: type) type {
         collect: ?struct {
             request:  *const fn (?std.net.Server.Connection, *T, Protocol) void,
             response: *const fn (*T, Protocol) void,
-            err:    *const fn () void,
+            err:    *const fn (*T) void,
         },
         transmit: ?struct {
             request:  *const fn (Protocol.TransmitionMode, *T, []const u8) void,

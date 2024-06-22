@@ -35,7 +35,7 @@ fn listener(sd: *SharedData) !void {
                 // TODO: better handling of optional types
                 .REQ => act.collect.?.request(conn, sd, protocol),
                 .RES => act.collect.?.response(sd, protocol),
-                .ERR => act.collect.?.err(),
+                .ERR => act.collect.?.err(sd),
                 else => {
                     std.log.err("`therad::listener`: unknown protocol type!", .{});
                     unreachable;

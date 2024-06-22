@@ -42,7 +42,7 @@ fn collectRespone(sd: *SharedData, protocol: Protocol) void {
     }
 }
 
-fn collectError() void {
+fn collectError(_:*SharedData) void {
     std.log.err("not implemented", .{});
 }
 

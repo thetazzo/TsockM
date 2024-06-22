@@ -45,25 +45,31 @@ fn accept_connections(sd: *core.SharedData) !void {
             sd.cond.wait(&sd.m);
         }
     }
-
+    var turnery: bool = false;
     while (!sd.should_exit) {
-        const resp = try Protocol.collect(str_allocator, sd.client.stream);
-        const opt_action = sd.client.Actioner.get(aids.Stab.parseAct(resp.action));
-        if (opt_action) |act| {
-            resp.dump(sd.client.log_level);
-            switch (resp.type) {
-                // TODO: better handling of optional types
-                .REQ => act.collect.?.request(null, sd, resp),
-                .RES => act.collect.?.response(sd, resp),
-                .ERR => act.collect.?.err(),
-                else => {
-                    std.log.err("`therad::listener`: unknown protocol type!", .{});
-                    unreachable;
+        while (sd.connected) {
+            turnery = true;
+            const resp = try Protocol.collect(str_allocator, sd.client.stream);
+            const opt_action = sd.client.Actioner.get(aids.Stab.parseAct(resp.action));
+            if (opt_action) |act| {
+                resp.dump(sd.client.log_level);
+                switch (resp.type) {
+                    // TODO: better handling of optional types
+                    .REQ => act.collect.?.request(null, sd, resp),
+                    .RES => act.collect.?.response(sd, resp),
+                    .ERR => act.collect.?.err(sd),
+                    else => {
+                        std.log.err("`therad::listener`: unknown protocol type!", .{});
+                        unreachable;
+                    }
                 }
             }
         }
+        if (turnery) {
+            print("Ending `accepting_connection`\n", .{});
+            turnery = false;
+        }
     }
-    print("Ending `accepting_connection`\n", .{});
 }
 
 pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8, log_level: Logging.Level) !void {
@@ -95,7 +101,6 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     }
 
     var client = core.Client.init(gpa_allocator, font, log_level);
-    defer client.deinit();
 
     client.Commander.add(":exit", ClientCommand.EXIT_CLIENT);
     client.Commander.add(":info", ClientCommand.CLIENT_STATS);

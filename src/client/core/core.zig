@@ -112,6 +112,26 @@ pub const SharedData = struct {
         }
         self.cond.signal();
     }
+    pub fn closeConnection(self: *@This()) void {
+        self.m.lock();
+        defer self.m.unlock();
+
+        //self.should_exit = true;
+
+        self.connected = false;
+        self.client.username = undefined;
+        self.client.id = undefined;
+        self.client.stream.close();
+        self.client.server_addr_str = undefined;
+        self.client.client_addr_str = undefined;
+        self.client.server_addr = undefined;
+        self.client.client_addr = undefined;
+
+        var close_connection_popup = ui.SimplePopup.init(self.client.font, &self.sizing, 30*4); // TODO: FPS client prop
+        close_connection_popup.text = "Server connection terminated"; // TODO: SimplePopup.setText
+        close_connection_popup.setTextColor(rl.Color.orange);
+        _ = self.popups.append(close_connection_popup) catch 1; // TODO: self.pushPopup
+    }
 };
 
 pub const CommandData = struct {
@@ -144,6 +164,13 @@ pub const Client = struct {
         };
     }
     pub fn deinit(self: *@This()) void {
+        self.username = undefined;
+        self.id = undefined;
+        self.stream.close();
+        self.server_addr_str = undefined;
+        self.client_addr_str = undefined;
+        self.server_addr = undefined;
+        self.client_addr = undefined;
         self.Commander.deinit();
         self.Actioner.deinit();
     }

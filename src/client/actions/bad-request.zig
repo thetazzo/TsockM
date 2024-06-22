@@ -8,31 +8,32 @@ const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
 fn collectRequest(_: ?net.Server.Connection, _: *SharedData, _: Protocol) void {
-    std.log.err("`bad-request` action not implemented", .{});
+    std.log.err("`bad-request::collectRequest` action not implemented", .{});
 }
 
 fn collectRespone(sd: *SharedData, protocol: Protocol) void {
     _ = sd;
     _ = protocol;
-    std.log.err("`bad-request` action not implemented", .{});
+    std.log.err("`bad-request::collectRespone` action not implemented", .{});
 }
 
-fn collectError() void {
-    std.log.err("`bad-request` action not implemented", .{});
+/// Happens when server is terminated
+fn collectError(sd: *SharedData) void {
+    sd.closeConnection();
 }
 
 fn transmitRequest(mode: Protocol.TransmitionMode, sd: *SharedData, _: []const u8) void {
     _ = mode;
     _ = sd;
-    std.log.err("`bad-request` action not implemented", .{});
+    std.log.err("`bad-request::transmitRequest` action not implemented", .{});
 }
 
 fn transmitRespone() void {
-    std.log.err("`bad-request` action not implemented", .{});
+    std.log.err("`bad-request::transmitRespone` action not implemented", .{});
 }
 
 fn transmitError() void {
-    std.log.err("`bad-request` action not implemented", .{});
+    std.log.err("`bad-request::transmitError` action not implemented", .{});
 }
 
 pub const ACTION = Action(SharedData){

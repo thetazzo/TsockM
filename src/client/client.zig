@@ -119,9 +119,9 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     const popups = std.ArrayList(ui.SimplePopup).init(gpa_allocator);
     defer popups.deinit();
 
-
-    var message_box     = ui.InputBox{};
-    var username_input  = ui.InputBox{.enabled = true};
+    var message_box      = ui.InputBox{};
+    var username_input   = ui.InputBox{.enabled = true};
+    var server_ip_input  = ui.InputBox{};
     var login_btn  = ui.Button{ .text="Login" };
     var message_display = ui.Display{};
     var sd = core.SharedData{
@@ -134,6 +134,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
         .connected = false,
         .ui = sc.UI_ELEMENTS{
             .username_input = &username_input,
+            .server_ip_input = &server_ip_input,
             .login_btn = &login_btn,
             .message_input = &message_box,
             .message_display = &message_display,
@@ -168,8 +169,8 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
             // Draw successful connection
             var buf: [256]u8 = undefined;
             const succ_str = try std.fmt.bufPrintZ(&buf,
-                "Client connected successfully to `{s}:{d}` :)\n",
-                .{server_hostname, server_port}
+                "Client connected successfully to `{s}` :)\n",
+                .{sd.client.server_addr_str}
             );
             if (response_counter > 0) {
                 const sslen = rl.measureTextEx(font, succ_str, font_size, 0).x;

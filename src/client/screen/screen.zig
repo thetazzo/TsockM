@@ -26,6 +26,7 @@ pub const UI_SIZING = struct {
 
 pub const UI_ELEMENTS = struct {
     username_input: *ui.InputBox,
+    server_ip_input: *ui.InputBox,
     login_btn: *ui.Button,
     message_input: *ui.InputBox,
     message_display: *ui.Display,

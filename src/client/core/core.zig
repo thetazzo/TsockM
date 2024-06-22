@@ -43,10 +43,73 @@ pub const SharedData = struct {
         try self.messages.append(msg);
     }
 
-    pub fn establishConnection(self: *@This(), username: []const u8, hostname: []const u8, port: u16) void {
-        self.client.setUsername(username);
-        self.client.connect(std.heap.page_allocator, hostname, port);
-        self.setConnected(true);
+    // TODO: move to comm client action
+    pub fn establishConnection(self: *@This(), allocator: std.mem.Allocator, username: []const u8, hostname: []const u8, port: u16) void {
+        self.m.lock();
+        defer self.m.unlock();
+        const addr = std.net.Address.resolveIp(hostname, port) catch |err| {
+            std.log.err("51::client::connect::addr: {any}", .{err});
+            var invalid_sip_popup = ui.SimplePopup.init(self.client.font, &self.sizing, 30*2);
+            invalid_sip_popup.setTextColor(rl.Color.red);
+            invalid_sip_popup.text = "Connection to server failed";
+            std.log.err("{any}", .{err});
+            _ = self.popups.append(invalid_sip_popup) catch |errapp| {
+                std.log.err("39::login-screen::update: {}", .{errapp});
+                std.posix.exit(1);
+            };
+            return;
+        };
+        std.debug.print("Requesting connection to `{s}:{d}`\n", .{hostname, port});
+        const stream = std.net.tcpConnectToAddress(addr) catch |err| {
+            std.log.err("64::client::connect::stream: {any}", .{err});
+            std.log.err("51::client::connect::addr: {any}", .{err});
+            // TODO: fix naming
+            var conn_refused_popup = ui.SimplePopup.init(self.client.font, &self.sizing, 30*2);
+            conn_refused_popup.setTextColor(rl.Color.red);
+            conn_refused_popup.text = "Could not connect to server";
+            std.log.err("{any}", .{err});
+            _ = self.popups.append(conn_refused_popup) catch |errapp| {
+                std.log.err("39::login-screen::update: {}", .{errapp});
+                std.posix.exit(1);
+            };
+            return;
+        };
+        const dst_addr = aids.cmn.address_as_str(addr);
+        // request connection
+        const reqp = Protocol.init(
+            Protocol.Typ.REQ,
+            Protocol.Act.COMM,
+            Protocol.StatusCode.OK,
+            "client",
+            "client",
+            dst_addr,
+            username,
+        );
+        reqp.dump(self.client.log_level);
+        _ = Protocol.transmit(stream, reqp);
+
+        const resp = Protocol.collect(allocator, stream) catch |err| {
+            std.log.err("client::connect: {any}", .{err});
+            std.posix.exit(1);
+        };
+        resp.dump(self.client.log_level);
+
+        if (resp.status_code == Protocol.StatusCode.OK) {
+            var peer_spl = std.mem.split(u8, resp.body, "|");
+            const id = peer_spl.next().?;
+            const username_ = peer_spl.next().?;
+            self.client.setUsername(username_);
+            self.client.setID(id);
+            self.client.stream = stream;
+            self.client.server_addr = addr;
+            self.client.server_addr_str = dst_addr;
+            self.client.client_addr_str = resp.dst;
+            self.connected = true;
+        } else {
+            self.connected = false;
+            std.log.err("server error when creating client", .{});
+            std.posix.exit(1);
+        }
         self.cond.signal();
     }
 };
@@ -90,52 +153,6 @@ pub const Client = struct {
     pub fn setID(self: *@This(), id: []const u8) void {
         self.id = id;
     }
-    pub fn connect(self: *@This(), allocator: std.mem.Allocator, hostname: []const u8, port: u16) void {
-        const addr = std.net.Address.resolveIp(hostname, port) catch |err| {
-            std.log.err("client::connect: {any}", .{err});
-            std.posix.exit(1);
-        };
-        std.debug.print("Requesting connection to `{s}:{d}`\n", .{hostname, port});
-        const stream = std.net.tcpConnectToAddress(addr) catch |err| {
-            std.log.err("client::connect: {any}", .{err});
-            std.posix.exit(1);
-        };
-        const dst_addr = aids.cmn.address_as_str(addr);
-        // request connection
-        const reqp = Protocol.init(
-            Protocol.Typ.REQ,
-            Protocol.Act.COMM,
-            Protocol.StatusCode.OK,
-            "client",
-            "client",
-            dst_addr,
-            self.username,
-        );
-        reqp.dump(self.log_level);
-        _ = Protocol.transmit(stream, reqp);
-
-        const resp = Protocol.collect(allocator, stream) catch |err| {
-            std.log.err("client::connect: {any}", .{err});
-            std.posix.exit(1);
-        };
-        resp.dump(self.log_level);
-
-        if (resp.status_code == Protocol.StatusCode.OK) {
-            var peer_spl = std.mem.split(u8, resp.body, "|");
-            const id = peer_spl.next().?;
-            const username_ = peer_spl.next().?;
-            self.setUsername(username_);
-            self.setID(id);
-            self.stream = stream;
-            self.server_addr = addr;
-            self.server_addr_str = dst_addr;
-            self.client_addr_str = resp.dst;
-        } else {
-            std.log.err("server error when creating client", .{});
-            std.posix.exit(1);
-        }
-    }
-
     pub fn asStr(self: @This(), allocator: std.mem.Allocator) [:0]const u8 {
         const stats = std.fmt.allocPrintZ(allocator,
             "Client:\n" ++

@@ -155,11 +155,11 @@ zig build client -- <subcommand>
 * [ ] {FEAT} `:close` command that disconnects from the server and returns to the login screen
 #### 0.4.5
 * [x] {UPDATE} Replace succesful connection screen with a popupdon't crash the the client wait for a connection to the server be available
+* [x] {UPDATE} Input box should accept placeholder "ghost" text
+* [ ] {UPDATE} Input box should accept a label
 * [ ] {UPDATE} Render layout stack
     * you append items to the stack
     * enables to automatically calculate relative positions of elements in the stack
-* [ ] {UPDATE} Input box should accept a label
-* [ ] {UPDATE} Input box should accept placeholder "ghost" text
 #### 0.4.4
 * [x] {UPDATE} don't allow login if login name is empy or ip is not defined
 * [x] {UPDATE} ask for server ip before login

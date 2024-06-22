@@ -7,17 +7,19 @@ enabled: bool = false,
 value: [256]u8 = undefined,
 letter_count: usize = 0,
 opts: struct {
-    mouse: bool,
-    keyboard: bool,
-    clipboard: bool,
-    backspace_removal: bool,
-    bg_color: rl.Color,
+    mouse: bool,                      // default mouse support
+    keyboard: bool,                   // keyboard support 
+    clipboard: bool,                  // clipboard support        
+    backspace_removal: bool,          // backspace removal support
+    bg_color: rl.Color,               // background color         
+    placeholder: [:0]const u8,        // placeholder text         
 } = .{
-    .mouse = true,                    // default mouse support
-    .keyboard = true,                 // default keyboard support
-    .clipboard = true,                // clipboard support
-    .backspace_removal = true,        // backspace removal support
-    .bg_color = rl.Color.light_gray,  // background color
+    .mouse = true,                    
+    .keyboard = true,                 
+    .clipboard = true,                
+    .backspace_removal = true,        
+    .bg_color = rl.Color.light_gray,   
+    .placeholder = "",                 
 },
 
 // reanme getMessageSlice
@@ -141,19 +143,21 @@ pub fn update(self: *@This()) void {
     }
 }
 pub fn render(self: *@This(), window_extended: bool, font: rl.Font, font_size: f32, frame_counter: usize) !void {
-    rl.drawRectangleRounded(self.rec, 0.0, 0, self.opts.bg_color);
-    if (!window_extended) {
-        self.rec.y += 2;
-    }
     var buf2: [512]u8 = undefined;
-    const mcln = std.mem.sliceTo(&self.value, 170);
+    const mcln = std.mem.sliceTo(std.mem.sliceTo(&self.value, 170), 0);
     const mssg2 = try std.fmt.bufPrintZ(&buf2, "{s}", .{mcln});
     const txt_height = rl.measureTextEx(font, mssg2, font_size, 0).y;
     const txt_hpad = 18;
+    const txt_vpad = font_size * 0.1;
     const txt_pos = rl.Vector2{
         .x = self.rec.x + txt_hpad,
-        .y = self.rec.y + self.rec.height/2 - txt_height/2
+        .y = self.rec.y + self.rec.height/2 - txt_height/2 + txt_vpad,
     };
+    const drawRekt = rl.Rectangle.init(self.rec.x, self.rec.y, self.rec.width + 2*txt_hpad, self.rec.height + 2*txt_vpad);
+    rl.drawRectangleRounded(drawRekt, 0.0, 0, self.opts.bg_color);
+    if (!window_extended) {
+        self.rec.y += 2;
+    }
     if (self.enabled) {
         const cur_pos = rl.Vector2{
             .x = txt_pos.x + rl.measureTextEx(font, mssg2, font_size, 0).x,
@@ -162,6 +166,16 @@ pub fn render(self: *@This(), window_extended: bool, font: rl.Font, font_size: f
         // Draw blinking cursor
         if ((frame_counter/8) % 2 == 0) rl.drawTextEx(font, "_",  cur_pos, font_size, 0, rl.Color.black);
     }
-    // Draw input text
-    rl.drawTextEx(font, mssg2, txt_pos, font_size, 0, rl.Color.black);
+    if (mcln.len <= 0) {
+        if (self.opts.placeholder.len > 0) {
+            if (self.isMouseOver() and !self.enabled) {
+                rl.drawTextEx(font, self.opts.placeholder, txt_pos, font_size, 0, rl.Color.light_gray);
+            } else {
+                rl.drawTextEx(font, self.opts.placeholder, txt_pos, font_size, 0, rl.Color.gray);
+            }
+        }
+    } else {
+        // Draw input text
+        rl.drawTextEx(font, mssg2, txt_pos, font_size, 0, rl.Color.black);
+    }
 }

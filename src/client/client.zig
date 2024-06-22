@@ -124,10 +124,14 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     const popups = std.ArrayList(ui.SimplePopup).init(gpa_allocator);
     defer popups.deinit();
 
-    var message_box      = ui.InputBox{};
-    var username_input   = ui.InputBox{.enabled = true};
-    var server_ip_input  = ui.InputBox{};
-    var login_btn  = ui.Button{ .text="Login" };
+
+    var username_input = ui.InputBox{.enabled = true};
+    username_input.opts.placeholder = "Username";
+    var server_ip_input = ui.InputBox{};
+    server_ip_input.opts.placeholder = "hostname:port";
+    var login_btn = ui.Button{ .text="Login" };
+    var message_input = ui.InputBox{};
+    message_input.opts.placeholder = "Message";
     var message_display = ui.Display{};
     var sd = core.SharedData{
         .m = std.Thread.Mutex{},
@@ -141,7 +145,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
             .username_input = &username_input,
             .server_ip_input = &server_ip_input,
             .login_btn = &login_btn,
-            .message_input = &message_box,
+            .message_input = &message_input,
             .message_display = &message_display,
         },
     };

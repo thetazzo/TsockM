@@ -48,7 +48,7 @@ fn update(sd: *core.SharedData, data: LoginUD) void {
     ); 
     uie.server_ip_input.setRec(
         uie.username_input.rec.x, 
-        uie.username_input.rec.y + uie.username_input.rec.height + 80, // TODO: LABEL must be a part of input-box
+        uie.username_input.rec.y + uie.username_input.rec.height + 120, // TODO: LABEL must be a part of input-box
         uie.username_input.rec.width,
         uie.username_input.rec.height,
     ); 

@@ -144,10 +144,28 @@ zig build client -- <subcommand>
     * `\b;HELLO\` prints bold text
     * `\u;HELLO\` prints underlined text
     * `\c{#00FFAA};HELLO\` prints colored text based on hex value 
-* [ ] {FEAT} Multicolor support for message display
-* [ ] {UPDATE} don't crash the the client wait for a connection to the server be available
 * {FEAT} Client commands
     * [ ] `:ping` ~ ping user by username and print user info
+#### 0.4.6
+* [ ] {UPDATE} clean up and make popup hanling more robust
+    * `setText`
+    * assert `popup.text.len > 0`, popups with no text should not be allowed
+* [ ] {BUG} input filed click detection too high for `server_ip_input`
+#### 0.4.5
+* [ ] {UPDATE} Render layout stack
+    * you append items to the stack
+    * enables to automatically calculate relative positions of elements in the stack
+* [ ] {UPDATE} Input box should accept a label
+* [ ] {UPDATE} Input box should accept placeholder "ghost" text
+#### 0.4.4
+* [x] {UPDATE} don't allow login if login name is empy or ip is not defined
+* [x] {UPDATE} ask for server ip before login
+* [x] {UPDATE} report connection request blocked (unsuccessful conection)
+* [ ] {UPDATE} don't crash the the client wait for a connection to the server be available
+#### 0.4.3
+* {UPDATE} Multicolor support for message display
+    * [x] `SimplePopup`
+    * [x] `Message`
 #### 0.4.1
 * [x] {UPDATE} make `Action` and `Command` a shared library between server and client src code
 * [x] {UPDATE} finish implementaton of `:exit` action ~ handle COMM_END response

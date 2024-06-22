@@ -75,11 +75,12 @@ fn render(sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
     const uis = sd.sizing;
     const uie = sd.ui;
     // Login screen
-    var buf: [256]u8 = undefined;
-    const title_str = std.fmt.bufPrintZ(&buf, "TsockM", .{}) catch |err| {
+    const str_allocator = std.heap.page_allocator;
+    const title_str = std.fmt.allocPrintZ(str_allocator, "TsockM", .{}) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };
+    defer str_allocator.free(title_str);
     rl.drawTextEx(
         font,
         title_str,
@@ -88,15 +89,17 @@ fn render(sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
         0,
         rl.Color.light_gray
     );
-    const username_input_label = std.fmt.bufPrintZ(&buf, "Enter your username:", .{}) catch |err| {
+    const username_input_label = std.fmt.allocPrintZ(str_allocator, "Enter your username:", .{}) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };
+    defer str_allocator.free(username_input_label);
     const ui_size = rl.measureTextEx(font, username_input_label, uis.font_size, 0);
-    const server_ip_input_label = std.fmt.bufPrintZ(&buf, "Enter TsockM server IP:", .{}) catch |err| {
+    const server_ip_input_label = std.fmt.allocPrintZ(str_allocator, "Enter TsockM server IP:", .{}) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };
+    defer str_allocator.free(server_ip_input_label);
     const sip_size = rl.measureTextEx(font, server_ip_input_label, uis.font_size, 0);
     //uie.server_ip_input.rec.y += sip_size.y + 30;   
     uie.login_btn.setRec(

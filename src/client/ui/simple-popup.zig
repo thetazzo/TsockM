@@ -2,6 +2,7 @@ const std = @import("std");
 const rl = @import("raylib");
 const sc = @import("../screen/screen.zig");
 
+// TODO: simple popup should store an allocator that and it should implement a deinit() that frees the text when popup expires
 pub const SimplePopup = struct {
     text: []const u8 = "",
     lifetime: usize,

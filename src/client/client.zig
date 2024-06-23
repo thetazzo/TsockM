@@ -114,7 +114,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     const FPS = 30;
     rl.setTargetFPS(FPS);
 
-    var response_counter: usize = FPS*1;
+    //var response_counter: usize = FPS*1;
     var frame_counter: usize = 0;
     // ui elements
     // I think detaching and or joining threads is not needed becuse I handle ending of threads with core.SharedData.should_exit
@@ -124,10 +124,15 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     const popups = std.ArrayList(ui.SimplePopup).init(gpa_allocator);
     defer popups.deinit();
 
-    var message_box      = ui.InputBox{};
-    var username_input   = ui.InputBox{.enabled = true};
-    var server_ip_input  = ui.InputBox{};
-    var login_btn  = ui.Button{ .text="Login" };
+    var username_input = ui.InputBox{.enabled = true};
+    username_input.opts.placeholder = "Username";
+    username_input.opts.label = "Enter your username:";
+    var server_ip_input = ui.InputBox{};
+    server_ip_input.opts.placeholder = "hostname:port";
+    server_ip_input.opts.label = "Enter TsockM server IP:";
+    var login_btn = ui.Button{ .text="Login" };
+    var message_input = ui.InputBox{};
+    message_input.opts.placeholder = "Message";
     var message_display = ui.Display{};
     var sd = core.SharedData{
         .m = std.Thread.Mutex{},
@@ -141,7 +146,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
             .username_input = &username_input,
             .server_ip_input = &server_ip_input,
             .login_btn = &login_btn,
-            .message_input = &message_box,
+            .message_input = &message_input,
             .message_display = &message_display,
         },
     };
@@ -150,10 +155,10 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
 
     // Render loop
     while (!rl.windowShouldClose() and !sd.should_exit) {
-        const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
-        const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
-        const window_extended_vert = sh > sw;
-        const font_size = if (window_extended_vert) sw * 0.03 else sh * 0.05;
+        //const sw = @as(f32, @floatFromInt(rl.getScreenWidth()));
+        //const sh = @as(f32, @floatFromInt(rl.getScreenHeight()));
+        //const window_extended_vert = sh > sw;
+        //const font_size = if (window_extended_vert) sw * 0.03 else sh * 0.05;
         sd.updateSizing(SW, SH);
 
         rl.beginDrawing();
@@ -172,18 +177,14 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
         if (sd.connected) {
             // Messaging screen
             // Draw successful connection
-            var buf: [256]u8 = undefined;
-            const succ_str = try std.fmt.bufPrintZ(&buf,
-                "Client connected successfully to `{s}` :)\n",
-                .{sd.client.server_addr_str}
-            );
-            if (response_counter > 0) {
-                const sslen = rl.measureTextEx(font, succ_str, font_size, 0).x;
-                rl.drawTextEx(font, succ_str, rl.Vector2{.x=sw/2 - sslen/2, .y=sh/2 - sh/4}, font_size, 0, rl.Color.green);
-                response_counter -= 1;
-            } else {
-                MessagingScreen.render(&sd, font, &frame_counter);
-            }
+            
+            MessagingScreen.render(&sd, font, &frame_counter);
+            //if (response_counter > 0) {
+            //    const sslen = rl.measureTextEx(font, succ_str, font_size, 0).x;
+            //    rl.drawTextEx(font, succ_str, rl.Vector2{.x=sw/2 - sslen/2, .y=sh/2 - sh/4}, font_size, 0, rl.Color.green);
+            //    response_counter -= 1;
+            //} else {
+            //}
         } else {
             LoginScreen.render(&sd, font, &frame_counter);
         }

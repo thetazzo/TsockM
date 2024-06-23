@@ -26,6 +26,11 @@ fn update(sd: *core.SharedData, _: MessagingUD) void {
 // ------------------------------------------------------------
 // Handle custom input
 // ------------------------------------------------------------
+    if (rl.isKeyPressed(.key_tab)) {
+        if (!uie.message_input.enabled) {
+            uie.message_input.setEnabled(true);
+        }
+    }
     if (uie.message_input.enabled) {
         // Handle uis.message_input input ~ client command handling
         if (rl.isKeyPressed(.key_enter)) {

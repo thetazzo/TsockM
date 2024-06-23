@@ -146,20 +146,36 @@ zig build client -- <subcommand>
     * `\c{#00FFAA};HELLO\` prints colored text based on hex value 
 * {FEAT} Client commands
     * [ ] `:ping` ~ ping user by username and print user info
-#### 0.4.6
+* {FEAT} keybind list screen that shows all keybinds and their functionality 
+#### 0.4.7
 * [ ] {UPDATE} clean up and make popup hanling more robust
     * `setText`
     * assert `popup.text.len > 0`, popups with no text should not be allowed
 * [ ] {BUG} input filed click detection too high for `server_ip_input`
 * [ ] {BUG} only two popups are displayed at a time, there should be more
 * [ ] {FEAT} `:close` command that disconnects from the server and returns to the login screen
+* [ ] {UPDATE} `Input-Box` should be hold font data to be used within the input box
+* [ ] {UPDATE} `Input-Box` should be hold sizing information of the client
+* [ ] {UPDATE} `Input-Box` report when switching between `selection` and `insert` mode
+* [ ] {UPDATE} `Input-Box` report deletion of text
+* [ ] {FEAT} `Input-Box` copying selected text support
+#### 0.4.6
+* [ ] {UPDATE} `localhost` is a valid `server_ip_input` string that is mapped to `127.0.0.1`
+* [ ] {FEAT} `ScreenLayoutStack`
+    * a stack like data structure
+    * you append ui items to the stack
+    * enables to automatically calculate relative positions of elements in the stack
 #### 0.4.5
 * [x] {UPDATE} Replace succesful connection screen with a popupdon't crash the the client wait for a connection to the server be available
 * [x] {UPDATE} Input box should accept placeholder "ghost" text
 * [x] {UPDATE} Input box should accept a label
-* [ ] {UPDATE} Render layout stack
-    * you append items to the stack
-    * enables to automatically calculate relative positions of elements in the stack
+* [x] {UPDATE} Switching active input using the TAB key inside `LoginScreen`
+* [x] {UPDATE} TAB key enables messaging input if it is disabled `MessagingScreen`
+* [x] {UPDATE} If no port is specified in `server_ip_input` assume port `6969`
+* [x] {FEAT} `CTRL A` combination selects whole input box text 
+* [x] {UPDATE} when `x` is pressed the selected text gets deleated
+* [x] {UPDATE} when `enter` or `space` is pressed the exit `selection mode` 
+* [x] {UPDATE} when `CTRL C` is pressed exit `selection mode`
 #### 0.4.4
 * [x] {UPDATE} don't allow login if login name is empy or ip is not defined
 * [x] {UPDATE} ask for server ip before login

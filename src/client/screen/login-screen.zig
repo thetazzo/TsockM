@@ -20,16 +20,20 @@ fn connectClientToServer(sip: []const u8, sd: *core.SharedData, username: []cons
     }
     var sip_splits = std.mem.splitScalar(u8, sip, ':');
     const hostname = sip_splits.next().?; 
-    const port = std.fmt.parseInt(u16, sip_splits.rest(), 10) catch |err| {
-        invalid_sip_popup.setTextColor(rl.Color.red);
-        invalid_sip_popup.text = "invalid IP port";
-        std.log.err("{any}", .{err});
-        _ = sd.popups.append(invalid_sip_popup) catch |errapp| {
-            std.log.err("login-screen::update: {}", .{errapp});
-            std.posix.exit(1);
+    const port_str = sip_splits.rest();
+    var port: u16 = 6969;
+    if (port_str.len > 0) {
+        port = std.fmt.parseInt(u16, port_str, 10) catch |err| {
+            invalid_sip_popup.setTextColor(rl.Color.red);
+            invalid_sip_popup.text = "invalid IP port";
+            std.log.err("{any}", .{err});
+            _ = sd.popups.append(invalid_sip_popup) catch |errapp| {
+                std.log.err("login-screen::update: {}", .{errapp});
+                std.posix.exit(1);
+            };
+            return;
         };
-        return;
-    };
+    }
     sd.establishConnection(std.heap.page_allocator, username, hostname, port);
     sd.ui.message_input.setEnabled(true);
     sd.ui.username_input.setEnabled(false);

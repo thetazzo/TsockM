@@ -5,6 +5,7 @@ const ui = @import("../ui/ui.zig");
 const kybrd = @import("../core/keyboard.zig");
 const sc = @import("screen.zig");
 
+const str_allocator = std.heap.page_allocator;
 const LoginUD = struct{server_hostname: []const u8, server_port: u16};
 
 fn connectClientToServer(sip: []const u8, sd: *core.SharedData, username: []const u8) void {
@@ -59,6 +60,10 @@ fn update(sd: *core.SharedData, data: LoginUD) void {
         uie.username_input.rec.width,
         uie.username_input.rec.height,
     ); 
+    uie.login_btn.setRec(
+        uie.server_ip_input.rec.x + uis.screen_width/5.5,
+        uie.server_ip_input.rec.y+140, uis.screen_width/8, 90
+    );
     uie.username_input.update();
     uie.server_ip_input.update();
     uie.login_btn.update();
@@ -94,7 +99,6 @@ fn render(sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
     const uis = sd.sizing;
     const uie = sd.ui;
     // Login screen
-    const str_allocator = std.heap.page_allocator;
     const title_str = std.fmt.allocPrintZ(str_allocator, "TsockM", .{}) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
@@ -107,10 +111,6 @@ fn render(sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
         uis.font_size * 1.75,
         0,
         rl.Color.light_gray
-    );
-    uie.login_btn.setRec(
-        uie.server_ip_input.rec.x + uis.screen_width/5.5,
-        uie.server_ip_input.rec.y+140, uis.screen_width/8, 90
     );
     uie.username_input.render(uis.window_extended, font, uis.font_size, frame_counter.*) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});

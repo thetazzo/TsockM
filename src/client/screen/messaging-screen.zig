@@ -10,9 +10,10 @@ const MessagingUD = struct{};
 
 const str_allocator = std.heap.page_allocator;
 const cmds_str  = std.fmt.comptimePrint(
-    "`:info` ... print information about the client\n" ++ 
-    "`:ping` ... ping another client\n" ++
-    "`:exit` ... terminate the client",
+    "`:close` ... disconnect from the server\n" ++ 
+    "`:info` .... print information about the client\n" ++ 
+    "`:ping` .... ping another client\n" ++
+    "`:exit` .... terminate the client",
     .{}
 ) ;
 fn update(sd: *core.SharedData, _: MessagingUD) void {

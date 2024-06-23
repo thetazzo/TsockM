@@ -52,7 +52,7 @@ fn update(sd: *core.SharedData, data: LoginUD) void {
     ); 
     uie.server_ip_input.setRec(
         uie.username_input.rec.x, 
-        uie.username_input.rec.y + uie.username_input.rec.height + uie.server_ip_input.label_size.y + uis.screen_height*0.04, // TODO: LABEL must be a part of input-box
+        uie.username_input.rec.y + uie.username_input.rec.height + uie.server_ip_input.label_size.y + uis.screen_height*0.04, 
         uie.username_input.rec.width,
         uie.username_input.rec.height,
     ); 
@@ -62,6 +62,18 @@ fn update(sd: *core.SharedData, data: LoginUD) void {
     // -------------------------------------------------------------------------
     // Handle custom input
     // -------------------------------------------------------------------------
+    // flip flip siwitch between two inputs using the tab key
+    if (rl.isKeyPressed(.key_tab)) {
+        if (uie.username_input.enabled) {
+            uie.username_input.setEnabled(false);
+            uie.server_ip_input.setEnabled(true);
+        } else if (uie.server_ip_input.enabled) {
+            uie.username_input.setEnabled(true);
+            uie.server_ip_input.setEnabled(false);
+        } else {
+            unreachable;
+        }
+    }
     if (uie.login_btn.isClicked()) {
         const username = std.mem.sliceTo(&uie.username_input.value, 0);
         const sip = uie.server_ip_input.getCleanValue();

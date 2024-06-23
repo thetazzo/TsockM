@@ -19,7 +19,10 @@ fn connectClientToServer(sip: []const u8, sd: *core.SharedData, username: []cons
         return;
     }
     var sip_splits = std.mem.splitScalar(u8, sip, ':');
-    const hostname = sip_splits.next().?; 
+    var hostname = sip_splits.next().?; 
+    if (std.mem.eql(u8, hostname, "localhost")) {
+        hostname = "127.0.0.1";
+    }
     const port_str = sip_splits.rest();
     var port: u16 = 6969;
     if (port_str.len > 0) {

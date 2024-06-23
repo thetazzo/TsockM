@@ -160,7 +160,7 @@ zig build client -- <subcommand>
 * [ ] {UPDATE} `Input-Box` report deletion of text
 * [ ] {FEAT} `Input-Box` copying selected text support
 #### 0.4.6
-* [ ] {UPDATE} `localhost` is a valid `server_ip_input` string that is mapped to `127.0.0.1`
+* [x] {UPDATE} `localhost` is a valid `server_ip_input` string that is mapped to `127.0.0.1`
 * [ ] {FEAT} `ScreenLayoutStack`
     * a stack like data structure
     * you append ui items to the stack

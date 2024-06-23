@@ -124,7 +124,6 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     const popups = std.ArrayList(ui.SimplePopup).init(gpa_allocator);
     defer popups.deinit();
 
-
     var username_input = ui.InputBox{.enabled = true};
     username_input.opts.placeholder = "Username";
     username_input.opts.label = "Enter your username:";

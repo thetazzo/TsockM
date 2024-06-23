@@ -7,6 +7,8 @@ const Protocol = aids.Protocol;
 const Logging = aids.Logging;
 const Stab = aids.Stab;
 
+const str_allocator = std.heap.page_allocator;
+
 // Data to share between threads
 pub const SharedData = struct {
     m: std.Thread.Mutex,
@@ -47,34 +49,50 @@ pub const SharedData = struct {
     pub fn establishConnection(self: *@This(), allocator: std.mem.Allocator, username: []const u8, hostname: []const u8, port: u16) void {
         self.m.lock();
         defer self.m.unlock();
-        const addr = std.net.Address.resolveIp(hostname, port) catch |err| {
-            std.log.err("51::client::connect::addr: {any}", .{err});
-            var invalid_sip_popup = ui.SimplePopup.init(self.client.font, &self.sizing, 30*2);
-            invalid_sip_popup.setTextColor(rl.Color.red);
-            invalid_sip_popup.text = "Connection to server failed";
+
+        var err_popup = ui.SimplePopup.init(self.client.font, &self.sizing, 30*2); // TODO: self.client.FPS
+        err_popup.setTextColor(rl.Color.red);
+        var popup_msg: []u8 = undefined;
+        const addr = std.net.Address.resolveIp(hostname, port) catch |err| { // TODO: dest_addr
+            std.log.err("client::connect::addr: {any}", .{err});
+            popup_msg = std.fmt.allocPrint(
+                str_allocator,
+                "Could not resolve ip address: `{s}:{d}`",
+                .{hostname, port}
+            ) catch |alloc_err| {
+                std.log.err("{}", .{alloc_err});
+                std.posix.exit(1);
+            };
+            err_popup.text = popup_msg;
             std.log.err("{any}", .{err});
-            _ = self.popups.append(invalid_sip_popup) catch |errapp| {
-                std.log.err("39::login-screen::update: {}", .{errapp});
+            _ = self.popups.append(err_popup) catch |errapp| {
+                std.log.err("login-screen::update: {}", .{errapp});
                 std.posix.exit(1);
             };
             return;
         };
-        std.debug.print("Requesting connection to `{s}:{d}`\n", .{hostname, port});
+        const dst_addr = aids.cmn.address_as_str(addr); // TODO: dest_addr_str
+        std.debug.print("Requesting connection to `{s}`\n", .{dst_addr});
         const stream = std.net.tcpConnectToAddress(addr) catch |err| {
-            std.log.err("64::client::connect::stream: {any}", .{err});
-            std.log.err("51::client::connect::addr: {any}", .{err});
-            // TODO: fix naming
-            var conn_refused_popup = ui.SimplePopup.init(self.client.font, &self.sizing, 30*2);
-            conn_refused_popup.setTextColor(rl.Color.red);
-            conn_refused_popup.text = "Could not connect to server";
+            std.log.err("client::connect::stream: {any}", .{err});
+            std.log.err("client::connect::addr: {any}", .{err});
+            err_popup.setTextColor(rl.Color.red);
+            popup_msg = std.fmt.allocPrint(
+                str_allocator,
+                "Could not resolve tcp connection to address: `{s}`",
+                .{dst_addr}
+            ) catch |alloc_err| {
+                std.log.err("{}", .{alloc_err});
+                std.posix.exit(1);
+            };
+            err_popup.text = popup_msg;
             std.log.err("{any}", .{err});
-            _ = self.popups.append(conn_refused_popup) catch |errapp| {
+            _ = self.popups.append(err_popup) catch |errapp| {
                 std.log.err("39::login-screen::update: {}", .{errapp});
                 std.posix.exit(1);
             };
             return;
         };
-        const dst_addr = aids.cmn.address_as_str(addr);
         // request connection
         const reqp = Protocol.init(
             Protocol.Typ.REQ,

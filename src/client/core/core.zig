@@ -186,7 +186,7 @@ pub const Client = struct {
     client_addr: std.net.Address = undefined,
     client_addr_str: []const u8 = "404: not found",
     font: rl.Font,
-    font_size: usize,
+    font_size: f32,
     // TODO: FPS: usize
     pub fn init(allocator: std.mem.Allocator, font: rl.Font, log_level: Logging.Level) Client {
         const commander = Stab.Commander(Stab.Command(CommandData)).init(allocator);
@@ -194,6 +194,7 @@ pub const Client = struct {
         return Client{
             .log_level = log_level,
             .font = font,
+            .font_size = 0,
             .Commander = commander,
             .Actioner = actioner,
         };

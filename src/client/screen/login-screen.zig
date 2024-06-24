@@ -47,6 +47,9 @@ fn update(sd: *core.SharedData, data: LoginUD) void {
     _ = data;
     const uis = sd.sizing;
     const uie = sd.ui;
+    uie.username_input.updateFont(sd.client.font, sd.client.font_size);
+    uie.server_ip_input.updateFont(sd.client.font, sd.client.font_size);
+    uie.login_btn.updateFont(sd.client.font, sd.client.font_size);
     // login screen
     uie.username_input.setRec(
         uis.screen_width/2 - uis.screen_width/4,
@@ -112,15 +115,15 @@ fn render(sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
         0,
         rl.Color.light_gray
     );
-    uie.username_input.render(uis.window_extended, font, uis.font_size, frame_counter.*) catch |err| {
+    uie.username_input.render(uis.window_extended, frame_counter.*) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };
-    uie.server_ip_input.render(uis.window_extended, font, uis.font_size, frame_counter.*) catch |err| {
+    uie.server_ip_input.render(uis.window_extended, frame_counter.*) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };
-    uie.login_btn.render(font, uis.font_size) catch |err| {
+    uie.login_btn.render() catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };

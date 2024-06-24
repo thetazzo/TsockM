@@ -36,7 +36,7 @@ fn loadExternalFont(font_name: [:0]const u8) rl.Font {
 }
 
 /// I am thread
-fn accept_connections(sd: *core.SharedData) !void {
+fn acceptConnections(sd: *core.SharedData) !void {
     {
         sd.m.lock();
         defer sd.m.unlock();
@@ -125,7 +125,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     const popups = std.ArrayList(ui.SimplePopup).init(gpa_allocator);
     defer popups.deinit();
 
-    var username_input = ui.InputBox{.enabled = true};
+    var username_input = ui.InputBox{ .enabled = true };
     username_input.opts.placeholder = "Username";
     username_input.opts.label = "Enter your username:";
     var server_ip_input = ui.InputBox{};
@@ -152,7 +152,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
         },
     };
 
-    thread_pool[0] = try std.Thread.spawn(.{}, accept_connections, .{ &sd });
+    thread_pool[0] = try std.Thread.spawn(.{}, acceptConnections, .{ &sd });
 
     // Render loop
     while (!rl.windowShouldClose() and !sd.should_exit) {

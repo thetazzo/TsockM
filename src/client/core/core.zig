@@ -26,10 +26,6 @@ pub const SharedData = struct {
         defer self.m.unlock();
         self.sizing.update(SW, SH);
         self.client.font_size = self.sizing.font_size;
-
-        self.ui.username_input.bindSharedData(self);
-        self.ui.server_ip_input.bindSharedData(self);
-        self.ui.message_input.bindSharedData(self);
     }
 
     pub fn setConnected(self: *@This(), val: bool) void {

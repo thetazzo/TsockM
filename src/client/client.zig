@@ -31,8 +31,8 @@ fn loadExternalFont(font_name: [:0]const u8) rl.Font {
     for (0..127) |i| {
         tmp[i] = @as(i32, @intCast(i));
     }
-    const font = rl.loadFontEx(font_name, 60, &tmp);
-    return font;
+    const font_family = rl.loadFontEx(font_name, 60, &tmp);
+    return font_family;
 }
 
 /// I am thread
@@ -83,22 +83,22 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
 
-    // Loading font
+    // Loading font_family
     const self_path = try std.fs.selfExePathAlloc(gpa_allocator);
     defer gpa_allocator.free(self_path);
     const opt_self_dirname = std.fs.path.dirname(self_path);
 
-    var font: rl.Font = undefined;
+    var font_family: rl.Font = undefined;
     if (font_path.len > 0) {
         const font_pathZ = try std.fmt.allocPrintZ(str_allocator, "{s}", .{font_path});
-        font = loadExternalFont(font_pathZ);
+        font_family = loadExternalFont(font_pathZ);
     } else if (opt_self_dirname) |exe_dir| {
         const fp = "fonts/IosevkaTermSS02-SemiBold.ttf";
         const font_pathZ = try std.fmt.allocPrintZ(str_allocator, "{s}/{s}", .{ exe_dir, fp });
-        font = loadExternalFont(font_pathZ);
+        font_family = loadExternalFont(font_pathZ);
     }
 
-    var client = core.Client.init(gpa_allocator, font, log_level);
+    var client = core.Client.init(gpa_allocator, font_family, log_level);
 
     client.Commander.add(":exit", ClientCommand.EXIT_CLIENT);
     client.Commander.add(":close", ClientCommand.CLOSE_CLIENT);
@@ -123,14 +123,14 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     const popups = std.ArrayList(ui.SimplePopup).init(gpa_allocator);
     defer popups.deinit();
 
-    var username_input = ui.InputBox{ .enabled = true };
+    var username_input = ui.InputBox{ .enabled = true, .font = .{ .family = font_family } };
     username_input.opts.placeholder = "Username";
     username_input.opts.label = "Enter your username:";
-    var server_ip_input = ui.InputBox{};
+    var server_ip_input = ui.InputBox{ .font = .{ .family = font_family } };
     server_ip_input.opts.placeholder = "hostname:port";
     server_ip_input.opts.label = "Enter TsockM server IP:";
     var login_btn = ui.Button{ .text = "Login" };
-    var message_input = ui.InputBox{};
+    var message_input = ui.InputBox{ .font = .{ .family = font_family } };
     message_input.opts.placeholder = "Message";
     var message_display = ui.Display{};
     var sd = core.SharedData{
@@ -177,15 +177,15 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
             // Messaging screen
             // Draw successful connection
 
-            MessagingScreen.render(&sd, font, &frame_counter);
+            MessagingScreen.render(&sd, font_family, &frame_counter);
             //if (response_counter > 0) {
-            //    const sslen = rl.measureTextEx(font, succ_str, font_size, 0).x;
-            //    rl.drawTextEx(font, succ_str, rl.Vector2{.x=sw/2 - sslen/2, .y=sh/2 - sh/4}, font_size, 0, rl.Color.green);
+            //    const sslen = rl.measureTextEx(font_family, succ_str, font_size, 0).x;
+            //    rl.drawTextEx(font_family, succ_str, rl.Vector2{.x=sw/2 - sslen/2, .y=sh/2 - sh/4}, font_size, 0, rl.Color.green);
             //    response_counter -= 1;
             //} else {
             //}
         } else {
-            LoginScreen.render(&sd, font, &frame_counter);
+            LoginScreen.render(&sd, font_family, &frame_counter);
         }
 
         var i = sd.popups.items.len;

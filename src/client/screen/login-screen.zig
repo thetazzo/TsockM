@@ -57,8 +57,8 @@ fn update(sd: *core.SharedData, data: LoginUD) void {
         uie.username_input.rec.height,
     );
     uie.login_btn.setRec(uie.server_ip_input.rec.x + uis.screen_width / 5.5, uie.server_ip_input.rec.y + 140, uis.screen_width / 8, 90);
-    uie.username_input.update();
-    uie.server_ip_input.update();
+    uie.username_input.update(sd);
+    uie.server_ip_input.update(sd);
     uie.login_btn.update();
     // -------------------------------------------------------------------------
     // Handle custom input
@@ -98,11 +98,11 @@ fn render(sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
     };
     defer str_allocator.free(title_str);
     rl.drawTextEx(font, title_str, rl.Vector2{ .x = 20, .y = 25 }, uis.font_size * 1.75, 0, rl.Color.light_gray);
-    uie.username_input.render(frame_counter.*) catch |err| {
+    uie.username_input.render(&sd.sizing, frame_counter.*) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };
-    uie.server_ip_input.render(frame_counter.*) catch |err| {
+    uie.server_ip_input.render(&sd.sizing, frame_counter.*) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };

@@ -14,7 +14,17 @@ pub fn executor(_: ?[]const u8, cd: ?core.CommandData) void {
         cd.?.sd.client.server_addr_str,
         "OK",
     );
-    cd.?.sd.client.sendRequestToServer(reqp); 
+    cd.?.sd.client.sendRequestToServer(reqp);
+    // Collect death request response and if successful kill the client
+    const resp = core.Protocol.collect(std.heap.page_allocator, cd.?.sd.client.stream) catch |err| {
+        std.log.err("exit-client::executor: {any}", .{err});
+        std.posix.exit(1);
+    };
+    if (resp.status_code == .OK) {
+        cd.?.sd.setShouldExit(true);
+    } else {
+        // TODO: handle not OK case
+    }
 }
 
 pub const COMMAND = aids.Stab.Command(core.CommandData){

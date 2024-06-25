@@ -15,12 +15,14 @@ fn collectRequest(_: ?net.Server.Connection, sd: *SharedData, protocol: Protocol
 }
 
 fn collectRespone(sd: *SharedData, protocol: Protocol) void {
-    if (protocol.status_code == Protocol.StatusCode.OK) {
-        sd.setShouldExit(true);
-    }
+    _ = sd;
+    _ = protocol;
+    // if (protocol.status_code == Protocol.StatusCode.OK) {
+    //     sd.setShouldExit(true);
+    // }
 }
 
-fn collectError(_:*SharedData) void {
+fn collectError(_: *SharedData) void {
     std.log.err("not implemented", .{});
 }
 
@@ -34,7 +36,7 @@ fn transmitRequest(_: Protocol.TransmitionMode, sd: *SharedData, _: []const u8) 
         sd.client.server_addr_str,
         "OK",
     );
-    sd.client.sendRequestToServer(reqp); 
+    sd.client.sendRequestToServer(reqp);
 }
 
 fn transmitRespone() void {
@@ -47,14 +49,14 @@ fn transmitError() void {
 
 pub const ACTION = Action(SharedData){
     .collect = .{
-        .request  = collectRequest,
+        .request = collectRequest,
         .response = collectRespone,
-        .err      = collectError,
+        .err = collectError,
     },
     .transmit = .{
-        .request  = transmitRequest,
+        .request = transmitRequest,
         .response = transmitRespone,
-        .err      = transmitError,
+        .err = transmitError,
     },
     .internal = null,
 };

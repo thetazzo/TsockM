@@ -3,7 +3,7 @@ const ui = @import("../ui/ui.zig");
 const rl = @import("raylib");
 const sc = @import("../screen/screen.zig");
 const aids = @import("aids");
-const Protocol = aids.Protocol;
+pub const Protocol = aids.Protocol;
 const Logging = aids.Logging;
 const Stab = aids.Stab;
 
@@ -154,8 +154,17 @@ pub const SharedData = struct {
     pub fn closeConnection(self: *@This()) void {
         self.m.lock();
         defer self.m.unlock();
-
-        //self.should_exit = true;
+        // TODO: This should be client action
+        const reqp = aids.Protocol.init(
+            aids.Protocol.Typ.REQ,
+            aids.Protocol.Act.COMM_END,
+            aids.Protocol.StatusCode.OK,
+            self.client.id,
+            self.client.client_addr_str,
+            self.client.server_addr_str,
+            "OK",
+        );
+        self.client.sendRequestToServer(reqp);
 
         self.connected = false;
         self.client.username = undefined;

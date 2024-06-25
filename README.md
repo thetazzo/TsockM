@@ -154,9 +154,9 @@ zig build client -- <subcommand>
 * [ ] {UPDATE} selection cursor movement ~ not all text selected at once
 #### 0.4.7
 * [x] {FEAT} `SimplePopup` multiposition support
-* [ ] {UPDATE} clean up and make popup hanling more robust
+* [x] {UPDATE} clean up and make popup hanling more robust
     * assert `popup.text.len > 0`, popups with no text should not be allowed
-* [ ] {BUG} input filed click detection too high for `server_ip_input`
+* [x] {BUG} input filed click detection too high for `server_ip_input`
 * [x] {BUG} only two popups are displayed at a time, there should be more
 * [x] {BUG} when `tab` is pressed and no ui element is selected the client crashes (LoginScreen)
 * [x] {BUG} when client uses `:close` and reconnects and sends a message two messages are sent

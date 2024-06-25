@@ -24,7 +24,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Pr
     const un = splits.next().?;
     const hash = splits.rest();
     //I dont have to free the allocated mem because if i do message gets corrupted
-    const msg_txt = std.fmt.allocPrint(collocator, "'{s}#{s}' has died", .{un, hash}) catch |err| {
+    const msg_txt = std.fmt.allocPrint(collocator, "'{s}#{s}' has died", .{ un, hash }) catch |err| {
         std.log.err("ntfy-kill::collectRequest: {any}", .{err});
         std.posix.exit(1);
     };
@@ -34,8 +34,8 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Pr
         .text = msg_txt,
         .text_color = rl.Color.red,
     };
-    // TODO: add FPS prop to client structure 
-    var death_popup = ui.SimplePopup.init(sd.client.font, &sd.sizing, 30*3);
+    // TODO: add FPS prop to client structure
+    var death_popup = ui.SimplePopup.init(sd.client.font, .TOP_CENTER, 30 * 3);
     death_popup.setTextColor(rl.Color.sky_blue);
     death_popup.text = msg_txt;
     _ = sd.popups.append(death_popup) catch 1;
@@ -51,7 +51,7 @@ fn collectRespone(sd: *SharedData, protocol: Protocol) void {
     std.log.err("not implemented", .{});
 }
 
-fn collectError(_:*SharedData) void {
+fn collectError(_: *SharedData) void {
     std.log.err("not implemented", .{});
 }
 
@@ -69,14 +69,14 @@ fn transmitError() void {
 
 pub const ACTION = Action(SharedData){
     .collect = .{
-        .request  = collectRequest,
+        .request = collectRequest,
         .response = collectRespone,
-        .err      = collectError,
+        .err = collectError,
     },
     .transmit = .{
-        .request  = transmitRequest,
+        .request = transmitRequest,
         .response = transmitRespone,
-        .err      = transmitError,
+        .err = transmitError,
     },
     .internal = null,
 };

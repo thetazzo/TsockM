@@ -124,11 +124,10 @@ fn consumeKeyboard(self: *@This()) void {
                         rl.setClipboardText(txt);
                         self.selected_text = "";
                         self.selection_mode = false;
-
-                        var cpy_popup = ui.SimplePopup.init(self.sd.client.font, &self.sd.sizing, 30 * 1); // TODO: self.client.FPS
+                        var cpy_popup = ui.SimplePopup.init(self.sd.client.font, .BOTTOM_FIX, 30 * 1); // TODO: self.client.FPS
                         cpy_popup.text = "Text copied"; // TODO: SimplePopup.setText
                         cpy_popup.setTextColor(rl.Color.green);
-                        _ = self.sd.popups.append(cpy_popup) catch 1;
+                        self.sd.pushPopup(cpy_popup);
                     } else if (key8 == ' ') {
                         self.selected_text = "";
                         self.selection_mode = false;
@@ -157,7 +156,7 @@ fn consumeKeyboard(self: *@This()) void {
         }
         if (kybrd.isValidControl() and rl.isKeyPressed(.key_c)) {
             // TODO: INSERT mode like in vim (if selection mode and pressed `i` enter insert mode)
-            var mode_popup = ui.SimplePopup.init(self.font.family, &self.sd.sizing, 30 * 2); // TODO: self.sd.client.FPS
+            var mode_popup = ui.SimplePopup.init(self.font.family, .BOTTOM_FIX, 30 * 2); // TODO: self.sd.client.FPS
             if (self.selection_mode) {
                 self.selected_text = "";
                 self.selection_mode = false;
@@ -166,7 +165,7 @@ fn consumeKeyboard(self: *@This()) void {
                 self.selection_mode = true;
                 mode_popup.text = "VISUAL SELECT";
             }
-            _ = self.sd.popups.append(mode_popup) catch 1;
+            self.sd.pushPopup(mode_popup);
         }
         if (kybrd.isValidControl() and rl.isKeyPressed(.key_a)) {
             if (self.selection_mode) {

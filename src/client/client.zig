@@ -192,12 +192,12 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
         while (i > 0) {
             var popup = &sd.popups.items[i - 1];
             if (i >= 2) {
-                const popup_prev = sd.popups.items[i - 2];
+                var popup_prev = sd.popups.items[i - 2];
                 popup.update();
-                try popup.render(popup_prev);
+                try popup.render(&sd.sizing, &popup_prev);
             } else {
                 popup.update();
-                try popup.render(null);
+                try popup.render(&sd.sizing, null);
             }
             if (popup.lifetime <= 0) {
                 _ = sd.popups.orderedRemove(i - 1);

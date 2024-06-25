@@ -3,7 +3,7 @@ const ui = @import("../ui/ui.zig");
 const rl = @import("raylib");
 const sc = @import("../screen/screen.zig");
 const aids = @import("aids");
-const Protocol = aids.Protocol;
+pub const Protocol = aids.Protocol;
 const Logging = aids.Logging;
 const Stab = aids.Stab;
 
@@ -26,7 +26,7 @@ pub const SharedData = struct {
         defer self.m.unlock();
         self.sizing.update(SW, SH);
         self.client.font_size = self.sizing.font_size;
-        
+
         self.ui.username_input.bindSharedData(self);
         self.ui.server_ip_input.bindSharedData(self);
         self.ui.message_input.bindSharedData(self);
@@ -43,7 +43,20 @@ pub const SharedData = struct {
         defer self.m.unlock();
         self.should_exit = should;
     }
+    pub fn pushPopup(self: *@This(), popup: ui.SimplePopup) void {
+        self.m.lock();
+        defer self.m.unlock();
 
+        if (popup.pos == .BOTTOM_FIX) {
+            for (self.popups.items, 0..self.popups.items.len) |p, i| {
+                if (p.pos == .BOTTOM_FIX) {
+                    self.popups.items[i] = popup;
+                    return;
+                }
+            }
+        }
+        _ = self.popups.append(popup) catch 1;
+    }
     pub fn pushMessage(self: *@This(), msg: ui.Display.Message) !void {
         self.m.lock();
         defer self.m.unlock();
@@ -55,16 +68,12 @@ pub const SharedData = struct {
         self.m.lock();
         defer self.m.unlock();
 
-        var err_popup = ui.SimplePopup.init(self.client.font, &self.sizing, 30*2); // TODO: self.client.FPS
+        var err_popup = ui.SimplePopup.init(self.client.font, .TOP_CENTER, 30 * 2); // TODO: self.client.FPS
         err_popup.setTextColor(rl.Color.red);
         var popup_msg: []u8 = undefined;
         const addr = std.net.Address.resolveIp(hostname, port) catch |err| { // TODO: dest_addr
             std.log.err("client::connect::addr: {any}", .{err});
-            popup_msg = std.fmt.allocPrint(
-                str_allocator,
-                "Could not resolve ip address: `{s}:{d}`",
-                .{hostname, port}
-            ) catch |alloc_err| {
+            popup_msg = std.fmt.allocPrint(str_allocator, "Could not resolve ip address: `{s}:{d}`", .{ hostname, port }) catch |alloc_err| {
                 std.log.err("{}", .{alloc_err});
                 std.posix.exit(1);
             };
@@ -82,11 +91,7 @@ pub const SharedData = struct {
             std.log.err("client::connect::stream: {any}", .{err});
             std.log.err("client::connect::addr: {any}", .{err});
             err_popup.setTextColor(rl.Color.red);
-            popup_msg = std.fmt.allocPrint(
-                str_allocator,
-                "Could not resolve tcp connection to address: `{s}`",
-                .{dst_addr}
-            ) catch |alloc_err| {
+            popup_msg = std.fmt.allocPrint(str_allocator, "Could not resolve tcp connection to address: `{s}`", .{dst_addr}) catch |alloc_err| {
                 std.log.err("{}", .{alloc_err});
                 std.posix.exit(1);
             };
@@ -129,16 +134,13 @@ pub const SharedData = struct {
             self.client.client_addr_str = resp.dst;
             self.connected = true;
 
-            const succ_str = std.fmt.allocPrintZ(allocator,
-                "Client connected successfully to `{s}` :)",
-                .{self.client.server_addr_str}
-            ) catch |err| {
+            const succ_str = std.fmt.allocPrintZ(allocator, "Client connected successfully to `{s}` :)", .{self.client.server_addr_str}) catch |err| {
                 std.log.err("SharedData::establishConnection::succ_str: {any}", .{err});
                 std.posix.exit(1);
             };
 
             // TODO: does SimplePopup free allocated text ??
-            var succ_conn_popup = ui.SimplePopup.init(self.client.font, &self.sizing, 30*3); // TODO :self.client.FPS
+            var succ_conn_popup = ui.SimplePopup.init(self.client.font, .TOP_CENTER, 30 * 3); // TODO :self.client.FPS
             succ_conn_popup.text = succ_str; // TODO: SimplePopup.setText
             succ_conn_popup.setTextColor(rl.Color.green);
             _ = self.popups.append(succ_conn_popup) catch 1; // TODO: sd.pushPopup
@@ -152,8 +154,17 @@ pub const SharedData = struct {
     pub fn closeConnection(self: *@This()) void {
         self.m.lock();
         defer self.m.unlock();
-
-        //self.should_exit = true;
+        // TODO: This should be client action
+        const reqp = aids.Protocol.init(
+            aids.Protocol.Typ.REQ,
+            aids.Protocol.Act.COMM_END,
+            aids.Protocol.StatusCode.OK,
+            self.client.id,
+            self.client.client_addr_str,
+            self.client.server_addr_str,
+            "OK",
+        );
+        self.client.sendRequestToServer(reqp);
 
         self.connected = false;
         self.client.username = undefined;
@@ -164,7 +175,7 @@ pub const SharedData = struct {
         self.client.server_addr = undefined;
         self.client.client_addr = undefined;
 
-        var close_connection_popup = ui.SimplePopup.init(self.client.font, &self.sizing, 30*4); // TODO: FPS client prop
+        var close_connection_popup = ui.SimplePopup.init(self.client.font, .TOP_CENTER, 30 * 4); // TODO: FPS client prop
         close_connection_popup.text = "Server connection terminated"; // TODO: SimplePopup.setText
         close_connection_popup.setTextColor(rl.Color.orange);
         _ = self.popups.append(close_connection_popup) catch 1; // TODO: self.pushPopup
@@ -221,14 +232,11 @@ pub const Client = struct {
         self.id = id;
     }
     pub fn asStr(self: @This(), allocator: std.mem.Allocator) [:0]const u8 {
-        const stats = std.fmt.allocPrintZ(allocator,
-            "Client:\n" ++
+        const stats = std.fmt.allocPrintZ(allocator, "Client:\n" ++
             "    username: {s}\n" ++
             "    id: {s}\n" ++
             "    server_address: {s}\n" ++
-            "    client_address: {s}",
-            .{self.username, self.id, self.server_addr_str, self.client_addr_str}
-        ) catch |err| {
+            "    client_address: {s}", .{ self.username, self.id, self.server_addr_str, self.client_addr_str }) catch |err| {
             std.log.err("client::asStr: {any}", .{err});
             std.posix.exit(1);
         };
@@ -259,4 +267,3 @@ pub const Client = struct {
         _ = Protocol.transmit(req_stream, request);
     }
 };
-

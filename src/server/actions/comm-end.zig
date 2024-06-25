@@ -13,7 +13,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Pr
     if (opt_peer_ref) |peer_ref| {
         const peer = sd.peer_pool.items[peer_ref.ref_id];
         const endp = Protocol.init(
-            Protocol.Typ.REQ,
+            Protocol.Typ.RES,
             Protocol.Act.COMM_END,
             Protocol.StatusCode.OK,
             "server",
@@ -23,6 +23,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Pr
         );
         endp.dump(sd.server.log_level);
         _ = Protocol.transmit(peer.stream(), endp);
+        sd.peerRemove(peer_ref.ref_id);
     }
 }
 
@@ -32,7 +33,7 @@ fn collectRespone(sd: *SharedData, protocol: Protocol) void {
     std.log.err("not implemented", .{});
 }
 
-fn collectError(_:*SharedData) void {
+fn collectError(_: *SharedData) void {
     std.log.err("not implemented", .{});
 }
 
@@ -40,7 +41,7 @@ fn transmitRequest(mode: Protocol.TransmitionMode, sd: *SharedData, request_data
     switch (mode) {
         .UNICAST => {
             const ref_id = std.fmt.parseInt(usize, request_data, 10) catch |err| {
-                std.log.err("provided request data `{any}` is not a number\n{any}", .{request_data, err});
+                std.log.err("provided request data `{any}` is not a number\n{any}", .{ request_data, err });
                 return;
             };
             const peer = sd.peer_pool.items[ref_id];
@@ -59,19 +60,19 @@ fn transmitRequest(mode: Protocol.TransmitionMode, sd: *SharedData, request_data
         .BROADCAST => {
             for (sd.peer_pool.items[0..]) |peer| {
                 const endp = Protocol.init(
-                Protocol.Typ.REQ,
-                Protocol.Act.COMM_END,
-                Protocol.StatusCode.OK,
-                "server",
-                sd.server.address_str,
-                peer.commAddressAsStr(),
-                "OK",
-            );
+                    Protocol.Typ.REQ,
+                    Protocol.Act.COMM_END,
+                    Protocol.StatusCode.OK,
+                    "server",
+                    sd.server.address_str,
+                    peer.commAddressAsStr(),
+                    "OK",
+                );
                 endp.dump(sd.server.log_level);
                 _ = Protocol.transmit(peer.stream(), endp);
             }
             sd.clearPeerPool();
-        }
+        },
     }
 }
 
@@ -85,14 +86,14 @@ fn transmitError() void {
 
 pub const ACTION = Action(SharedData){
     .collect = .{
-        .request  = collectRequest,
+        .request = collectRequest,
         .response = collectRespone,
-        .err      = collectError,
+        .err = collectError,
     },
     .transmit = .{
-        .request  = transmitRequest,
+        .request = transmitRequest,
         .response = transmitRespone,
-        .err      = transmitError,
+        .err = transmitError,
     },
     .internal = null,
 };

@@ -40,6 +40,10 @@ pub const SimplePopup = struct {
         }
     }
     pub fn render(self: *@This(), sizing: *sc.UI_SIZING, previous: ?*SimplePopup) !void {
+        if (self.text.len <= 0) {
+            std.log.err("SimplePopup: empty popup text is not allowed", .{});
+            unreachable;
+        }
         const txt = try std.fmt.allocPrintZ(std.heap.page_allocator, "{s}", .{self.text});
         const tmp_size = rl.measureTextEx(self.options.font, txt, sizing.font_size, 0);
         const rw = @max(100, tmp_size.x + 40);

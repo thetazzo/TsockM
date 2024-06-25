@@ -149,6 +149,10 @@ zig build client -- <subcommand>
 * {FEAT} keybind list screen that shows all keybinds and their functionality 
 * [ ] {UPDATE} `Input-Box` report when switching between `selection` and `insert` mode
 * [ ] {UPDATE} `Input-Box` report deletion of text
+#### 0.4.8
+* [ ] {UPDATE} `INSERT` mode for input-box
+* [ ] {FEAT} `SimplePopup` multiposition support
+* [ ] {UPDATE} selection cursor movement ~ not all text selected at once
 #### 0.4.7
 * [ ] {UPDATE} clean up and make popup hanling more robust
     * `setText`
@@ -162,7 +166,7 @@ zig build client -- <subcommand>
 * [x] {FEAT}   `:close` command that disconnects from the server and returns to the login screen
 * [x] {UPDATE} `Input-Box` should hold font data to be used within the input box
 * [x] {UPDATE} `Input-Box` should hold sizing information of the client
-* [ ] {FEAT}   `Input-Box` copying selected text support
+* [x] {FEAT}   `Input-Box` copying selected text support
 #### 0.4.5
 * [x] {UPDATE} Replace succesful connection screen with a popupdon't crash the the client wait for a connection to the server be available
 * [x] {UPDATE} Input box should accept placeholder "ghost" text

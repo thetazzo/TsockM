@@ -20,7 +20,6 @@ fn update(sd: *core.SharedData, _: MessagingUD) void {
     const uis = sd.sizing;
     const uie = sd.ui;
     const cmds_size = rl.measureTextEx(sd.client.font, cmds_str, uis.font_size * 3/4, 0);
-    uie.message_input.updateFont(sd.client.font, sd.client.font_size);
     // TODO: message_display font update
     uie.message_input.setRec(20, uis.screen_height - uis.screen_height*0.12, uis.screen_width - 40, uis.screen_height*0.075); 
     uie.message_display.setRec(20, cmds_size.y + 40, uis.screen_width - 40, uie.message_input.rec.y - uis.screen_height*0.02 - (cmds_size.y + 40)); 
@@ -38,7 +37,7 @@ fn update(sd: *core.SharedData, _: MessagingUD) void {
         // Handle uis.message_input input ~ client command handling
         if (rl.isKeyPressed(.key_enter)) {
             // handle client actions
-            const mcln = uie.message_input.getCleanValue();
+            const mcln = uie.message_input.getTextAllocd();
             if (mcln.len > 0) {
                 var splits = std.mem.splitScalar(u8, mcln, ' ');
                 if (splits.next()) |frst| {
@@ -50,7 +49,7 @@ fn update(sd: *core.SharedData, _: MessagingUD) void {
                             .ui_elements = uie,
                         });
                     } else {
-                        const msg = uie.message_input.getCleanValue();
+                        const msg = uie.message_input.getTextAllocd();
                         ClientAction.MSG.transmit.?.request(Protocol.TransmitionMode.UNICAST, sd, msg);
                     }
                     _ = uie.message_input.clean();
@@ -71,7 +70,7 @@ fn render(sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
     // TODO: cocmmand as str should be more groupped together 
     // TODO: font scale for commands font size (3/4 is current) make it a constant variable
     rl.drawTextEx(sd.client.font, cmds_str, rl.Vector2{.x=40, .y=20}, uis.font_size * 3/4, 0, rl.Color.light_gray);
-    uie.message_input.render(uis.window_extended, frame_counter.*) catch |err| {
+    uie.message_input.render(frame_counter.*) catch |err| {
         std.log.err("MessagingScreen::render::cmds_str: {any}", .{err});
         std.posix.exit(1);
     };

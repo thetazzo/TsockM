@@ -47,8 +47,6 @@ fn update(sd: *core.SharedData, data: LoginUD) void {
     _ = data;
     const uis = sd.sizing;
     const uie = sd.ui;
-    uie.username_input.updateFont(sd.client.font, sd.client.font_size);
-    uie.server_ip_input.updateFont(sd.client.font, sd.client.font_size);
     uie.login_btn.updateFont(sd.client.font, sd.client.font_size);
     // login screen
     uie.username_input.setRec(
@@ -87,13 +85,13 @@ fn update(sd: *core.SharedData, data: LoginUD) void {
     }
     if (uie.login_btn.isClicked()) {
         const username = std.mem.sliceTo(&uie.username_input.value, 0);
-        const sip = uie.server_ip_input.getCleanValue();
+        const sip = uie.server_ip_input.getTextAllocd();
         connectClientToServer(sip, sd, username);
     }
     if (uie.username_input.enabled or uie.server_ip_input.enabled) {
         if (rl.isKeyPressed(.key_enter)) {
             const username = std.mem.sliceTo(&uie.username_input.value, 0);
-            const sip = uie.server_ip_input.getCleanValue();
+            const sip = uie.server_ip_input.getTextAllocd();
             connectClientToServer(sip, sd, username);
         }
     }
@@ -115,11 +113,11 @@ fn render(sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
         0,
         rl.Color.light_gray
     );
-    uie.username_input.render(uis.window_extended, frame_counter.*) catch |err| {
+    uie.username_input.render(frame_counter.*) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };
-    uie.server_ip_input.render(uis.window_extended, frame_counter.*) catch |err| {
+    uie.server_ip_input.render(frame_counter.*) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };

@@ -87,13 +87,15 @@ fn update(sd: *core.SharedData, data: LoginUD) void {
     }
     if (uie.login_btn.isClicked()) {
         const username = uie.username_input.value.getValue();
-        const sip = uie.server_ip_input.value.getValueZ();
+        const sip = uie.server_ip_input.value.getValueZ(str_allocator);
+        defer str_allocator.free(sip);
         connectClientToServer(sip, sd, username);
     }
     if (uie.username_input.enabled or uie.server_ip_input.enabled) {
         if (rl.isKeyPressed(.key_enter)) {
             const username = uie.username_input.value.getValue();
-            const sip = uie.server_ip_input.value.getValueZ();
+            const sip = uie.server_ip_input.value.getValueZ(str_allocator);
+            defer str_allocator.free(sip);
             connectClientToServer(sip, sd, username);
         }
     }

@@ -5,8 +5,6 @@ const kybrd = @import("../core/keyboard.zig");
 const ui = @import("../ui/ui.zig");
 const sc = @import("../screen/screen.zig");
 
-const str_allocator = std.heap.page_allocator; // TODO: allocator should be passed when user creates InputBox object
-
 const InputMode = enum {
     SELECTION,
     INSERT,
@@ -34,9 +32,9 @@ const Text = struct {
     }
     // allocated value that is 0 terminated [:0]const u8
     // TODO: accept an allocator
-    pub fn getValueZ(self: *@This()) [:0]u8 {
+    pub fn getValueZ(self: *@This(), allocator: std.mem.Allocator) [:0]u8 {
         const cln = std.mem.sliceTo(&self.value, 0);
-        const allocd = std.fmt.allocPrintZ(str_allocator, "{s}", .{cln}) catch |err| {
+        const allocd = std.fmt.allocPrintZ(allocator, "{s}", .{cln}) catch |err| {
             std.log.err("input-box::getValueAllocd::allocd: {any}", .{err});
             std.posix.exit(1);
         };
@@ -139,6 +137,7 @@ pub const InputBox = struct {
     }
     // Handle user keyboard input
     fn consumeKeyboard(self: *@This(), sd: *core.SharedData) void {
+        const str_allocator = std.heap.page_allocator;
         if (self.enabled) {
             var key32 = rl.getCharPressed();
             while (key32 > 0) {
@@ -150,7 +149,8 @@ pub const InputBox = struct {
                             self.selected_text = "";
                             self.selection_mode = false;
                         } else if (key8 == 'y') {
-                            const txt = self.value.getValueZ();
+                            const txt = self.value.getValueZ(str_allocator);
+                            defer str_allocator.free(txt);
                             rl.setClipboardText(txt);
                             self.selected_text = "";
                             self.selection_mode = false;
@@ -194,7 +194,8 @@ pub const InputBox = struct {
             }
             if (kybrd.isValidControl() and rl.isKeyPressed(.key_a)) {
                 if (self.selection_mode) {
-                    const value = self.value.getValueZ();
+                    const value = self.value.getValueZ(str_allocator);
+                    defer str_allocator.free(value);
                     if (value.len > 0) {
                         self.selected_text = value;
                     }
@@ -250,7 +251,8 @@ pub const InputBox = struct {
         }
     }
     pub fn render(self: *@This(), sizing: *sc.UI_SIZING, frame_counter: usize) !void {
-        const mssg2 = self.value.getValueZ();
+        const str_allocator = std.heap.page_allocator;
+        const mssg2 = self.value.getValueZ(str_allocator);
         defer str_allocator.free(mssg2);
 
         const txt_size = rl.measureTextEx(self.font.family, mssg2, sizing.font_size, 0);

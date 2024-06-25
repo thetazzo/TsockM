@@ -34,7 +34,8 @@ fn update(sd: *core.SharedData, _: MessagingUD) void {
         // Handle uis.message_input input ~ client command handling
         if (rl.isKeyPressed(.key_enter)) {
             // handle client actions
-            const mcln = uie.message_input.value.getValueZ();
+            const mcln = uie.message_input.value.getValueZ(str_allocator);
+            defer str_allocator.free(mcln);
             if (mcln.len > 0) {
                 var splits = std.mem.splitScalar(u8, mcln, ' ');
                 if (splits.next()) |frst| {
@@ -46,7 +47,8 @@ fn update(sd: *core.SharedData, _: MessagingUD) void {
                             .ui_elements = uie,
                         });
                     } else {
-                        const msg = uie.message_input.value.getValueZ();
+                        const msg = uie.message_input.value.getValueZ(str_allocator);
+                        defer str_allocator.free(msg);
                         ClientAction.MSG.transmit.?.request(Protocol.TransmitionMode.UNICAST, sd, msg);
                     }
                     _ = uie.message_input.clean();

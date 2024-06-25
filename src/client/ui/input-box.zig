@@ -23,13 +23,13 @@ font: struct {
 },
 sd: *core.SharedData = undefined,
 opts: struct {
-    mouse: bool,                      // default mouse support
-    keyboard: bool,                   // keyboard support 
-    clipboard: bool,                  // clipboard support        
-    backspace_removal: bool,          // backspace removal support
-    bg_color: rl.Color,               // background color         
-    placeholder: [:0]const u8,        // placeholder text (visbile when defined and string length is > 0)
-    label: [:0]const u8,              // input box label (visible when defined and string lenght is > 0)
+    mouse: bool, // default mouse support
+    keyboard: bool, // keyboard support
+    clipboard: bool, // clipboard support
+    backspace_removal: bool, // backspace removal support
+    bg_color: rl.Color, // background color
+    placeholder: [:0]const u8, // placeholder text (visbile when defined and string length is > 0)
+    label: [:0]const u8, // input box label (visible when defined and string lenght is > 0)
 } = .{
     .mouse = true,
     .keyboard = true,
@@ -41,15 +41,15 @@ opts: struct {
 },
 pub fn bindSharedData(self: *@This(), sd: *core.SharedData) void {
     self.sd = sd;
-    self.font = .{ 
+    self.font = .{
         .family = sd.client.font,
         .size = sd.sizing.font_size,
     };
 }
-pub fn getTextAllocd(self: *@This()) [:0]u8 {
+pub fn getValueAllocd(self: *@This()) [:0]u8 {
     const cln = std.mem.sliceTo(&self.value, 0);
     const allocd = std.fmt.allocPrintZ(str_allocator, "{s}", .{cln}) catch |err| {
-        std.log.err("input-box::getTextAllocd::allocd: {any}", .{err});
+        std.log.err("input-box::getValueAllocd::allocd: {any}", .{err});
         std.posix.exit(1);
     };
     return allocd;
@@ -117,7 +117,7 @@ fn consumeKeyboard(self: *@This()) void {
                         self.selected_text = "";
                         self.selection_mode = false;
                     } else if (key8 == 'y') {
-                        const txt = std.fmt.allocPrintZ(str_allocator, "{s}", .{self.getTextAllocd()}) catch |err| {
+                        const txt = std.fmt.allocPrintZ(str_allocator, "{s}", .{self.getValueAllocd()}) catch |err| {
                             std.log.err("input-box::consumeKeyboard: {any}", .{err});
                             std.posix.exit(1);
                         };
@@ -125,11 +125,10 @@ fn consumeKeyboard(self: *@This()) void {
                         self.selected_text = "";
                         self.selection_mode = false;
 
-                        var cpy_popup = ui.SimplePopup.init(self.sd.client.font, &self.sd.sizing, 30*1); // TODO: self.client.FPS
+                        var cpy_popup = ui.SimplePopup.init(self.sd.client.font, &self.sd.sizing, 30 * 1); // TODO: self.client.FPS
                         cpy_popup.text = "Text copied"; // TODO: SimplePopup.setText
                         cpy_popup.setTextColor(rl.Color.green);
                         _ = self.sd.popups.append(cpy_popup) catch 1;
-
                     } else if (key8 == ' ') {
                         self.selected_text = "";
                         self.selection_mode = false;
@@ -158,7 +157,7 @@ fn consumeKeyboard(self: *@This()) void {
         }
         if (kybrd.isValidControl() and rl.isKeyPressed(.key_c)) {
             // TODO: INSERT mode like in vim (if selection mode and pressed `i` enter insert mode)
-            var mode_popup = ui.SimplePopup.init(self.font.family, &self.sd.sizing, 30*2); // TODO: self.sd.client.FPS
+            var mode_popup = ui.SimplePopup.init(self.font.family, &self.sd.sizing, 30 * 2); // TODO: self.sd.client.FPS
             if (self.selection_mode) {
                 self.selected_text = "";
                 self.selection_mode = false;
@@ -171,9 +170,9 @@ fn consumeKeyboard(self: *@This()) void {
         }
         if (kybrd.isValidControl() and rl.isKeyPressed(.key_a)) {
             if (self.selection_mode) {
-                const value = self.getTextAllocd();
+                const value = self.getValueAllocd();
                 if (value.len > 0) {
-                    self.selected_text = value; 
+                    self.selected_text = value;
                 }
             }
         }
@@ -191,7 +190,7 @@ fn serveClipboardPaste(self: *@This()) void {
 fn backspaceRemoval(self: *@This()) void {
     if (kybrd.isPressedAndOrHeld(.key_backspace)) {
         _ = self.pop();
-    } 
+    }
 }
 // push a single character
 pub fn push(self: *@This(), char: u8) void {
@@ -217,7 +216,7 @@ pub fn pop(self: *@This()) u8 {
         self.letter_count -= 1;
     }
     const chr = self.value[self.letter_count];
-    self.value[self.letter_count] = 0; 
+    self.value[self.letter_count] = 0;
     if (self.selection_mode) {
         if (self.selected_text.len > 0) {
             self.selected_text[self.letter_count] = 0;
@@ -226,7 +225,7 @@ pub fn pop(self: *@This()) u8 {
     }
     return chr;
 }
-// Remove all characters 
+// Remove all characters
 pub fn clean(self: *@This()) [256]u8 {
     for (0..255) |i| {
         self.value[i] = 0;
@@ -243,17 +242,19 @@ pub fn update(self: *@This()) void {
     }
 }
 pub fn render(self: *@This(), frame_counter: usize) !void {
-    const mssg2 = self.getTextAllocd();
+    const mssg2 = self.getValueAllocd();
+    defer str_allocator.free(mssg2);
+
     const txt_size = rl.measureTextEx(self.font.family, mssg2, self.font.size, 0);
     const txt_height = txt_size.y;
     const txt_hpad = 18;
     const txt_vpad = self.font.size * 0.1;
     const txt_pos = rl.Vector2{
         .x = self.rec.x + txt_hpad,
-        .y = self.rec.y + self.rec.height/2 - txt_height/2 + txt_vpad,
+        .y = self.rec.y + self.rec.height / 2 - txt_height / 2 + txt_vpad,
     };
-    self.rec.width = self.rec.width + 2*txt_hpad;
-    self.rec.height = self.rec.height + 2*txt_vpad;
+    self.rec.width = self.rec.width + 2 * txt_hpad;
+    self.rec.height = self.rec.height + 2 * txt_vpad;
     rl.drawRectangleRounded(self.rec, 0.0, 0, self.opts.bg_color);
     if (!self.sd.sizing.window_extended) {
         self.rec.y += 2;
@@ -264,18 +265,17 @@ pub fn render(self: *@This(), frame_counter: usize) !void {
             .y = txt_pos.y,
         };
         // Draw blinking cursor
-        if (!self.selection_mode) { 
-            if ((frame_counter/8) % 2 == 0) rl.drawTextEx(self.font.family, "_",  cur_pos, self.font.size, 0, rl.Color.black);
+        if (!self.selection_mode) {
+            if ((frame_counter / 8) % 2 == 0) rl.drawTextEx(self.font.family, "_", cur_pos, self.font.size, 0, rl.Color.black);
         } else {
-            const char_width:f32 = txt_size.x / @as(f32, @floatFromInt(mssg2.len));
+            const char_width: f32 = txt_size.x / @as(f32, @floatFromInt(mssg2.len));
             rl.drawRectangleRec(rl.Rectangle.init(cur_pos.x, cur_pos.y, char_width, txt_size.y), rl.Color.black);
         }
-        
         if (self.selected_text.len > 0) {
             for (0..self.selected_text.len) |i| {
-                const char_width:f32 = txt_size.x / @as(f32, @floatFromInt(mssg2.len));
+                const char_width: f32 = txt_size.x / @as(f32, @floatFromInt(mssg2.len));
                 const char_pos = rl.Vector2{
-                    .x = txt_pos.x + char_width*@as(f32, @floatFromInt(i)),
+                    .x = txt_pos.x + char_width * @as(f32, @floatFromInt(i)),
                     .y = txt_pos.y,
                 };
                 rl.drawRectangleRec(rl.Rectangle.init(char_pos.x, char_pos.y, char_width, txt_size.y), rl.Color.init(12, 26, 255, 120));

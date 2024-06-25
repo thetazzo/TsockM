@@ -8,7 +8,7 @@ const ui = @import("./ui/ui.zig");
 const rl = @import("raylib");
 const LoginScreen = sc.LOGIN_SCREEN;
 const MessagingScreen = sc.MESSAGING_SCREEN;
-const Client =  core.Client;
+const Client = core.Client;
 const Protocol = aids.Protocol;
 const Logging = aids.Logging;
 const mem = std.mem;
@@ -61,7 +61,7 @@ fn acceptConnections(sd: *core.SharedData) !void {
                     else => {
                         std.log.err("`therad::listener`: unknown protocol type!", .{});
                         unreachable;
-                    }
+                    },
                 }
             }
         }
@@ -73,14 +73,12 @@ fn acceptConnections(sd: *core.SharedData) !void {
 }
 
 pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize, font_path: []const u8, log_level: Logging.Level) !void {
-    const SW = @as(i32, @intCast(16*screen_scale));
-    const SH = @as(i32, @intCast(9*screen_scale));
+    const SW = @as(i32, @intCast(16 * screen_scale));
+    const SH = @as(i32, @intCast(9 * screen_scale));
     rl.initWindow(SW, SH, "TsockM");
     defer rl.closeWindow();
 
-    rl.setWindowState(.{
-        .window_resizable = true
-    });
+    rl.setWindowState(.{ .window_resizable = true });
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
@@ -92,11 +90,11 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
 
     var font: rl.Font = undefined;
     if (font_path.len > 0) {
-        const font_pathZ = try std.fmt.allocPrintZ(str_allocator, "{s}", .{font_path}); 
+        const font_pathZ = try std.fmt.allocPrintZ(str_allocator, "{s}", .{font_path});
         font = loadExternalFont(font_pathZ);
     } else if (opt_self_dirname) |exe_dir| {
         const fp = "fonts/IosevkaTermSS02-SemiBold.ttf";
-        const font_pathZ = try std.fmt.allocPrintZ(str_allocator, "{s}/{s}", .{exe_dir, fp}); 
+        const font_pathZ = try std.fmt.allocPrintZ(str_allocator, "{s}/{s}", .{ exe_dir, fp });
         font = loadExternalFont(font_pathZ);
     }
 
@@ -131,7 +129,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     var server_ip_input = ui.InputBox{};
     server_ip_input.opts.placeholder = "hostname:port";
     server_ip_input.opts.label = "Enter TsockM server IP:";
-    var login_btn = ui.Button{ .text="Login" };
+    var login_btn = ui.Button{ .text = "Login" };
     var message_input = ui.InputBox{};
     message_input.opts.placeholder = "Message";
     var message_display = ui.Display{};
@@ -152,7 +150,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
         },
     };
 
-    thread_pool[0] = try std.Thread.spawn(.{}, acceptConnections, .{ &sd });
+    thread_pool[0] = try std.Thread.spawn(.{}, acceptConnections, .{&sd});
 
     // Render loop
     while (!rl.windowShouldClose() and !sd.should_exit) {
@@ -171,14 +169,14 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
         if (sd.connected) {
             MessagingScreen.update(&sd, .{});
         } else {
-            LoginScreen.update(&sd, .{.server_hostname = server_hostname, .server_port=server_port});
+            LoginScreen.update(&sd, .{ .server_hostname = server_hostname, .server_port = server_port });
         }
         // Rendering begins here
         rl.clearBackground(rl.Color.init(18, 18, 18, 255));
         if (sd.connected) {
             // Messaging screen
             // Draw successful connection
-            
+
             MessagingScreen.render(&sd, font, &frame_counter);
             //if (response_counter > 0) {
             //    const sslen = rl.measureTextEx(font, succ_str, font_size, 0).x;
@@ -192,9 +190,9 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
 
         var i = sd.popups.items.len;
         while (i > 0) {
-            var popup = &sd.popups.items[i-1];
+            var popup = &sd.popups.items[i - 1];
             if (i >= 2) {
-                const popup_prev = sd.popups.items[i-2];
+                const popup_prev = sd.popups.items[i - 2];
                 popup.update();
                 try popup.render(popup_prev);
             } else {
@@ -202,7 +200,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
                 try popup.render(null);
             }
             if (popup.lifetime <= 0) {
-                _ = sd.popups.orderedRemove(i-1);
+                _ = sd.popups.orderedRemove(i - 1);
             }
             i -= 1;
         }

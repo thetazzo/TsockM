@@ -72,7 +72,7 @@ fn update(sd: *core.SharedData, data: LoginUD) void {
             uie.username_input.setEnabled(true);
             uie.server_ip_input.setEnabled(false);
         } else {
-            unreachable;
+            uie.username_input.setEnabled(true);
         }
     }
     if (uie.login_btn.isClicked()) {

@@ -7,6 +7,11 @@ const sc = @import("../screen/screen.zig");
 
 const str_allocator = std.heap.page_allocator; // TODO: allocator should be passed when user creates InputBox object
 
+const InputMode = enum {
+    SELECTION,
+    INSERT,
+};
+
 const DEFAULT_FONT = .{
     .family = undefined,
 };
@@ -21,12 +26,58 @@ const DEFAULT_OPTS = .{
     .label = undefined,
 };
 
+const Text = struct {
+    value: [256]u8 = undefined,
+    letter_count: usize = 0,
+    pub fn getValue(self: *@This()) []u8 {
+        return std.mem.sliceTo(&self.value, 0);
+    }
+    // allocated value that is 0 terminated [:0]const u8
+    // TODO: accept an allocator
+    pub fn getValueZ(self: *@This()) [:0]u8 {
+        const cln = std.mem.sliceTo(&self.value, 0);
+        const allocd = std.fmt.allocPrintZ(str_allocator, "{s}", .{cln}) catch |err| {
+            std.log.err("input-box::getValueAllocd::allocd: {any}", .{err});
+            std.posix.exit(1);
+        };
+        return allocd;
+    }
+    // push a single character
+    pub fn push(self: *@This(), char: u8) void {
+        self.value[self.letter_count] = char;
+        self.letter_count += 1;
+    }
+    // push a whole string of characters
+    pub fn pushSlice(self: *@This(), slice: [:0]const u8) void {
+        for (0..slice.len) |i| {
+            self.value[self.letter_count] = slice[i];
+            self.letter_count += 1;
+        }
+    }
+    // Remove the last character
+    pub fn pop(self: *@This()) u8 {
+        if (self.letter_count > 0) {
+            self.letter_count -= 1;
+        }
+        const chr = self.value[self.letter_count];
+        self.value[self.letter_count] = 0;
+        return chr;
+    }
+    // Remove all characters
+    pub fn clean(self: *@This()) [256]u8 {
+        for (0..255) |i| {
+            self.value[i] = 0;
+        }
+        self.letter_count = 0;
+        return self.value;
+    }
+};
+
 pub const InputBox = struct {
     rec: rl.Rectangle = undefined,
     label_size: rl.Vector2 = undefined,
     enabled: bool = false,
-    value: [256]u8 = undefined,
-    letter_count: usize = 0,
+    value: Text = Text{},
     selection_mode: bool = false,
     selected_text: []u8 = "",
     font: struct {
@@ -41,14 +92,6 @@ pub const InputBox = struct {
         placeholder: [:0]const u8, // placeholder text (visbile when defined and string length is > 0)
         label: [:0]const u8, // input box label (visible when defined and string lenght is > 0)
     } = DEFAULT_OPTS,
-    pub fn getValueAllocd(self: *@This()) [:0]u8 {
-        const cln = std.mem.sliceTo(&self.value, 0);
-        const allocd = std.fmt.allocPrintZ(str_allocator, "{s}", .{cln}) catch |err| {
-            std.log.err("input-box::getValueAllocd::allocd: {any}", .{err});
-            std.posix.exit(1);
-        };
-        return allocd;
-    }
     pub fn setRec(self: *@This(), x: f32, y: f32, w: f32, h: f32) void {
         self.rec = rl.Rectangle.init(x, y, w, h);
     }
@@ -103,36 +146,23 @@ pub const InputBox = struct {
                     const key8 = @as(u8, @intCast(key32));
                     if (self.selection_mode) {
                         if (key8 == 'x' or key8 == 's') {
-                            for (0..self.selected_text.len) |i| {
-                                if (self.letter_count > 0) {
-                                    self.letter_count -= 1;
-                                }
-                                self.value[i] = 0;
-                            }
+                            _ = self.value.clean();
                             self.selected_text = "";
                             self.selection_mode = false;
                         } else if (key8 == 'y') {
-                            const txt = std.fmt.allocPrintZ(str_allocator, "{s}", .{self.getValueAllocd()}) catch |err| {
-                                std.log.err("input-box::consumeKeyboard: {any}", .{err});
-                                std.posix.exit(1);
-                            };
+                            const txt = self.value.getValueZ();
                             rl.setClipboardText(txt);
                             self.selected_text = "";
                             self.selection_mode = false;
                             var cpy_popup = ui.SimplePopup.init(sd.client.font, .BOTTOM_FIX, 30 * 1); // TODO: self.client.FPS
-                            cpy_popup.text = "Text copied"; // TODO: SimplePopup.setText
+                            cpy_popup.text = "Text copied";
                             cpy_popup.setTextColor(rl.Color.green);
                             sd.pushPopup(cpy_popup);
                         } else if (key8 == ' ') {
                             self.selected_text = "";
                             self.selection_mode = false;
                         } else {
-                            for (0..self.selected_text.len) |i| {
-                                if (self.letter_count > 0) {
-                                    self.letter_count -= 1;
-                                }
-                                self.value[i] = 0;
-                            }
+                            _ = self.value.clean();
                             self.selected_text = "";
                             self.selection_mode = false;
                             self.push(key8);
@@ -164,7 +194,7 @@ pub const InputBox = struct {
             }
             if (kybrd.isValidControl() and rl.isKeyPressed(.key_a)) {
                 if (self.selection_mode) {
-                    const value = self.getValueAllocd();
+                    const value = self.value.getValueZ();
                     if (value.len > 0) {
                         self.selected_text = value;
                     }
@@ -188,15 +218,11 @@ pub const InputBox = struct {
     }
     // push a single character
     pub fn push(self: *@This(), char: u8) void {
-        self.value[self.letter_count] = char;
-        self.letter_count += 1;
+        self.value.push(char);
     }
-    // push a whole string of characters
+    // push a whole string of characters that are 0 terminated
     pub fn pushSlice(self: *@This(), slice: [:0]const u8) void {
-        for (0..slice.len) |i| {
-            self.value[self.letter_count] = slice[i];
-            self.letter_count += 1;
-        }
+        self.value.pushSlice(slice);
     }
     // Remove the last character
     pub fn pop(self: *@This()) u8 {
@@ -204,28 +230,16 @@ pub const InputBox = struct {
             if (self.selected_text.len <= 0) {
                 // TODO: move selection cursor backwards
                 return 0;
-            }
-        }
-        if (self.letter_count > 0) {
-            self.letter_count -= 1;
-        }
-        const chr = self.value[self.letter_count];
-        self.value[self.letter_count] = 0;
-        if (self.selection_mode) {
-            if (self.selected_text.len > 0) {
-                self.selected_text[self.letter_count] = 0;
+            } else {
+                self.selected_text[self.selected_text.len - 1] = 0;
                 self.selected_text.len = self.selected_text.len - 1;
             }
         }
-        return chr;
+        return self.value.pop();
     }
     // Remove all characters
     pub fn clean(self: *@This()) [256]u8 {
-        for (0..255) |i| {
-            self.value[i] = 0;
-        }
-        self.letter_count = 0;
-        return self.value;
+        return self.value.clean();
     }
     pub fn update(self: *@This(), sd: *core.SharedData) void {
         if (self.opts.keyboard) {
@@ -236,7 +250,7 @@ pub const InputBox = struct {
         }
     }
     pub fn render(self: *@This(), sizing: *sc.UI_SIZING, frame_counter: usize) !void {
-        const mssg2 = self.getValueAllocd();
+        const mssg2 = self.value.getValueZ();
         defer str_allocator.free(mssg2);
 
         const txt_size = rl.measureTextEx(self.font.family, mssg2, sizing.font_size, 0);

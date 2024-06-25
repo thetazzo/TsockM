@@ -9,7 +9,7 @@ const str_allocator = std.heap.page_allocator;
 const LoginUD = struct { server_hostname: []const u8, server_port: u16 };
 
 fn connectClientToServer(sip: []const u8, sd: *core.SharedData, username: []const u8) void {
-    var invalid_sip_popup = ui.SimplePopup.init(sd.client.font, &sd.sizing, 30 * 2);
+    var invalid_sip_popup = ui.SimplePopup.init(sd.client.font, .TOP_CENTER, 30 * 2);
     if (sip.len <= 0) {
         invalid_sip_popup.setTextColor(rl.Color.red);
         invalid_sip_popup.text = "missing server IP address";

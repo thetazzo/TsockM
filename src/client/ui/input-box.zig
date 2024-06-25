@@ -4,6 +4,8 @@ const core = @import("../core/core.zig");
 const kybrd = @import("../core/keyboard.zig");
 const ui = @import("../ui/ui.zig");
 
+const str_allocator = std.heap.page_allocator; // TODO: allocator should be passed when user creates InputBox object
+
 rec: rl.Rectangle = undefined,
 label_size: rl.Vector2 = undefined,
 enabled: bool = false,
@@ -104,6 +106,14 @@ fn consumeKeyboard(self: *@This()) void {
                             }
                             self.value[i] = 0;
                         }
+                        self.selected_text = "";
+                        self.selection_mode = false;
+                    } else if (key8 == 'y') {
+                        const txt = std.fmt.allocPrintZ(str_allocator, "{s}", .{self.getCleanValue()}) catch |err| {
+                            std.log.err("input-box::consumeKeyboard: {any}", .{err});
+                            std.posix.exit(1);
+                        };
+                        rl.setClipboardText(txt);
                         self.selected_text = "";
                         self.selection_mode = false;
                     } else if (key8 == ' ') {

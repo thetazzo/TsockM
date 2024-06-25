@@ -5,10 +5,11 @@ const ui = @import("../ui/ui.zig");
 const kybrd = @import("../core/keyboard.zig");
 const sc = @import("screen.zig");
 
-const LoginUD = struct{server_hostname: []const u8, server_port: u16};
+const str_allocator = std.heap.page_allocator;
+const LoginUD = struct { server_hostname: []const u8, server_port: u16 };
 
 fn connectClientToServer(sip: []const u8, sd: *core.SharedData, username: []const u8) void {
-    var invalid_sip_popup = ui.SimplePopup.init(sd.client.font, &sd.sizing, 30*2);
+    var invalid_sip_popup = ui.SimplePopup.init(sd.client.font, &sd.sizing, 30 * 2);
     if (sip.len <= 0) {
         invalid_sip_popup.setTextColor(rl.Color.red);
         invalid_sip_popup.text = "missing server IP address";
@@ -19,7 +20,10 @@ fn connectClientToServer(sip: []const u8, sd: *core.SharedData, username: []cons
         return;
     }
     var sip_splits = std.mem.splitScalar(u8, sip, ':');
-    const hostname = sip_splits.next().?; 
+    var hostname = sip_splits.next().?;
+    if (std.mem.eql(u8, hostname, "localhost")) {
+        hostname = "127.0.0.1";
+    }
     const port_str = sip_splits.rest();
     var port: u16 = 6969;
     if (port_str.len > 0) {
@@ -43,19 +47,16 @@ fn update(sd: *core.SharedData, data: LoginUD) void {
     _ = data;
     const uis = sd.sizing;
     const uie = sd.ui;
+    uie.login_btn.updateFont(sd.client.font, sd.client.font_size);
     // login screen
-    uie.username_input.setRec(
-        uis.screen_width/2 - uis.screen_width/4,
-        200 + uis.font_size/2,
-        uis.screen_width/2,
-        50 + uis.font_size/2
-    ); 
+    uie.username_input.setRec(uis.screen_width / 2 - uis.screen_width / 4, 200 + uis.font_size / 2, uis.screen_width / 2, 50 + uis.font_size / 2);
     uie.server_ip_input.setRec(
-        uie.username_input.rec.x, 
-        uie.username_input.rec.y + uie.username_input.rec.height + uie.server_ip_input.label_size.y + uis.screen_height*0.04, 
+        uie.username_input.rec.x,
+        uie.username_input.rec.y + uie.username_input.rec.height + uie.server_ip_input.label_size.y + uis.screen_height * 0.04,
         uie.username_input.rec.width,
         uie.username_input.rec.height,
-    ); 
+    );
+    uie.login_btn.setRec(uie.server_ip_input.rec.x + uis.screen_width / 5.5, uie.server_ip_input.rec.y + 140, uis.screen_width / 8, 90);
     uie.username_input.update();
     uie.server_ip_input.update();
     uie.login_btn.update();
@@ -76,13 +77,13 @@ fn update(sd: *core.SharedData, data: LoginUD) void {
     }
     if (uie.login_btn.isClicked()) {
         const username = std.mem.sliceTo(&uie.username_input.value, 0);
-        const sip = uie.server_ip_input.getCleanValue();
+        const sip = uie.server_ip_input.getValueAllocd();
         connectClientToServer(sip, sd, username);
     }
     if (uie.username_input.enabled or uie.server_ip_input.enabled) {
         if (rl.isKeyPressed(.key_enter)) {
             const username = std.mem.sliceTo(&uie.username_input.value, 0);
-            const sip = uie.server_ip_input.getCleanValue();
+            const sip = uie.server_ip_input.getValueAllocd();
             connectClientToServer(sip, sd, username);
         }
     }
@@ -91,33 +92,21 @@ fn render(sd: *core.SharedData, font: rl.Font, frame_counter: *usize) void {
     const uis = sd.sizing;
     const uie = sd.ui;
     // Login screen
-    const str_allocator = std.heap.page_allocator;
     const title_str = std.fmt.allocPrintZ(str_allocator, "TsockM", .{}) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };
     defer str_allocator.free(title_str);
-    rl.drawTextEx(
-        font,
-        title_str,
-        rl.Vector2{.x=20, .y=25},
-        uis.font_size * 1.75,
-        0,
-        rl.Color.light_gray
-    );
-    uie.login_btn.setRec(
-        uie.server_ip_input.rec.x + uis.screen_width/5.5,
-        uie.server_ip_input.rec.y+140, uis.screen_width/8, 90
-    );
-    uie.username_input.render(uis.window_extended, font, uis.font_size, frame_counter.*) catch |err| {
+    rl.drawTextEx(font, title_str, rl.Vector2{ .x = 20, .y = 25 }, uis.font_size * 1.75, 0, rl.Color.light_gray);
+    uie.username_input.render(frame_counter.*) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };
-    uie.server_ip_input.render(uis.window_extended, font, uis.font_size, frame_counter.*) catch |err| {
+    uie.server_ip_input.render(frame_counter.*) catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };
-    uie.login_btn.render(font, uis.font_size) catch |err| {
+    uie.login_btn.render() catch |err| {
         std.log.err("LoginScreen::render: {any}", .{err});
         std.posix.exit(1);
     };

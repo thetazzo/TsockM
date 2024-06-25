@@ -17,7 +17,7 @@ fn print_usage(program: []const u8) void {
     std.debug.print("        --addr <address> <port> ...... TsockM server address (default: 127.0.0.1:6969)\n", .{});
 }
 
-pub const CLIENT_VERSION = "0.4.3";
+pub const CLIENT_VERSION = "0.4.6";
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -40,12 +40,12 @@ pub fn main() !void {
         } else if (std.mem.eql(u8, subcommand, "start")) {
             while (argv.next()) |sflag| {
                 if (std.mem.eql(u8, sflag, "-F")) {
-                    const opt_scale = argv.next(); 
+                    const opt_scale = argv.next();
                     if (opt_scale) |scale| {
                         screen_scale = try std.fmt.parseInt(usize, scale, 10);
                     }
                 } else if (std.mem.eql(u8, sflag, "-fp")) {
-                    const opt_fp = argv.next(); 
+                    const opt_fp = argv.next();
                     if (opt_fp) |fp| {
                         font_path = fp;
                     } else {
@@ -54,7 +54,7 @@ pub fn main() !void {
                         return;
                     }
                 } else if (std.mem.eql(u8, sflag, "--addr")) {
-                    const opt_ip = argv.next(); 
+                    const opt_ip = argv.next();
                     if (opt_ip) |ip| {
                         var splits = std.mem.splitScalar(u8, ip, ':');
                         if (splits.next()) |hostname| {
@@ -63,14 +63,14 @@ pub fn main() !void {
                                 server_port = port_u16;
                             }
                             server_addr = hostname;
-                        } 
+                        }
                     } else {
                         std.log.err("Missing server ip address", .{});
                         print_usage(program);
                         return;
                     }
                 } else if (std.mem.eql(u8, sflag, "--log-level")) {
-                    const opt_level = argv.next(); 
+                    const opt_level = argv.next();
                     if (opt_level) |level| {
                         if (std.mem.eql(u8, level, "DEV") or std.mem.eql(u8, level, "D")) {
                             log_level = Logging.Level.DEV;
@@ -92,7 +92,7 @@ pub fn main() !void {
                     std.log.err("unknown flag `{s}`", .{sflag});
                     print_usage(program);
                 }
-            } 
+            }
             _ = try client.start(server_addr, server_port, screen_scale, font_path, log_level);
         } else {
             std.log.err("missing subcommand!", .{});

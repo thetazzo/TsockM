@@ -147,24 +147,26 @@ zig build client -- <subcommand>
 * {FEAT} Client commands
     * [ ] `:ping` ~ ping user by username and print user info
 * {FEAT} keybind list screen that shows all keybinds and their functionality 
+* [ ] {UPDATE} `Input-Box` report when switching between `selection` and `insert` mode
+* [ ] {UPDATE} `Input-Box` report deletion of text
+#### 0.4.8
+* [ ] {UPDATE} `INSERT` mode for input-box
+* [ ] {FEAT} `SimplePopup` multiposition support
+* [ ] {UPDATE} selection cursor movement ~ not all text selected at once
 #### 0.4.7
 * [ ] {UPDATE} clean up and make popup hanling more robust
     * `setText`
     * assert `popup.text.len > 0`, popups with no text should not be allowed
 * [ ] {BUG} input filed click detection too high for `server_ip_input`
 * [ ] {BUG} only two popups are displayed at a time, there should be more
-* [ ] {FEAT} `:close` command that disconnects from the server and returns to the login screen
-* [ ] {UPDATE} `Input-Box` should be hold font data to be used within the input box
-* [ ] {UPDATE} `Input-Box` should be hold sizing information of the client
-* [ ] {UPDATE} `Input-Box` report when switching between `selection` and `insert` mode
-* [ ] {UPDATE} `Input-Box` report deletion of text
-* [ ] {FEAT} `Input-Box` copying selected text support
+* [ ] {BUG} when `tab` is pressed and no ui element is selected the client crashes (LoginScreen)
+* [ ] {BUG} when client uses `:close` and reconnects and sends a message two messages are sent
 #### 0.4.6
-* [ ] {UPDATE} `localhost` is a valid `server_ip_input` string that is mapped to `127.0.0.1`
-* [ ] {FEAT} `ScreenLayoutStack`
-    * a stack like data structure
-    * you append ui items to the stack
-    * enables to automatically calculate relative positions of elements in the stack
+* [x] {UPDATE} `localhost` is a valid `server_ip_input` string that is mapped to `127.0.0.1`
+* [x] {FEAT}   `:close` command that disconnects from the server and returns to the login screen
+* [x] {UPDATE} `Input-Box` should hold font data to be used within the input box
+* [x] {UPDATE} `Input-Box` should hold sizing information of the client
+* [x] {FEAT}   `Input-Box` copying selected text support
 #### 0.4.5
 * [x] {UPDATE} Replace succesful connection screen with a popupdon't crash the the client wait for a connection to the server be available
 * [x] {UPDATE} Input box should accept placeholder "ghost" text

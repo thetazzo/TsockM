@@ -25,6 +25,11 @@ pub const SharedData = struct {
         self.m.lock();
         defer self.m.unlock();
         self.sizing.update(SW, SH);
+        self.client.font_size = self.sizing.font_size;
+        
+        self.ui.username_input.bindSharedData(self);
+        self.ui.server_ip_input.bindSharedData(self);
+        self.ui.message_input.bindSharedData(self);
     }
 
     pub fn setConnected(self: *@This(), val: bool) void {
@@ -185,12 +190,15 @@ pub const Client = struct {
     client_addr: std.net.Address = undefined,
     client_addr_str: []const u8 = "404: not found",
     font: rl.Font,
+    font_size: f32,
+    // TODO: FPS: usize
     pub fn init(allocator: std.mem.Allocator, font: rl.Font, log_level: Logging.Level) Client {
         const commander = Stab.Commander(Stab.Command(CommandData)).init(allocator);
         const actioner = Stab.Actioner(SharedData).init(allocator);
         return Client{
             .log_level = log_level,
             .font = font,
+            .font_size = 0,
             .Commander = commander,
             .Actioner = actioner,
         };

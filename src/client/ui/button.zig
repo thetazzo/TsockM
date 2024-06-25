@@ -4,6 +4,13 @@ const rl = @import("raylib");
 pub const Button = struct {
     rec: rl.Rectangle = undefined,
     text: []const u8,
+    font: struct {
+        family: rl.Font,
+        size: f32,
+    } = .{
+        .family = undefined,
+        .size = 0,
+    },
     opts: struct {
         bg_color: rl.Color,
         mouse: bool,
@@ -44,18 +51,28 @@ pub const Button = struct {
             self.consumeMouse();
         }
     }
-    pub fn render(self: @This(), font: rl.Font, font_size: f32) !void {
-        rl.drawRectangle(
-            @intFromFloat(self.rec.x),
-            @intFromFloat(self.rec.y),
-            @intFromFloat(self.rec.width),
-            @intFromFloat(self.rec.height),
+    pub fn updateFont(self: *@This(), family: rl.Font, size: f32) void {
+        self.font.family = family;
+        self.font.size = size;
+    }
+    pub fn render(self: @This()) !void {
+        rl.drawRectangleRec(
+            self.rec,
             self.opts.bg_color,
         );
         var buf: [256] u8 = undefined;
         const btext = try std.fmt.bufPrintZ(&buf, "{s}", .{self.text});
-        const txt_width = rl.measureTextEx(font, btext, font_size, 0).x;
-        const txt_height = rl.measureTextEx(font, btext, font_size, 0).y;
-        rl.drawTextEx(font, btext, rl.Vector2{.x=self.rec.x+self.rec.width/2 - txt_width/2, .y=self.rec.y+self.rec.height/2 - txt_height/2}, font_size, 0, rl.Color.black);
+        const txt_width = rl.measureTextEx(self.font.family, btext, self.font.size, 0).x;
+        const txt_height = rl.measureTextEx(self.font.family, btext, self.font.size, 0).y;
+        rl.drawTextEx(
+            self.font.family,
+            btext,
+            rl.Vector2{
+                .x=self.rec.x+self.rec.width/2 - txt_width/2,
+                .y=self.rec.y+self.rec.height/2 - txt_height/2
+            },
+            self.font.size,
+            0, rl.Color.black
+        );
     }
 };

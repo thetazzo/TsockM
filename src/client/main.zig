@@ -17,7 +17,7 @@ fn print_usage(program: []const u8) void {
     std.debug.print("        --addr <address> <port> ...... TsockM server address (default: 127.0.0.1:6969)\n", .{});
 }
 
-pub const CLIENT_VERSION = "0.4.6";
+pub const CLIENT_VERSION = "0.4.7";
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;

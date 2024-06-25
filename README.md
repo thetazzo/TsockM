@@ -149,6 +149,8 @@ zig build client -- <subcommand>
 * {FEAT} keybind list screen that shows all keybinds and their functionality 
 * [ ] {UPDATE} `Input-Box` report when switching between `selection` and `insert` mode
 * [ ] {UPDATE} `Input-Box` report deletion of text
+#### 0.4.9
+* [ ] Introduce tests
 #### 0.4.8
 * [ ] {UPDATE} `INSERT` mode for input-box
 * [ ] {UPDATE} selection cursor movement ~ not all text selected at once

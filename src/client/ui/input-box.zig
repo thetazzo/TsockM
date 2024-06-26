@@ -134,7 +134,7 @@ pub const InputBox = struct {
             }
         }
     }
-    // Handle user keyboard input
+    /// Handle user keyboard input
     fn consumeKeyboard(self: *@This(), sd: *core.SharedData) void {
         const str_allocator = std.heap.page_allocator;
         var ntfy_popup = ui.SimplePopup.init(self.font.family, .BOTTOM_FIX, 30 * 2); // TODO: sd.client.FPS
@@ -173,6 +173,7 @@ pub const InputBox = struct {
                 }
                 key32 = rl.getCharPressed();
             }
+            // clipboard support
             if (self.opts.clipboard) {
                 if (kybrd.isValidControlCombination()) {
                     if (rl.isKeyPressed(.key_v)) {
@@ -180,11 +181,13 @@ pub const InputBox = struct {
                     }
                 }
             }
+            // backspace support
             if (self.opts.backspace_removal) {
                 if (kybrd.isPressedAndOrHeld(.key_backspace)) {
                     _ = self.pop();
                 }
             }
+            // CTRL C
             if (kybrd.isValidControl() and rl.isKeyPressed(.key_c)) {
                 switch (self.input_mode) {
                     .SELECTION => {
@@ -199,7 +202,8 @@ pub const InputBox = struct {
                 }
                 sd.pushPopup(ntfy_popup);
             }
-            if (kybrd.isValidControl() and rl.isKeyPressed(.key_a)) {
+            // SHIFT A
+            if (kybrd.isValidShift() and rl.isKeyPressed(.key_a)) {
                 if (self.input_mode == .SELECTION) {
                     const value = self.value.getValueZ(str_allocator);
                     defer str_allocator.free(value);
@@ -210,15 +214,15 @@ pub const InputBox = struct {
             }
         }
     }
-    // push a single character
+    /// Push a single character into input box value
     pub fn push(self: *@This(), char: u8) void {
         self.value.push(char);
     }
-    // push a whole string of characters that are 0 terminated
+    /// Push a whole string of characters that are 0 terminated into input box value
     pub fn pushSlice(self: *@This(), slice: [:0]const u8) void {
         self.value.pushSlice(slice);
     }
-    // Remove the last character
+    /// Remove the last character from input box value
     pub fn pop(self: *@This()) u8 {
         if (self.input_mode == .SELECTION) {
             if (self.input_buf.len <= 0) {
@@ -231,7 +235,7 @@ pub const InputBox = struct {
         }
         return self.value.pop();
     }
-    // Remove all characters
+    /// Remove all characters from input box value
     pub fn clean(self: *@This()) [256]u8 {
         return self.value.clean();
     }

@@ -73,7 +73,7 @@ const Text = struct {
 pub const InputBox = struct {
     rec: rl.Rectangle = undefined,
     label_size: rl.Vector2 = undefined,
-    enabled: bool = true,
+    enabled: bool = false,
     value: Text = Text{},
     input_mode: InputMode = .INSERT,
     input_buf: []u8 = "",
@@ -146,7 +146,13 @@ pub const InputBox = struct {
                     switch (self.input_mode) {
                         .SELECTION => {
                             if (key8 == 'x' or key8 == 's') {
-                                _ = self.value.clean();
+                                var vv = self.value.value;
+                                var nv = std.mem.split(u8, &vv, self.input_buf);
+                                _ = nv.next().?;
+                                _ = self.clean();
+                                const rem = nv.next().?;
+                                std.mem.copyForwards(u8, &self.value.value, rem);
+                                self.value.letter_count = 255 - rem.len;
                                 self.input_buf = "";
                                 self.input_mode = .INSERT;
                                 ntfy_popup.text = "TEXT DELETED";
@@ -184,29 +190,40 @@ pub const InputBox = struct {
             // backspace support
             if (self.opts.backspace_removal) {
                 if (kybrd.isPressedAndOrHeld(.key_backspace)) {
-                    _ = self.pop();
+                    switch (self.input_mode) {
+                        .INSERT => {
+                            _ = self.pop();
+                        },
+                        .SELECTION => {
+                            if (self.input_buf.len > 0) {
+                                self.input_buf[self.input_buf.len - 1] = 0;
+                                self.input_buf.len = self.input_buf.len - 1;
+                            }
+                        },
+                    }
                 }
             }
             // CTRL C
             if (kybrd.isValidControl() and rl.isKeyPressed(.key_c)) {
-                switch (self.input_mode) {
-                    .SELECTION => {
-                        self.input_buf = "";
-                        self.input_mode = .INSERT;
-                        ntfy_popup.text = "INSERT";
-                    },
-                    .INSERT => {
-                        self.input_mode = .SELECTION;
-                        ntfy_popup.text = "VISUAL SELECT";
-                    },
+                if (self.enabled) {
+                    switch (self.input_mode) {
+                        .SELECTION => {
+                            self.input_buf = "";
+                            self.input_mode = .INSERT;
+                            ntfy_popup.text = "INSERT";
+                        },
+                        .INSERT => {
+                            self.input_mode = .SELECTION;
+                            ntfy_popup.text = "VISUAL SELECT";
+                        },
+                    }
+                    sd.pushPopup(ntfy_popup);
                 }
-                sd.pushPopup(ntfy_popup);
             }
             // SHIFT A
             if (kybrd.isValidShift() and rl.isKeyPressed(.key_a)) {
                 if (self.input_mode == .SELECTION) {
                     const value = self.value.getValueZ(str_allocator);
-                    defer str_allocator.free(value);
                     if (value.len > 0) {
                         self.input_buf = value;
                     }
@@ -267,7 +284,7 @@ pub const InputBox = struct {
             self.rec.y += 2;
         }
         if (self.enabled) {
-            const cur_pos = rl.Vector2{
+            var cur_pos = rl.Vector2{
                 .x = txt_pos.x + rl.measureTextEx(self.font.family, mssg2, sizing.font_size, 0).x,
                 .y = txt_pos.y,
             };
@@ -276,7 +293,13 @@ pub const InputBox = struct {
                 if ((frame_counter / 8) % 2 == 0) rl.drawTextEx(self.font.family, "_", cur_pos, sizing.font_size, 0, rl.Color.black);
             } else if (self.input_mode == .SELECTION) {
                 const char_width: f32 = txt_size.x / @as(f32, @floatFromInt(mssg2.len));
-                rl.drawRectangleRec(rl.Rectangle.init(cur_pos.x, cur_pos.y, char_width, txt_size.y), rl.Color.black);
+                if (self.input_buf.len > 0) {
+                    cur_pos = rl.Vector2{
+                        .x = txt_pos.x + char_width * @as(f32, @floatFromInt(self.input_buf.len)),
+                        .y = txt_pos.y,
+                    };
+                }
+                rl.drawRectangleRec(rl.Rectangle.init(cur_pos.x, cur_pos.y, char_width, txt_size.y), rl.Color.init(0, 0, 0, 180));
             }
             if (self.input_buf.len > 0) {
                 for (0..self.input_buf.len) |i| {

@@ -137,7 +137,7 @@ zig build client -- <subcommand>
     
 ### TODO
 
-#### 0.5.x
+#### 0.6.x
 * [ ] {FEAT} decrypt body of the protocol
 * [ ] {UPADTE} removed depricated code
 * [ ] {FEAT} custom messeging commands like `\c{RED};HELLO\` that applies special properties to text
@@ -153,6 +153,8 @@ zig build client -- <subcommand>
 * {FEAT} InputBox should have cursors
     * [ ] `SelectionCursor` move around text
     * [ ] `InsertCursor` place where char should be appended
+#### 0.5.x
+* [ ] Unit tests
 #### 0.4.8
 * [x] {UPDATE} `INSERT` mode for input-box
 * [x] {UPDATE} selection cursor movement ~ not all text selected at once

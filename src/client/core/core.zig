@@ -26,10 +26,6 @@ pub const SharedData = struct {
         defer self.m.unlock();
         self.sizing.update(SW, SH);
         self.client.font_size = self.sizing.font_size;
-
-        self.ui.username_input.bindSharedData(self);
-        self.ui.server_ip_input.bindSharedData(self);
-        self.ui.message_input.bindSharedData(self);
     }
 
     pub fn setConnected(self: *@This(), val: bool) void {
@@ -68,7 +64,7 @@ pub const SharedData = struct {
         self.m.lock();
         defer self.m.unlock();
 
-        var err_popup = ui.SimplePopup.init(self.client.font, .TOP_CENTER, 30 * 2); // TODO: self.client.FPS
+        var err_popup = ui.SimplePopup.init(self.client.font, .TOP_CENTER, self.client.FPS * 2);
         err_popup.setTextColor(rl.Color.red);
         var popup_msg: []u8 = undefined;
         const addr = std.net.Address.resolveIp(hostname, port) catch |err| { // TODO: dest_addr
@@ -140,7 +136,7 @@ pub const SharedData = struct {
             };
 
             // TODO: does SimplePopup free allocated text ??
-            var succ_conn_popup = ui.SimplePopup.init(self.client.font, .TOP_CENTER, 30 * 3); // TODO :self.client.FPS
+            var succ_conn_popup = ui.SimplePopup.init(self.client.font, .TOP_CENTER, self.client.FPS * 3);
             succ_conn_popup.text = succ_str; // TODO: SimplePopup.setText
             succ_conn_popup.setTextColor(rl.Color.green);
             _ = self.popups.append(succ_conn_popup) catch 1; // TODO: sd.pushPopup
@@ -175,7 +171,7 @@ pub const SharedData = struct {
         self.client.server_addr = undefined;
         self.client.client_addr = undefined;
 
-        var close_connection_popup = ui.SimplePopup.init(self.client.font, .TOP_CENTER, 30 * 4); // TODO: FPS client prop
+        var close_connection_popup = ui.SimplePopup.init(self.client.font, .TOP_CENTER, self.client.FPS * 4);
         close_connection_popup.text = "Server connection terminated"; // TODO: SimplePopup.setText
         close_connection_popup.setTextColor(rl.Color.orange);
         _ = self.popups.append(close_connection_popup) catch 1; // TODO: self.pushPopup
@@ -202,14 +198,15 @@ pub const Client = struct {
     client_addr_str: []const u8 = "404: not found",
     font: rl.Font,
     font_size: f32,
-    // TODO: FPS: usize
-    pub fn init(allocator: std.mem.Allocator, font: rl.Font, log_level: Logging.Level) Client {
+    FPS: usize,
+    pub fn init(allocator: std.mem.Allocator, font: rl.Font, log_level: Logging.Level, FPS: usize) Client {
         const commander = Stab.Commander(Stab.Command(CommandData)).init(allocator);
         const actioner = Stab.Actioner(SharedData).init(allocator);
         return Client{
             .log_level = log_level,
             .font = font,
             .font_size = 0,
+            .FPS = FPS,
             .Commander = commander,
             .Actioner = actioner,
         };

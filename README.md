@@ -137,7 +137,7 @@ zig build client -- <subcommand>
     
 ### TODO
 
-#### 0.5.x
+#### 0.6.x
 * [ ] {FEAT} decrypt body of the protocol
 * [ ] {UPADTE} removed depricated code
 * [ ] {FEAT} custom messeging commands like `\c{RED};HELLO\` that applies special properties to text
@@ -150,9 +150,15 @@ zig build client -- <subcommand>
 * [ ] {UPDATE} `Input-Box` report when switching between `selection` and `insert` mode
 * [ ] {UPDATE} `Input-Box` report deletion of text
 * [ ] Introduce tests
+* {FEAT} InputBox should have cursors
+    * [ ] `SelectionCursor` move around text
+    * [ ] `InsertCursor` place where char should be appended
+#### 0.5.x
+* [ ] Unit tests
 #### 0.4.8
-* [ ] {UPDATE} `INSERT` mode for input-box
-* [ ] {UPDATE} selection cursor movement ~ not all text selected at once
+* [x] {UPDATE} `INSERT` mode for input-box
+* [x] {UPDATE} selection cursor movement ~ not all text selected at once
+* [x] {UPDATE} Client FPS inforamtion
 #### 0.4.7
 * [x] {FEAT} `SimplePopup` multiposition support
 * [x] {UPDATE} clean up and make popup hanling more robust

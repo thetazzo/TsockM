@@ -150,9 +150,13 @@ zig build client -- <subcommand>
 * [ ] {UPDATE} `Input-Box` report when switching between `selection` and `insert` mode
 * [ ] {UPDATE} `Input-Box` report deletion of text
 * [ ] Introduce tests
+* {FEAT} InputBox should have cursors
+    * [ ] `SelectionCursor` move around text
+    * [ ] `InsertCursor` place where char should be appended
 #### 0.4.8
 * [x] {UPDATE} `INSERT` mode for input-box
-* [ ] {UPDATE} selection cursor movement ~ not all text selected at once
+* [x] {UPDATE} selection cursor movement ~ not all text selected at once
+* [x] {UPDATE} Client FPS inforamtion
 #### 0.4.7
 * [x] {FEAT} `SimplePopup` multiposition support
 * [x] {UPDATE} clean up and make popup hanling more robust

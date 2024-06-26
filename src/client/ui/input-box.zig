@@ -31,7 +31,6 @@ const Text = struct {
         return std.mem.sliceTo(&self.value, 0);
     }
     // allocated value that is 0 terminated [:0]const u8
-    // TODO: accept an allocator
     pub fn getValueZ(self: *@This(), allocator: std.mem.Allocator) [:0]u8 {
         const cln = std.mem.sliceTo(&self.value, 0);
         const allocd = std.fmt.allocPrintZ(allocator, "{s}", .{cln}) catch |err| {
@@ -74,10 +73,10 @@ const Text = struct {
 pub const InputBox = struct {
     rec: rl.Rectangle = undefined,
     label_size: rl.Vector2 = undefined,
-    enabled: bool = false,
+    enabled: bool = true,
     value: Text = Text{},
-    selection_mode: bool = false,
-    selected_text: []u8 = "",
+    input_mode: InputMode = .INSERT,
+    input_buf: []u8 = "",
     font: struct {
         family: rl.Font,
     } = DEFAULT_FONT,
@@ -138,83 +137,77 @@ pub const InputBox = struct {
     // Handle user keyboard input
     fn consumeKeyboard(self: *@This(), sd: *core.SharedData) void {
         const str_allocator = std.heap.page_allocator;
+        var ntfy_popup = ui.SimplePopup.init(self.font.family, .BOTTOM_FIX, 30 * 2); // TODO: sd.client.FPS
         if (self.enabled) {
             var key32 = rl.getCharPressed();
             while (key32 > 0) {
                 if ((key32 >= 32) and (key32 <= 125)) {
                     const key8 = @as(u8, @intCast(key32));
-                    if (self.selection_mode) {
-                        if (key8 == 'x' or key8 == 's') {
-                            _ = self.value.clean();
-                            self.selected_text = "";
-                            self.selection_mode = false;
-                        } else if (key8 == 'y') {
-                            const txt = self.value.getValueZ(str_allocator);
-                            defer str_allocator.free(txt);
-                            rl.setClipboardText(txt);
-                            self.selected_text = "";
-                            self.selection_mode = false;
-                            var cpy_popup = ui.SimplePopup.init(sd.client.font, .BOTTOM_FIX, 30 * 1); // TODO: self.client.FPS
-                            cpy_popup.text = "Text copied";
-                            cpy_popup.setTextColor(rl.Color.green);
-                            sd.pushPopup(cpy_popup);
-                        } else if (key8 == ' ') {
-                            self.selected_text = "";
-                            self.selection_mode = false;
-                        } else {
-                            _ = self.value.clean();
-                            self.selected_text = "";
-                            self.selection_mode = false;
+                    switch (self.input_mode) {
+                        .SELECTION => {
+                            if (key8 == 'x' or key8 == 's') {
+                                _ = self.value.clean();
+                                self.input_buf = "";
+                                self.input_mode = .INSERT;
+                                ntfy_popup.text = "TEXT DELETED";
+                                sd.pushPopup(ntfy_popup);
+                            } else if (key8 == 'i') {
+                                self.input_buf = "";
+                                self.input_mode = .INSERT;
+                                ntfy_popup.text = "INSERT";
+                                sd.pushPopup(ntfy_popup);
+                            } else if (key8 == 'y') {
+                                const txt = self.value.getValueZ(str_allocator);
+                                defer str_allocator.free(txt);
+                                rl.setClipboardText(txt);
+                                self.input_buf = "";
+                                ntfy_popup.text = "Text copied";
+                                ntfy_popup.setTextColor(rl.Color.green);
+                                sd.pushPopup(ntfy_popup);
+                            }
+                        },
+                        .INSERT => {
                             self.push(key8);
-                        }
-                    } else {
-                        self.push(key8);
+                        },
                     }
                 }
                 key32 = rl.getCharPressed();
             }
             if (self.opts.clipboard) {
-                self.serveClipboardPaste();
-            }
-            if (self.opts.backspace_removal) {
-                self.backspaceRemoval();
-            }
-            if (kybrd.isValidControl() and rl.isKeyPressed(.key_c)) {
-                // TODO: INSERT mode like in vim (if selection mode and pressed `i` enter insert mode)
-                var mode_popup = ui.SimplePopup.init(self.font.family, .BOTTOM_FIX, 30 * 2); // TODO: sd.client.FPS
-                if (self.selection_mode) {
-                    self.selected_text = "";
-                    self.selection_mode = false;
-                    mode_popup.text = "INSERT";
-                } else {
-                    self.selection_mode = true;
-                    mode_popup.text = "VISUAL SELECT";
-                }
-                sd.pushPopup(mode_popup);
-            }
-            if (kybrd.isValidControl() and rl.isKeyPressed(.key_a)) {
-                if (self.selection_mode) {
-                    const value = self.value.getValueZ(str_allocator);
-                    defer str_allocator.free(value);
-                    if (value.len > 0) {
-                        self.selected_text = value;
+                if (kybrd.isValidControlCombination()) {
+                    if (rl.isKeyPressed(.key_v)) {
+                        self.pushSlice(rl.getClipboardText());
                     }
                 }
             }
-        }
-    }
-    // Handle of clipboard paste
-    fn serveClipboardPaste(self: *@This()) void {
-        if (kybrd.isValidControlCombination()) {
-            if (rl.isKeyPressed(.key_v)) {
-                self.pushSlice(rl.getClipboardText());
+            if (self.opts.backspace_removal) {
+                if (kybrd.isPressedAndOrHeld(.key_backspace)) {
+                    _ = self.pop();
+                }
             }
-        }
-    }
-    // handle backspace removal
-    fn backspaceRemoval(self: *@This()) void {
-        if (kybrd.isPressedAndOrHeld(.key_backspace)) {
-            _ = self.pop();
+            if (kybrd.isValidControl() and rl.isKeyPressed(.key_c)) {
+                switch (self.input_mode) {
+                    .SELECTION => {
+                        self.input_buf = "";
+                        self.input_mode = .INSERT;
+                        ntfy_popup.text = "INSERT";
+                    },
+                    .INSERT => {
+                        self.input_mode = .SELECTION;
+                        ntfy_popup.text = "VISUAL SELECT";
+                    },
+                }
+                sd.pushPopup(ntfy_popup);
+            }
+            if (kybrd.isValidControl() and rl.isKeyPressed(.key_a)) {
+                if (self.input_mode == .SELECTION) {
+                    const value = self.value.getValueZ(str_allocator);
+                    defer str_allocator.free(value);
+                    if (value.len > 0) {
+                        self.input_buf = value;
+                    }
+                }
+            }
         }
     }
     // push a single character
@@ -227,13 +220,13 @@ pub const InputBox = struct {
     }
     // Remove the last character
     pub fn pop(self: *@This()) u8 {
-        if (self.selection_mode) {
-            if (self.selected_text.len <= 0) {
+        if (self.input_mode == .SELECTION) {
+            if (self.input_buf.len <= 0) {
                 // TODO: move selection cursor backwards
                 return 0;
             } else {
-                self.selected_text[self.selected_text.len - 1] = 0;
-                self.selected_text.len = self.selected_text.len - 1;
+                self.input_buf[self.input_buf.len - 1] = 0;
+                self.input_buf.len = self.input_buf.len - 1;
             }
         }
         return self.value.pop();
@@ -275,14 +268,14 @@ pub const InputBox = struct {
                 .y = txt_pos.y,
             };
             // Draw blinking cursor
-            if (!self.selection_mode) {
+            if (self.input_mode == .INSERT) {
                 if ((frame_counter / 8) % 2 == 0) rl.drawTextEx(self.font.family, "_", cur_pos, sizing.font_size, 0, rl.Color.black);
-            } else {
+            } else if (self.input_mode == .SELECTION) {
                 const char_width: f32 = txt_size.x / @as(f32, @floatFromInt(mssg2.len));
                 rl.drawRectangleRec(rl.Rectangle.init(cur_pos.x, cur_pos.y, char_width, txt_size.y), rl.Color.black);
             }
-            if (self.selected_text.len > 0) {
-                for (0..self.selected_text.len) |i| {
+            if (self.input_buf.len > 0) {
+                for (0..self.input_buf.len) |i| {
                     const char_width: f32 = txt_size.x / @as(f32, @floatFromInt(mssg2.len));
                     const char_pos = rl.Vector2{
                         .x = txt_pos.x + char_width * @as(f32, @floatFromInt(i)),

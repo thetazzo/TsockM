@@ -123,7 +123,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     const popups = std.ArrayList(ui.SimplePopup).init(gpa_allocator);
     defer popups.deinit();
 
-    var username_input = ui.InputBox{ .enabled = true, .font = .{ .family = font_family } };
+    var username_input = ui.InputBox{ .input_mode = .INSERT, .font = .{ .family = font_family } };
     username_input.opts.placeholder = "Username";
     username_input.opts.label = "Enter your username:";
     var server_ip_input = ui.InputBox{ .font = .{ .family = font_family } };

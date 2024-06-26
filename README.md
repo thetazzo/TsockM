@@ -151,7 +151,7 @@ zig build client -- <subcommand>
 * [ ] {UPDATE} `Input-Box` report deletion of text
 * [ ] Introduce tests
 #### 0.4.8
-* [ ] {UPDATE} `INSERT` mode for input-box
+* [x] {UPDATE} `INSERT` mode for input-box
 * [ ] {UPDATE} selection cursor movement ~ not all text selected at once
 #### 0.4.7
 * [x] {FEAT} `SimplePopup` multiposition support

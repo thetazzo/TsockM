@@ -98,7 +98,7 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
         font_family = loadExternalFont(font_pathZ);
     }
 
-    var client = core.Client.init(gpa_allocator, font_family, log_level);
+    var client = core.Client.init(gpa_allocator, font_family, log_level, 30);
 
     client.Commander.add(":exit", ClientCommand.EXIT_CLIENT);
     client.Commander.add(":close", ClientCommand.CLOSE_CLIENT);
@@ -110,10 +110,8 @@ pub fn start(server_hostname: []const u8, server_port: u16, screen_scale: usize,
     client.Actioner.add(aids.Stab.Act.NTFY_KILL, ClientAction.NTFY_KILL);
     client.Actioner.add(aids.Stab.Act.NONE, ClientAction.BAD_REQUEST);
 
-    const FPS = 30;
-    rl.setTargetFPS(FPS);
+    rl.setTargetFPS(@as(i32, @intCast(client.FPS)));
 
-    //var response_counter: usize = FPS*1;
     var frame_counter: usize = 0;
     // ui elements
     // I think detaching and or joining threads is not needed becuse I handle ending of threads with core.SharedData.should_exit

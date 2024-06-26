@@ -34,8 +34,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Pr
         .text = msg_txt,
         .text_color = rl.Color.red,
     };
-    // TODO: add FPS prop to client structure
-    var death_popup = ui.SimplePopup.init(sd.client.font, .TOP_CENTER, 30 * 3);
+    var death_popup = ui.SimplePopup.init(sd.client.font, .TOP_CENTER, sd.client.FPS * 3);
     death_popup.setTextColor(rl.Color.sky_blue);
     death_popup.text = msg_txt;
     _ = sd.popups.append(death_popup) catch 1;

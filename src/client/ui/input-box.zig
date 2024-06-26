@@ -137,7 +137,7 @@ pub const InputBox = struct {
     /// Handle user keyboard input
     fn consumeKeyboard(self: *@This(), sd: *core.SharedData) void {
         const str_allocator = std.heap.page_allocator;
-        var ntfy_popup = ui.SimplePopup.init(self.font.family, .BOTTOM_FIX, 30 * 2); // TODO: sd.client.FPS
+        var ntfy_popup = ui.SimplePopup.init(self.font.family, .BOTTOM_FIX, sd.client.FPS * 2);
         if (self.enabled) {
             var key32 = rl.getCharPressed();
             while (key32 > 0) {
@@ -147,12 +147,13 @@ pub const InputBox = struct {
                         .SELECTION => {
                             if (key8 == 'x' or key8 == 's') {
                                 var vv = self.value.value;
+                                const vvc = std.mem.sliceTo(&vv, 0);
                                 var nv = std.mem.split(u8, &vv, self.input_buf);
                                 _ = nv.next().?;
                                 _ = self.clean();
                                 const rem = nv.next().?;
                                 std.mem.copyForwards(u8, &self.value.value, rem);
-                                self.value.letter_count = 255 - rem.len;
+                                self.value.letter_count = vvc.len - (256 - rem.len);
                                 self.input_buf = "";
                                 self.input_mode = .INSERT;
                                 ntfy_popup.text = "TEXT DELETED";

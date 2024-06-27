@@ -79,17 +79,9 @@ zig build client -- <subcommand>
 * [ ] {FEAT} encrypt body of the protocol
 * [ ] {FEAT} store messages
 #### 0.3.3
-* {TEST} `peer` tests
-    * [ ] creation `init`
-    * [ ] `peerRefFromId`
-    * [ ] `peerRefFromUsername`
-#### 0.3.2
-* {TEST} `protocol` tests
-    * [ ] creation `init`
-    * [ ] convertion to string `asStr`
-    * [ ] `fromStr`
-    * [ ] `transmit`
-    * [ ] `collect`
+* [ ] {TEST} `peer`
+* [x] {TEST} `protocol`
+* [x] {TEST} `actioner`
 #### 0.3.1
 * [ ] {UPDATE} `core.zig` rename to `server.zig`
 * [ ] {UPDATE} make `Protocol` more robust with more functions and quality of life things

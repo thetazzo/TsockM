@@ -15,4 +15,8 @@ pub const Stab = struct {
     pub const parseAct = Actioner_.parseAct;
 };
 
-
+test "AIDS" {
+    _ = @import("protocol.test.zig");
+    _ = @import("actioner.test.zig");
+    @import("std").testing.refAllDecls(@This());
+}

@@ -1,3 +1,4 @@
+const tc = @import("text_color.zig");
 const std = @import("std");
 const Logging = @import("logging.zig");
 const mem = std.mem;
@@ -10,7 +11,8 @@ pub const Typ = enum {
     NONE,
 };
 
-fn prot_type_as_str(typ: Typ) []const u8 {
+// TODO: r->typAsStr
+pub fn prot_type_as_str(typ: Typ) []const u8 {
     switch (typ) {
         Typ.REQ => return "request",
         Typ.RES => return "response",
@@ -19,7 +21,7 @@ fn prot_type_as_str(typ: Typ) []const u8 {
     }
 }
 
-pub const Act = enum {
+pub const Act = enum(u8) {
     COMM,
     COMM_END,
     MSG,
@@ -32,13 +34,14 @@ pub const Act = enum {
 //       as of right now this is only used
 //       on transmition of servercationsc
 // TODO: allow protocols to specify how they
-//       should be transmitted and to where 
+//       should be transmitted and to where
 //       they should be transmitted
 pub const TransmitionMode = enum {
     UNICAST,
     BROADCAST,
 };
 
+// TODO: r-> Status
 pub const StatusCode = enum(u16) {
     OK = 200,
     BAD_REQUEST = 400,
@@ -47,6 +50,7 @@ pub const StatusCode = enum(u16) {
     BAD_GATEWAY = 502,
 };
 
+// TODO: r-> statusAsStr
 pub fn statuscode_as_str(code: StatusCode) []const u8 {
     switch (code) {
         StatusCode.OK => return "200",
@@ -57,6 +61,7 @@ pub fn statuscode_as_str(code: StatusCode) []const u8 {
     }
 }
 
+// TODO: r-> strAsStatus
 pub fn str_as_retcode(code: []const u8) StatusCode {
     if (mem.eql(u8, code, "200")) {
         return StatusCode.OK;
@@ -110,7 +115,6 @@ pub fn init(
 }
 
 pub fn dump(self: @This(), log_level: Logging.Level) void {
-
     if (log_level == Logging.Level.SILENT) return;
 
     if (log_level == Logging.Level.COMPACT) {
@@ -140,6 +144,7 @@ pub fn dump(self: @This(), log_level: Logging.Level) void {
     }
 }
 
+// TODO: asStr
 pub fn as_str(self: @This()) []const u8 {
     var buf: [2048]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&buf);
@@ -168,6 +173,7 @@ pub fn is_response(self: @This()) bool {
     return self.type == Typ.RES;
 }
 
+// TODO: isAction
 pub fn is_action(self: @This(), act: Act) bool {
     return self.action == act;
 }

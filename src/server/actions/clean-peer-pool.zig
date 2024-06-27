@@ -4,6 +4,7 @@ const core = @import("../core/core.zig");
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
+// TODO: this is a ServerCommand so put this into the comander
 fn internal(sd: *SharedData) void {
     var pp_len: usize = sd.peer_pool.items.len;
     while (pp_len > 0) {

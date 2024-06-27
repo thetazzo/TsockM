@@ -4,20 +4,20 @@ const Protocol = @import("protocol.zig");
 pub fn Action(comptime T: type) type {
     return struct {
         collect: ?struct {
-            request:  *const fn (?std.net.Server.Connection, *T, Protocol) void,
+            request: *const fn (?std.net.Server.Connection, *T, Protocol) void,
             response: *const fn (*T, Protocol) void,
-            err:    *const fn (*T) void,
+            err: *const fn (*T) void,
         },
         transmit: ?struct {
-            request:  *const fn (Protocol.TransmitionMode, *T, []const u8) void,
+            request: *const fn (Protocol.TransmitionMode, *T, []const u8) void,
             response: *const fn () void,
-            err:      *const fn () void,
+            err: *const fn () void,
         },
         internal: ?*const fn (*T) void,
     };
 }
 
-pub const Act = enum {
+pub const Act = enum(u8) {
     COMM,
     COMM_END,
     MSG,
@@ -38,13 +38,13 @@ pub fn parseAct(act: Protocol.Act) Act {
     };
 }
 
-pub fn Actioner (comptime T: type) type {
+pub fn Actioner(comptime T: type) type {
     return struct {
-        actions: std.AutoHashMap(Act, Action(T)), 
+        actions: std.AutoHashMap(Act, Action(T)),
         pub fn init(allocator: std.mem.Allocator) Actioner(T) {
             const actions = std.AutoHashMap(Act, Action(T)).init(allocator);
             return Actioner(T){
-                .actions = actions, 
+                .actions = actions,
             };
         }
         pub fn add(self: *@This(), caller: Act, act: Action(T)) void {

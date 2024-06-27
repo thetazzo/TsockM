@@ -83,104 +83,98 @@ pub const Id = []const u8;
 pub const Body = []const u8;
 pub const Addr = []const u8;
 
-// [type]::[action]::[status_code]::[id]::[src]::[dst]::[body]
-type: Typ = Typ.NONE,
-action: Act = Act.NONE,
-status_code: StatusCode = StatusCode.NOT_FOUND,
-sender_id: Id = "",
-body: Body = "",
-src: Addr = "",
-dst: Addr = "",
-
-const Protocol = @This();
-
-pub fn init(
-    typ: Typ,
-    action: Act,
-    status_code: StatusCode,
-    sender_id: Id,
-    src: Addr,
-    dst: Addr,
-    bdy: Body,
-) Protocol {
-    return Protocol{
-        .type = typ, // type
-        .action = action, // action
-        .status_code = status_code, // status_code
-        .sender_id = sender_id, // sender_id
-        .src = src, // src_address
-        .dst = dst, // dst_addres
-        .body = bdy, // body
-    };
-}
-
-pub fn dump(self: @This(), log_level: Logging.Level) void {
-    if (log_level == Logging.Level.SILENT) return;
-
-    if (log_level == Logging.Level.COMPACT) {
-        print("{s}\n", .{self.as_str()});
-    } else {
-        // TODO: Logging.filter
-        //if (log_level == Logging.Level.REQ and self.type != Typ.REQ) return;
-
-        print("====================================\n", .{});
-        print(" {s}: `{s}` {{{s}}}                 \n", .{
-            prot_type_as_str(self.type),
-            @tagName(self.action),
-            self.sender_id,
-        });
-        if (log_level == Logging.Level.DEV) {
-            print("------------------------------------\n", .{});
-            print(" Protocol \n", .{});
-            print("     type:      `{s}`\n", .{@tagName(self.type)});
-            print("     action:    `{s}`\n", .{@tagName(self.action)});
-            print("     status_code:  `{s}`\n", .{statuscode_as_str(self.status_code)});
-            print("     sender_id: `{s}`\n", .{self.sender_id});
-            print("     src_addr:  `{s}`\n", .{self.src});
-            print("     dst_addr:  `{s}`\n", .{self.dst});
-            print("     body:      `{s}`\n", .{self.body});
-        }
-        print("====================================\n", .{});
+pub const Protocol = struct {
+    // [type]::[action]::[status_code]::[id]::[src]::[dst]::[body]
+    type: Typ = Typ.NONE,
+    action: Act = Act.NONE,
+    status_code: StatusCode = StatusCode.NOT_FOUND,
+    sender_id: Id = "",
+    body: Body = "",
+    src: Addr = "",
+    dst: Addr = "",
+    pub fn init(
+        typ: Typ,
+        action: Act,
+        status_code: StatusCode,
+        sender_id: Id,
+        src: Addr,
+        dst: Addr,
+        bdy: Body,
+    ) Protocol {
+        return Protocol{
+            .type = typ, // type
+            .action = action, // action
+            .status_code = status_code, // status_code
+            .sender_id = sender_id, // sender_id
+            .src = src, // src_address
+            .dst = dst, // dst_addres
+            .body = bdy, // body
+        };
     }
-}
+    pub fn dump(self: @This(), log_level: Logging.Level) void {
+        if (log_level == Logging.Level.SILENT) return;
 
-// TODO: asStr
-pub fn as_str(self: @This()) []const u8 {
-    var buf: [2048]u8 = undefined;
-    var fba = std.heap.FixedBufferAllocator.init(&buf);
-    var string = std.ArrayList(u8).init(fba.allocator());
-    _ = string.appendSlice(@tagName(self.type)) catch "OutOfMemory";
-    _ = string.appendSlice("::") catch "OutOfMemory";
-    _ = string.appendSlice(@tagName(self.action)) catch "OutOfMemory";
-    _ = string.appendSlice("::") catch "OutOfMemory";
-    _ = string.appendSlice(statuscode_as_str(self.status_code)) catch "OutOfMemory";
-    _ = string.appendSlice("::") catch "OutOfMemory";
-    _ = string.appendSlice(self.sender_id) catch "OutOfMemory";
-    _ = string.appendSlice("::") catch "OutOfMemory";
-    _ = string.appendSlice(self.src) catch "OutOfMemory";
-    _ = string.appendSlice("::") catch "OutOfMemory";
-    _ = string.appendSlice(self.dst) catch "OutOfMemory";
-    _ = string.appendSlice("::") catch "OutOfMemory";
-    _ = string.appendSlice(self.body) catch "OutOfMemory";
-    return string.items;
-}
+        if (log_level == Logging.Level.COMPACT) {
+            print("{s}\n", .{self.asStr()});
+        } else {
+            // TODO: Logging.filter
+            //if (log_level == Logging.Level.REQ and self.type != Typ.REQ) return;
 
-pub fn is_request(self: @This()) bool {
-    return self.type == Typ.REQ;
-}
+            print("====================================\n", .{});
+            print(" {s}: `{s}` {{{s}}}                 \n", .{
+                prot_type_as_str(self.type),
+                @tagName(self.action),
+                self.sender_id,
+            });
+            if (log_level == Logging.Level.DEV) {
+                print("------------------------------------\n", .{});
+                print(" Protocol \n", .{});
+                print("     type:      `{s}`\n", .{@tagName(self.type)});
+                print("     action:    `{s}`\n", .{@tagName(self.action)});
+                print("     status_code:  `{s}`\n", .{statuscode_as_str(self.status_code)});
+                print("     sender_id: `{s}`\n", .{self.sender_id});
+                print("     src_addr:  `{s}`\n", .{self.src});
+                print("     dst_addr:  `{s}`\n", .{self.dst});
+                print("     body:      `{s}`\n", .{self.body});
+            }
+            print("====================================\n", .{});
+        }
+    }
+    pub fn asStr(self: @This()) []const u8 {
+        var buf: [2048]u8 = undefined;
+        var fba = std.heap.FixedBufferAllocator.init(&buf);
+        var string = std.ArrayList(u8).init(fba.allocator());
+        _ = string.appendSlice(@tagName(self.type)) catch "OutOfMemory";
+        _ = string.appendSlice("::") catch "OutOfMemory";
+        _ = string.appendSlice(@tagName(self.action)) catch "OutOfMemory";
+        _ = string.appendSlice("::") catch "OutOfMemory";
+        _ = string.appendSlice(statuscode_as_str(self.status_code)) catch "OutOfMemory";
+        _ = string.appendSlice("::") catch "OutOfMemory";
+        _ = string.appendSlice(self.sender_id) catch "OutOfMemory";
+        _ = string.appendSlice("::") catch "OutOfMemory";
+        _ = string.appendSlice(self.src) catch "OutOfMemory";
+        _ = string.appendSlice("::") catch "OutOfMemory";
+        _ = string.appendSlice(self.dst) catch "OutOfMemory";
+        _ = string.appendSlice("::") catch "OutOfMemory";
+        _ = string.appendSlice(self.body) catch "OutOfMemory";
+        return string.items;
+    }
+    pub fn isRequest(self: @This()) bool {
+        return self.type == Typ.REQ;
+    }
 
-pub fn is_response(self: @This()) bool {
-    return self.type == Typ.RES;
-}
+    pub fn isResponse(self: @This()) bool {
+        return self.type == Typ.RES;
+    }
 
-// TODO: isAction
-pub fn is_action(self: @This(), act: Act) bool {
-    return self.action == act;
-}
+    pub fn isAction(self: @This(), act: Act) bool {
+        return self.action == act;
+    }
+};
 
 // returns 1 when stream is closed
 pub fn transmit(stream: std.net.Stream, prot: Protocol) u8 {
-    const werr = stream.write(prot.as_str()) catch 1;
+    const werr = stream.write(prot.asStr()) catch 1;
     if (werr == 1) {
         return 1;
     }
@@ -192,13 +186,12 @@ pub fn collect(allocator: mem.Allocator, stream: std.net.Stream) !Protocol {
     _ = try stream.read(&buf);
     const resps = mem.sliceTo(&buf, 170);
     const respss = try std.fmt.allocPrint(allocator, "{s}", .{resps});
-    const resp = protocolFromStr(respss);
+    const resp = fromStr(respss);
     return resp;
 }
 
-pub fn protocolFromStr(str: []const u8) Protocol {
+pub fn fromStr(str: []const u8) Protocol {
     var spl = mem.split(u8, str, "::");
-    // [type]::[action]::[status_code]::[id]::[src]::[dst]::[body]
 
     // Empty protocol
     var proto = Protocol{};

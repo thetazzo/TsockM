@@ -26,7 +26,7 @@ fn listener(sd: *SharedData) !void {
         const recv = mem.sliceTo(&buf, 170);
 
         // Handle communication request
-        var protocol = Protocol.protocolFromStr(recv); // parse protocol from recieved bytes
+        var protocol = Protocol.fromStr(recv); // parse protocol from recieved bytes
         protocol.dump(sd.server.log_level);
 
         const opt_action = sd.server.Actioner.get(aids.Stab.parseAct(protocol.action));
@@ -39,7 +39,7 @@ fn listener(sd: *SharedData) !void {
                 else => {
                     std.log.err("`therad::listener`: unknown protocol type!", .{});
                     unreachable;
-                }
+                },
             }
         }
     }
@@ -57,10 +57,10 @@ fn commander(sd: *SharedData) !void {
             var splits = mem.splitScalar(u8, user_input, ' ');
             if (splits.next()) |ui| {
                 if (sd.server.Commander.get(ui)) |cmd| {
-                    cmd.executor(user_input, core.CommandData{.sd = sd});
+                    cmd.executor(user_input, core.CommandData{ .sd = sd });
                 } else {
                     std.log.err("Unknown command: `{s}`\n", .{user_input});
-                    ServerCommand.PRINT_PROGRAM_USAGE.executor(null, core.CommandData{.sd = sd});
+                    ServerCommand.PRINT_PROGRAM_USAGE.executor(null, core.CommandData{ .sd = sd });
                 }
             }
         } else {
@@ -76,19 +76,19 @@ fn commander(sd: *SharedData) !void {
 fn polizei(sd: *SharedData) !void {
     var start_t = try std.time.Instant.now();
     var lock = false;
-    const CHECK_INTERVAL = 2000; // ms 
+    const CHECK_INTERVAL = 2000; // ms
     while (!sd.should_exit) {
         const now_t = try std.time.Instant.now();
-        const dt  = now_t.since(start_t) / std.time.ns_per_ms;
+        const dt = now_t.since(start_t) / std.time.ns_per_ms;
         if (dt == CHECK_INTERVAL and !lock) {
             ServerAction.COMM_ACTION.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd, "");
             lock = true;
         }
-        if (dt == CHECK_INTERVAL+500 and lock) {
+        if (dt == CHECK_INTERVAL + 500 and lock) {
             ServerAction.NTFY_KILL_ACTION.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd, "");
             lock = false;
         }
-        if (dt == CHECK_INTERVAL+1001 and !lock) {
+        if (dt == CHECK_INTERVAL + 1001 and !lock) {
             ServerAction.CLEAN_PEER_POOL_ACTION.internal.?(sd);
             lock = false;
             start_t = try std.time.Instant.now();
@@ -104,26 +104,26 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     defer server.deinit();
 
     // Bind server actions to the server
-    server.Actioner.add(Stab.Act.COMM           , ServerAction.COMM_ACTION);
-    server.Actioner.add(Stab.Act.COMM_END       , ServerAction.COMM_END_ACTION);
-    server.Actioner.add(Stab.Act.MSG            , ServerAction.MSG_ACTION);
-    server.Actioner.add(Stab.Act.GET_PEER       , ServerAction.GET_PEER_ACTION);
-    server.Actioner.add(Stab.Act.NTFY_KILL      , ServerAction.NTFY_KILL_ACTION);
-    server.Actioner.add(Stab.Act.NONE           , ServerAction.BAD_REQUEST_ACTION);
+    server.Actioner.add(Stab.Act.COMM, ServerAction.COMM_ACTION);
+    server.Actioner.add(Stab.Act.COMM_END, ServerAction.COMM_END_ACTION);
+    server.Actioner.add(Stab.Act.MSG, ServerAction.MSG_ACTION);
+    server.Actioner.add(Stab.Act.GET_PEER, ServerAction.GET_PEER_ACTION);
+    server.Actioner.add(Stab.Act.NTFY_KILL, ServerAction.NTFY_KILL_ACTION);
+    server.Actioner.add(Stab.Act.NONE, ServerAction.BAD_REQUEST_ACTION);
     server.Actioner.add(Stab.Act.CLEAN_PEER_POOL, ServerAction.CLEAN_PEER_POOL_ACTION);
 
     // Bind server commands to the server
-    server.Commander.add(":exit"                , ServerCommand.EXIT_SERVER);
-    server.Commander.add(":info"                , ServerCommand.PRINT_SERVER_STATS);
-    server.Commander.add(":list"                , ServerCommand.LIST_ACTIVE_PEERS);
-    server.Commander.add(":ls"                  , ServerCommand.LIST_ACTIVE_PEERS);
-    server.Commander.add(":kill"                , ServerCommand.KILL_PEER);
-    server.Commander.add(":ping"                , ServerCommand.PING);
-    server.Commander.add(":c"                   , ServerCommand.CLEAR_SCREEN);
-    server.Commander.add(":clean-pool"          , ServerCommand.CLEAN_PEER_POOL);
-    server.Commander.add(":mute"                , ServerCommand.MUTE);
-    server.Commander.add(":unmute"              , ServerCommand.UNMUTE);
-    server.Commander.add(":help"                , ServerCommand.PRINT_PROGRAM_USAGE);
+    server.Commander.add(":exit", ServerCommand.EXIT_SERVER);
+    server.Commander.add(":info", ServerCommand.PRINT_SERVER_STATS);
+    server.Commander.add(":list", ServerCommand.LIST_ACTIVE_PEERS);
+    server.Commander.add(":ls", ServerCommand.LIST_ACTIVE_PEERS);
+    server.Commander.add(":kill", ServerCommand.KILL_PEER);
+    server.Commander.add(":ping", ServerCommand.PING);
+    server.Commander.add(":c", ServerCommand.CLEAR_SCREEN);
+    server.Commander.add(":clean-pool", ServerCommand.CLEAN_PEER_POOL);
+    server.Commander.add(":mute", ServerCommand.MUTE);
+    server.Commander.add(":unmute", ServerCommand.UNMUTE);
+    server.Commander.add(":help", ServerCommand.PRINT_PROGRAM_USAGE);
 
     var peer_pool = std.ArrayList(Peer).init(gpa_allocator);
     defer peer_pool.deinit();
@@ -138,9 +138,9 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
         .server = server,
     };
     {
-        thread_pool[0] = try std.Thread.spawn(.{}, commander, .{ &sd });
-        thread_pool[1] = try std.Thread.spawn(.{}, listener, .{ &sd });
-        thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{ &sd });
-        defer for(thread_pool) |thr| thr.join();
+        thread_pool[0] = try std.Thread.spawn(.{}, commander, .{&sd});
+        thread_pool[1] = try std.Thread.spawn(.{}, listener, .{&sd});
+        thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{&sd});
+        defer for (thread_pool) |thr| thr.join();
     }
 }

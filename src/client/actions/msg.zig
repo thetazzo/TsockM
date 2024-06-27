@@ -4,27 +4,27 @@ const ui = @import("../ui/ui.zig");
 const core = @import("../core/core.zig");
 const ClientAction = @import("actions.zig");
 const Message = @import("../ui/display.zig").Message;
-const Protocol = aids.Protocol;
+const proto = aids.Protocol;
 const net = std.net;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
-fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
+fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: proto.Protocol) void {
     _ = in_conn;
     _ = sd;
     _ = protocol;
     std.log.err("not implemented", .{});
 }
 
-fn collectRespone(sd: *SharedData, protocol: Protocol) void {
+fn collectRespone(sd: *SharedData, protocol: proto.Protocol) void {
     // TODO: MSG client action
-    if (protocol.status_code == Protocol.StatusCode.OK) {
-        ClientAction.GET_PEER.transmit.?.request(aids.Protocol.TransmitionMode.UNICAST, sd, protocol.sender_id);
+    if (protocol.status_code == proto.StatusCode.OK) {
+        ClientAction.GET_PEER.transmit.?.request(proto.TransmitionMode.UNICAST, sd, protocol.sender_id);
         // collect GET_PEER response
         // TODO: maybe collect* functions should return the protocol they collected?
         // TODO: GET_PEER.collect.response
         const collocator = std.heap.page_allocator;
-        const np = Protocol.collect(collocator, sd.client.stream) catch |err| {
+        const np = proto.collect(collocator, sd.client.stream) catch |err| {
             std.log.err("actions::msg::collectRespose: {any}", .{err});
             std.posix.exit(1);
         };
@@ -40,12 +40,12 @@ fn collectRespone(sd: *SharedData, protocol: Protocol) void {
         //    "{s}" ++ tclr.paint_hex("#555555", "#{s}") ++ ": {s}\n",
         //    .{ unn, unh, protocol.body }
         //);
-        const msg_text = std.fmt.allocPrint(collocator, "{s}", .{ protocol.body }) catch |err| {
+        const msg_text = std.fmt.allocPrint(collocator, "{s}", .{protocol.body}) catch |err| {
             std.log.err("actions::msg::collectrespose: {any}", .{err});
             std.posix.exit(1);
         };
 
-        const message = ui.Display.Message{ .author=unn, .text = msg_text };
+        const message = ui.Display.Message{ .author = unn, .text = msg_text };
         sd.pushMessage(message) catch |err| {
             std.log.err("actions::msg::collectrespose: {any}", .{err});
             std.posix.exit(1);
@@ -55,16 +55,16 @@ fn collectRespone(sd: *SharedData, protocol: Protocol) void {
     }
 }
 
-fn collectError(_:*SharedData) void {
+fn collectError(_: *SharedData) void {
     std.log.err("not implemented", .{});
 }
 
-fn transmitRequest(_: Protocol.TransmitionMode, sd: *SharedData, msg: []const u8) void {
+fn transmitRequest(_: proto.TransmitionMode, sd: *SharedData, msg: []const u8) void {
     // handle sending a message
-    const reqp = Protocol.init(
-        Protocol.Typ.REQ,
-        Protocol.Act.MSG,
-        Protocol.StatusCode.OK,
+    const reqp = proto.Protocol.init(
+        proto.Typ.REQ,
+        proto.Act.MSG,
+        proto.StatusCode.OK,
         sd.client.id,
         sd.client.client_addr_str,
         sd.client.server_addr_str,
@@ -80,8 +80,8 @@ fn transmitRequest(_: Protocol.TransmitionMode, sd: *SharedData, msg: []const u8
     const unn = un_spl.next().?; // user name
     //const unh = un_spl.next().?; // username hash
     const message = ui.Display.Message{
-        .author=unn,
-        .text=baked_msg,
+        .author = unn,
+        .text = baked_msg,
     };
     sd.pushMessage(message) catch |err| {
         std.log.err("`message_display`: {any}", .{err});
@@ -99,14 +99,14 @@ fn transmitError() void {
 
 pub const ACTION = Action(SharedData){
     .collect = .{
-        .request  = collectRequest,
+        .request = collectRequest,
         .response = collectRespone,
-        .err      = collectError,
+        .err = collectError,
     },
     .transmit = .{
-        .request  = transmitRequest,
+        .request = transmitRequest,
         .response = transmitRespone,
-        .err      = transmitError,
+        .err = transmitError,
     },
     .internal = null,
 };

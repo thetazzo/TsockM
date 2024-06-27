@@ -1,6 +1,7 @@
 const std = @import("std");
 const aids = @import("aids");
 pub const PeerCore = @import("peer.zig");
+pub const SharedData = @import("shared-data.zig").SharedData;
 pub const PeerRef = PeerCore.PeerRef;
 pub const Peer = PeerCore.Peer;
 const Protocol = aids.Protocol;
@@ -8,44 +9,6 @@ const cmn = aids.cmn;
 pub const Stab = aids.Stab;
 const TextColor = aids.TextColor;
 const Logging = aids.Logging;
-
-pub const SharedData = struct {
-    m: std.Thread.Mutex = undefined,
-    should_exit: bool = undefined,
-    peer_pool: *std.ArrayList(Peer) = undefined,
-    server: Server,
-
-    pub fn setShouldExit(self: *@This(), should: bool) void {
-        self.m.lock();
-        defer self.m.unlock();
-        self.should_exit = should;
-    }
-
-    pub fn clearPeerPool(self: *@This()) void {
-        self.m.lock();
-        defer self.m.unlock();
-        self.peer_pool.clearAndFree();
-    }
-
-    pub fn peerRemove(self: *@This(), pid: usize) void {
-        self.m.lock();
-        defer self.m.unlock();
-        _ = self.peer_pool.orderedRemove(pid);
-    }
-
-    pub fn removePeerFromPool(self: *@This(), peer_ref: PeerRef) void {
-        self.m.lock();
-        defer self.m.unlock();
-        self.peer_pool.items[peer_ref.ref_id].alive = false;
-        _ = self.peer_pool.orderedRemove(peer_ref.ref_id);
-    }
-
-    pub fn peerPoolAppend(self: *@This(), peer: Peer) !void {
-        self.m.lock();
-        defer self.m.unlock();
-        try self.peer_pool.append(peer);
-    }
-};
 
 pub const CommandData = struct {
     sd: *SharedData,
@@ -55,7 +18,7 @@ pub const Server = struct {
     hostname: []const u8,
     port: u16,
     address: std.net.Address,
-    log_level: Logging.Level, 
+    log_level: Logging.Level,
     address_str: []const u8,
     start_time: std.time.Instant = undefined,
     net_server: std.net.Server = undefined,
@@ -66,7 +29,7 @@ pub const Server = struct {
         allocator: std.mem.Allocator,
         hostname: []const u8,
         port: u16,
-        log_level: Logging.Level, 
+        log_level: Logging.Level,
         __version__: []const u8,
     ) Server {
         const addr = std.net.Address.resolveIp(hostname, port) catch |err| {
@@ -75,7 +38,7 @@ pub const Server = struct {
         };
         const actioner = Stab.Actioner(SharedData).init(allocator);
         const commander = Stab.Commander(Stab.Command(CommandData)).init(allocator);
-        return Server {
+        return Server{
             .hostname = hostname,
             .port = port,
             .log_level = log_level,

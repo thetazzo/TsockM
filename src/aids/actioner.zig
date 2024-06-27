@@ -1,15 +1,15 @@
 const std = @import("std");
-const Protocol = @import("protocol.zig");
+const proto = @import("protocol.zig");
 
 pub fn Action(comptime T: type) type {
     return struct {
         collect: ?struct {
-            request: *const fn (?std.net.Server.Connection, *T, Protocol) void,
-            response: *const fn (*T, Protocol) void,
+            request: *const fn (?std.net.Server.Connection, *T, proto.Protocol) void,
+            response: *const fn (*T, proto.Protocol) void,
             err: *const fn (*T) void,
         },
         transmit: ?struct {
-            request: *const fn (Protocol.TransmitionMode, *T, []const u8) void,
+            request: *const fn (proto.TransmitionMode, *T, []const u8) void,
             response: *const fn () void,
             err: *const fn () void,
         },
@@ -27,7 +27,7 @@ pub const Act = enum(u8) {
     CLEAN_PEER_POOL,
 };
 
-pub fn parseAct(act: Protocol.Act) Act {
+pub fn parseAct(act: proto.Act) Act {
     return switch (act) {
         .COMM => Act.COMM,
         .COMM_END => Act.COMM_END,

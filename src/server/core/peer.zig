@@ -1,7 +1,7 @@
 const std = @import("std");
 const aids = @import("aids");
 const cmn = aids.cmn;
-const Protocol = aids.Protocol;
+const proto = aids.Protocol;
 const sqids = @import("sqids");
 const net = std.net;
 const mem = std.mem;
@@ -45,10 +45,10 @@ pub const Peer = struct {
     }
     // TODO: replace with init
     pub fn construct(
-    allocator: mem.Allocator,
-    conn: net.Server.Connection,
-    protocol: Protocol,
-) @This() {
+        allocator: mem.Allocator,
+        conn: net.Server.Connection,
+        protocol: proto.Protocol,
+    ) @This() {
         var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
         const s = sqids.Sqids.init(std.heap.page_allocator, .{ .min_length = 10 }) catch |err| {
             std.log.warn("{any}", .{err});
@@ -72,7 +72,7 @@ pub const Peer = struct {
     }
 };
 
-pub const PeerRef = struct {peer: Peer, ref_id: usize };
+pub const PeerRef = struct { peer: Peer, ref_id: usize };
 
 pub fn peerRefFromId(peer_pool: *std.ArrayList(Peer), id: Peer.PEER_ID) ?PeerRef {
     // O(n)

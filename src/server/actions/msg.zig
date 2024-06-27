@@ -1,12 +1,12 @@
 const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
-const Protocol = aids.Protocol;
+const proto = aids.Protocol;
 const net = std.net;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
-fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
+fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: proto.Protocol) void {
     _ = in_conn;
     const opt_peer_ref = core.PeerCore.peerRefFromId(sd.peer_pool, protocol.sender_id);
     if (opt_peer_ref) |peer_ref| {
@@ -14,33 +14,33 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Pr
             if (peer_ref.ref_id != pid and peer.alive) {
                 const src_addr = peer_ref.peer.commAddressAsStr();
                 const dst_addr = peer.commAddressAsStr();
-                const msgp = Protocol.init(
-                    Protocol.Typ.RES,
-                    Protocol.Act.MSG,
-                    Protocol.StatusCode.OK,
+                const msgp = proto.Protocol.init(
+                    proto.Typ.RES,
+                    proto.Act.MSG,
+                    proto.StatusCode.OK,
                     protocol.sender_id,
                     src_addr,
                     dst_addr,
                     protocol.body,
                 );
                 msgp.dump(sd.server.log_level);
-                _ = Protocol.transmit(peer.stream(), msgp);
+                _ = proto.transmit(peer.stream(), msgp);
             }
         }
     }
 }
 
-fn collectRespone(sd: *SharedData, protocol: Protocol) void {
+fn collectRespone(sd: *SharedData, protocol: proto.Protocol) void {
     _ = sd;
     _ = protocol;
     std.log.err("not implemented", .{});
 }
 
-fn collectError(_:*SharedData) void {
+fn collectError(_: *SharedData) void {
     std.log.err("not implemented", .{});
 }
 
-fn transmitRequest(mode: Protocol.TransmitionMode, sd: *SharedData, _: []const u8) void {
+fn transmitRequest(mode: proto.TransmitionMode, sd: *SharedData, _: []const u8) void {
     _ = mode;
     _ = sd;
     std.log.err("not implemented", .{});
@@ -56,14 +56,14 @@ fn transmitError() void {
 
 pub const ACTION = Action(SharedData){
     .collect = .{
-        .request  = collectRequest,
+        .request = collectRequest,
         .response = collectRespone,
-        .err      = collectError,
+        .err = collectError,
     },
     .transmit = .{
-        .request  = transmitRequest,
+        .request = transmitRequest,
         .response = transmitRespone,
-        .err      = transmitError,
+        .err = transmitError,
     },
     .internal = null,
 };

@@ -1,6 +1,6 @@
 const std = @import("std");
 const print = std.debug.print;
-const Protocol = @import("protocol.zig");
+const proto = @import("protocol.zig");
 
 const SILENT = true;
 
@@ -27,10 +27,10 @@ test "Protocol.protTypeAsStr" {
     std.debug.print("====================================================\n", .{});
     std.debug.print("Protocol.protTypeAsStr\n", .{});
     std.debug.print("====================================================\n", .{});
-    try std.testing.expect(equalStr("none", Protocol.prot_type_as_str(Protocol.Typ.NONE)));
-    try std.testing.expect(equalStr("request", Protocol.prot_type_as_str(Protocol.Typ.REQ)));
-    try std.testing.expect(equalStr("response", Protocol.prot_type_as_str(Protocol.Typ.RES)));
-    try std.testing.expect(equalStr("error", Protocol.prot_type_as_str(Protocol.Typ.ERR)));
+    try std.testing.expect(equalStr("none", proto.prot_type_as_str(proto.Typ.NONE)));
+    try std.testing.expect(equalStr("request", proto.prot_type_as_str(proto.Typ.REQ)));
+    try std.testing.expect(equalStr("response", proto.prot_type_as_str(proto.Typ.RES)));
+    try std.testing.expect(equalStr("error", proto.prot_type_as_str(proto.Typ.ERR)));
 }
 
 test "Protocol.statusCodeAsStr" {
@@ -38,19 +38,19 @@ test "Protocol.statusCodeAsStr" {
     std.debug.print("Protocol.statusCodeAsStr\n", .{});
     std.debug.print("====================================================\n", .{});
     try std.testing.expect(
-        equalStr("200", Protocol.statuscode_as_str(Protocol.StatusCode.OK)),
+        equalStr("200", proto.statuscode_as_str(proto.StatusCode.OK)),
     );
     try std.testing.expect(
-        equalStr("404", Protocol.statuscode_as_str(Protocol.StatusCode.NOT_FOUND)),
+        equalStr("404", proto.statuscode_as_str(proto.StatusCode.NOT_FOUND)),
     );
     try std.testing.expect(
-        equalStr("400", Protocol.statuscode_as_str(Protocol.StatusCode.BAD_REQUEST)),
+        equalStr("400", proto.statuscode_as_str(proto.StatusCode.BAD_REQUEST)),
     );
     try std.testing.expect(
-        equalStr("405", Protocol.statuscode_as_str(Protocol.StatusCode.METHOD_NOT_ALLOWED)),
+        equalStr("405", proto.statuscode_as_str(proto.StatusCode.METHOD_NOT_ALLOWED)),
     );
     try std.testing.expect(
-        equalStr("502", Protocol.statuscode_as_str(Protocol.StatusCode.BAD_GATEWAY)),
+        equalStr("502", proto.statuscode_as_str(proto.StatusCode.BAD_GATEWAY)),
     );
 }
 
@@ -60,45 +60,45 @@ test "Protocol.strAsRetCode" {
     std.debug.print("====================================================\n", .{});
     try std.testing.expect(
         equalEnum(
-            Protocol.StatusCode,
-            Protocol.StatusCode.OK,
-            Protocol.str_as_retcode("200"),
+            proto.StatusCode,
+            proto.StatusCode.OK,
+            proto.str_as_retcode("200"),
         ),
     );
     try std.testing.expect(
         equalEnum(
-            Protocol.StatusCode,
-            Protocol.StatusCode.NOT_FOUND,
-            Protocol.str_as_retcode("404"),
+            proto.StatusCode,
+            proto.StatusCode.NOT_FOUND,
+            proto.str_as_retcode("404"),
         ),
     );
     try std.testing.expect(
         equalEnum(
-            Protocol.StatusCode,
-            Protocol.StatusCode.BAD_REQUEST,
-            Protocol.str_as_retcode("400"),
+            proto.StatusCode,
+            proto.StatusCode.BAD_REQUEST,
+            proto.str_as_retcode("400"),
         ),
     );
     try std.testing.expect(
         equalEnum(
-            Protocol.StatusCode,
-            Protocol.StatusCode.METHOD_NOT_ALLOWED,
-            Protocol.str_as_retcode("405"),
+            proto.StatusCode,
+            proto.StatusCode.METHOD_NOT_ALLOWED,
+            proto.str_as_retcode("405"),
         ),
     );
     try std.testing.expect(
         equalEnum(
-            Protocol.StatusCode,
-            Protocol.StatusCode.BAD_GATEWAY,
-            Protocol.str_as_retcode("502"),
+            proto.StatusCode,
+            proto.StatusCode.BAD_GATEWAY,
+            proto.str_as_retcode("502"),
         ),
     );
 }
 
-var p: Protocol = Protocol.init(
-    Protocol.Typ.REQ,
-    Protocol.Act.NONE,
-    Protocol.StatusCode.OK,
+var p: proto.Protocol = proto.Protocol.init(
+    proto.Typ.REQ,
+    proto.Act.NONE,
+    proto.StatusCode.OK,
     "fu",
     "test",
     "test",

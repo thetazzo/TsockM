@@ -237,3 +237,40 @@ pub fn fromStr(str: []const u8) Protocol {
     }
     return proto;
 }
+
+test "Protocol.protTypeAsStr" {
+    try std.testing.expectEqualStrings("none", prot_type_as_str(Typ.NONE));
+    try std.testing.expectEqualStrings("request", prot_type_as_str(Typ.REQ));
+    try std.testing.expectEqualStrings("response", prot_type_as_str(Typ.RES));
+    try std.testing.expectEqualStrings("error", prot_type_as_str(Typ.ERR));
+}
+
+test "Protocol.statusCodeAsStr" {
+    try std.testing.expectEqualStrings("200", statuscode_as_str(StatusCode.OK));
+    try std.testing.expectEqualStrings("404", statuscode_as_str(StatusCode.NOT_FOUND));
+    try std.testing.expectEqualStrings("400", statuscode_as_str(StatusCode.BAD_REQUEST));
+    try std.testing.expectEqualStrings("405", statuscode_as_str(StatusCode.METHOD_NOT_ALLOWED));
+    try std.testing.expectEqualStrings("502", statuscode_as_str(StatusCode.BAD_GATEWAY));
+}
+
+test "Protocol.strAsRetCode" {
+    try std.testing.expectEqual(StatusCode.OK, str_as_retcode("200"));
+    try std.testing.expectEqual(StatusCode.NOT_FOUND, str_as_retcode("404"));
+    try std.testing.expectEqual(StatusCode.BAD_REQUEST, str_as_retcode("400"));
+    try std.testing.expectEqual(StatusCode.METHOD_NOT_ALLOWED, str_as_retcode("405"));
+    try std.testing.expectEqual(StatusCode.BAD_GATEWAY, str_as_retcode("502"));
+}
+
+var p: Protocol = Protocol.init(
+    Typ.REQ,
+    Act.NONE,
+    StatusCode.OK,
+    "fu",
+    "test",
+    "test",
+    "",
+);
+
+test "Protocol.asStr" {
+    try std.testing.expectEqualStrings("REQ::NONE::200::fu::test::test::", p.asStr());
+}

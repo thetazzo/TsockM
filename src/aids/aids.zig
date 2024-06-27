@@ -16,7 +16,7 @@ pub const Stab = struct {
 };
 
 test "AIDS" {
-    _ = @import("protocol.test.zig");
-    _ = @import("actioner.test.zig");
+    _ = @import("protocol.zig");
+    _ = @import("actioner.zig");
     @import("std").testing.refAllDecls(@This());
 }

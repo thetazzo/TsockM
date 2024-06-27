@@ -244,7 +244,16 @@ pub fn build(b: *std.Build) !void {
     const aids_test_step = b.step("test-aids", "Run unit tests for the aids");
     aids_test_step.dependOn(&run_aids_unit_test.step);
 
+    const server_program = Program(b, .{ .name = "testing-server", .root_source_file = b.path("./src/server/tester-main.zig"), .target = target, .optimize = optimize });
+    server_program.exe.root_module.addImport("sqids", Sqids(b).module);
+    const server_artifact = b.addInstallArtifact(server_program.exe, .{});
+    const run_server_artifact = b.addRunArtifact(server_program.exe);
+
     const whole_test_step = b.step("test", "Run unit tests for everything");
     whole_test_step.dependOn(&run_server_unit_test.step);
     whole_test_step.dependOn(&run_aids_unit_test.step);
+
+    const run_test_server = b.step("run-test-server", "Run unit tests for everything");
+    run_test_server.dependOn(&server_artifact.step);
+    run_test_server.dependOn(&run_server_artifact.step);
 }

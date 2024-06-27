@@ -61,3 +61,16 @@ pub fn Actioner(comptime T: type) type {
         }
     };
 }
+
+test "Act-len" {
+    try std.testing.expectEqual(7, std.meta.fields(Act).len);
+}
+
+test "parseAct" {
+    try std.testing.expectEqual(Act.NONE, parseAct(proto.Act.NONE));
+    try std.testing.expectEqual(Act.MSG, parseAct(proto.Act.MSG));
+    try std.testing.expectEqual(Act.COMM, parseAct(proto.Act.COMM));
+    try std.testing.expectEqual(Act.COMM_END, parseAct(proto.Act.COMM_END));
+    try std.testing.expectEqual(Act.GET_PEER, parseAct(proto.Act.GET_PEER));
+    try std.testing.expectEqual(Act.NTFY_KILL, parseAct(proto.Act.NTFY_KILL));
+}

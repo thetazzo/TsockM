@@ -75,14 +75,13 @@ zig build client -- <subcommand>
 
 ### TODO
 
-#### 0.4.0
+#### 0.5.x
 * [ ] {FEAT} encrypt body of the protocol
 * [ ] {FEAT} store messages
-#### 0.3.3
+#### 0.4.x
 * [ ] {TEST} `peer`
 * [x] {TEST} `protocol`
 * [x] {TEST} `actioner`
-#### 0.3.1
 * [ ] {UPDATE} `core.zig` rename to `server.zig`
 * [ ] {UPDATE} make `Protocol` more robust with more functions and quality of life things
 * [ ] {UPDATE} make `Peer` more robust with more functions and quality of life things

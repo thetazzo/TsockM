@@ -10,13 +10,17 @@ fn Aids(b: *std.Build) struct { module: *std.Build.Module } {
     const mod = b.addModule("aids", .{
         .root_source_file = b.path("src/aids/aids.zig"),
     });
-    return .{ .module = mod, };
+    return .{
+        .module = mod,
+    };
 }
 
 fn Sqids(b: *std.Build) struct { module: *std.Build.Module } {
     const sqids_dep = b.dependency("sqids", .{});
     const mod = sqids_dep.module("sqids");
-    return .{ .module = mod, };
+    return .{
+        .module = mod,
+    };
 }
 
 const MAD = struct {
@@ -25,7 +29,7 @@ const MAD = struct {
     dependency: *std.Build.Dependency,
     LDB: rlz.LinuxDisplayBackend,
 };
-fn Raylib(b: *std.Build, target: std.Build.ResolvedTarget ,optimize: std.builtin.OptimizeMode, ldb: rlz.LinuxDisplayBackend) MAD {
+fn Raylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, ldb: rlz.LinuxDisplayBackend) MAD {
     const raylib_dep = b.dependency("raylib-zig", .{
         .target = target,
         .optimize = optimize,
@@ -57,17 +61,17 @@ fn Raylib(b: *std.Build, target: std.Build.ResolvedTarget ,optimize: std.builtin
         const run_option = b.step("run", "Run nnp");
         run_option.dependOn(&run_step.step);
         return .{
-            .module= raylib,
+            .module = raylib,
             .dependency = raylib_dep,
-            .artifact= raylib_artifact,
+            .artifact = raylib_artifact,
             .LDB = ldb,
         };
     }
 
     return .{
-        .module= raylib,
+        .module = raylib,
         .dependency = raylib_dep,
-        .artifact= raylib_artifact,
+        .artifact = raylib_artifact,
         .LDB = ldb,
     };
 }
@@ -86,14 +90,9 @@ pub fn Program(b: *std.Build, opts: std.Build.ExecutableOptions) struct { exe: *
 }
 
 fn STEP_server_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step) !void {
-    const sqids  = Sqids(b);
+    const sqids = Sqids(b);
 
-    const server_program = Program(b, .{
-        .name="tsockm-server",
-        .root_source_file = b.path("./src/server/main.zig"),
-        .target = target,
-        .optimize = optimize
-    });
+    const server_program = Program(b, .{ .name = "tsockm-server", .root_source_file = b.path("./src/server/main.zig"), .target = target, .optimize = optimize });
     server_program.module.addImport("sqids", sqids.module);
 
     // Build server
@@ -133,23 +132,19 @@ fn STEP_client_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: st
 }
 
 fn STEP_release_server(b: *std.Build, targets: []const std.Target.Query, step: *std.Build.Step) !void {
-    const sqids  = Sqids(b);
+    const sqids = Sqids(b);
 
     for (targets) |t| {
         const target = b.resolveTargetQuery(t);
         const server = Program(b, .{
-            .name="tsockm-server",
+            .name = "tsockm-server",
             .root_source_file = b.path("./src/server/main.zig"),
             .target = target,
             .optimize = .ReleaseSafe,
         });
         server.module.addImport("sqids", sqids.module);
         const target_tripple = try target.result.linuxTriple(b.allocator);
-        const out_dir_path = try std.fmt.allocPrint(
-            b.allocator,
-            "tsockm-server-{s}-{s}",
-            .{server_version, target_tripple}
-        ); 
+        const out_dir_path = try std.fmt.allocPrint(b.allocator, "tsockm-server-{s}-{s}", .{ server_version, target_tripple });
         const client_install = b.addInstallArtifact(server.exe, .{
             .dest_dir = .{
                 .override = .{
@@ -163,7 +158,7 @@ fn STEP_release_server(b: *std.Build, targets: []const std.Target.Query, step: *
 
 fn STEP_release_client(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step, raylib: MAD) !void {
     // Client release platform option
-    //     * what display manager to use 
+    //     * what display manager to use
     const client_program = Program(b, .{
         .name = "tsockm-client",
         .root_source_file = b.path("./src/client/main.zig"),
@@ -175,8 +170,8 @@ fn STEP_release_client(b: *std.Build, target: std.Build.ResolvedTarget, optimize
     client_program.exe.root_module.addImport("raylib", raylib.module);
 
     const target_tripple = try target.result.linuxTriple(b.allocator);
-    const out_dir_path = try std.fmt.allocPrint(b.allocator, "tsockm-client-{s}-{s}-{s}", .{client_version, target_tripple, @tagName(raylib.LDB)}); 
-    const full_out_path = try std.fmt.allocPrintZ(b.allocator, "zig-out/{s}", .{out_dir_path}); 
+    const out_dir_path = try std.fmt.allocPrint(b.allocator, "tsockm-client-{s}-{s}-{s}", .{ client_version, target_tripple, @tagName(raylib.LDB) });
+    const full_out_path = try std.fmt.allocPrintZ(b.allocator, "zig-out/{s}", .{out_dir_path});
 
     const client_install = b.addInstallArtifact(client_program.exe, .{
         .dest_dir = .{
@@ -188,9 +183,7 @@ fn STEP_release_client(b: *std.Build, target: std.Build.ResolvedTarget, optimize
     step.dependOn(&client_install.step);
 
     // copy fonts to release build
-    const cpa = b.addSystemCommand(&.{
-        "cp", "-r", "src/assets/fonts", full_out_path
-    });
+    const cpa = b.addSystemCommand(&.{ "cp", "-r", "src/assets/fonts", full_out_path });
     cpa.step.name = "copy font assets";
     cpa.step.dependOn(&client_install.step);
     step.dependOn(&cpa.step);
@@ -216,7 +209,7 @@ pub fn build(b: *std.Build) !void {
     _ = STEP_client_dev(b, target, optimize, dev_client_step, raylib) catch |err| {
         std.log.err("build::STEP_client_dev: {any}", .{err});
         std.posix.exit(1);
-    }; 
+    };
 
     const release_server_step = b.step("release-server", "Release build server");
     const server_targets: []const std.Target.Query = &.{
@@ -231,4 +224,27 @@ pub fn build(b: *std.Build) !void {
         std.log.err("build::STEP_release_client: {any}", .{err});
         std.posix.exit(1);
     };
+    const server_unit_tests = b.addTest(.{
+        .root_source_file = b.path("src/server/main.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    server_unit_tests.root_module.addImport("aids", Aids(b).module);
+    server_unit_tests.root_module.addImport("sqids", Sqids(b).module);
+    const run_server_unit_test = b.addRunArtifact(server_unit_tests);
+    const server_test_step = b.step("test-server", "Run unit tests for the server");
+    server_test_step.dependOn(&run_server_unit_test.step);
+    const aids_unit_tests = b.addTest(.{
+        .root_source_file = b.path("src/aids/aids.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    aids_unit_tests.root_module.addImport("aids", Aids(b).module);
+    const run_aids_unit_test = b.addRunArtifact(aids_unit_tests);
+    const aids_test_step = b.step("test-aids", "Run unit tests for the aids");
+    aids_test_step.dependOn(&run_aids_unit_test.step);
+
+    const whole_test_step = b.step("test", "Run unit tests for everything");
+    whole_test_step.dependOn(&run_server_unit_test.step);
+    whole_test_step.dependOn(&run_aids_unit_test.step);
 }

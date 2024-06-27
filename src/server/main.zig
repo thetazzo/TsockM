@@ -24,10 +24,10 @@ pub fn main() !void {
 
     const program = argv.next().?;
     const subc = argv.next(); // subcommand
-    
-    var server_addr: []const u8 = SERVER_ADDRESS; 
-    var server_port: u16 = SERVER_PORT; 
-    var log_level: Logging.Level = Logging.Level.COMPACT; 
+
+    var server_addr: []const u8 = SERVER_ADDRESS;
+    var server_port: u16 = SERVER_PORT;
+    var log_level: Logging.Level = Logging.Level.COMPACT;
 
     if (subc) |subcommand| {
         if (std.mem.eql(u8, subcommand, "help")) {
@@ -37,7 +37,7 @@ pub fn main() !void {
         } else if (std.mem.eql(u8, subcommand, "start")) {
             if (argv.next()) |arg| {
                 if (std.mem.eql(u8, arg, "--addr")) {
-                    const opt_ip = argv.next(); 
+                    const opt_ip = argv.next();
                     if (opt_ip) |ip| {
                         var splits = std.mem.splitScalar(u8, ip, ':');
                         if (splits.next()) |hostname| {
@@ -46,14 +46,14 @@ pub fn main() !void {
                                 server_port = port_u16;
                             }
                             server_addr = hostname;
-                        } 
+                        }
                     } else {
                         std.log.err("Missing server ip address", .{});
                         print_usage(program);
                         return;
                     }
                 } else if (std.mem.eql(u8, arg, "--log-level")) {
-                    const opt_level = argv.next(); 
+                    const opt_level = argv.next();
                     if (opt_level) |level| {
                         if (std.mem.eql(u8, level, "DEV") or std.mem.eql(u8, level, "D")) {
                             log_level = Logging.Level.DEV;
@@ -76,11 +76,16 @@ pub fn main() !void {
                     print_usage(program);
                     return;
                 }
-            } 
+            }
             _ = try server.start(server_addr, server_port, log_level);
-        } 
+        }
     } else {
         std.log.err("missing subcommand!", .{});
         print_usage(program);
     }
+}
+
+test {
+    _ = @import("core/server.test.zig");
+    std.testing.refAllDecls(@This());
 }

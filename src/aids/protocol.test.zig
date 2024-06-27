@@ -2,10 +2,11 @@ const std = @import("std");
 const print = std.debug.print;
 const proto = @import("protocol.zig");
 
-const SILENT = true;
+const SILENT = false;
 
 fn equalStr(s1: []const u8, s2: []const u8) bool {
     if (!SILENT) {
+        print("                                         \n", .{});
         print("-----------------------------------------\n", .{});
         print("    expected: `{s}`\n", .{s1});
         print("    got: `{s}`\n", .{s2});
@@ -15,6 +16,7 @@ fn equalStr(s1: []const u8, s2: []const u8) bool {
 }
 fn equalEnum(comptime T: type, s1: T, s2: T) bool {
     if (!SILENT) {
+        print("                                         \n", .{});
         print("-----------------------------------------\n", .{});
         print("    expected: `{s}`\n", .{@tagName(s1)});
         print("    got: `{s}`\n", .{@tagName(s2)});
@@ -24,6 +26,7 @@ fn equalEnum(comptime T: type, s1: T, s2: T) bool {
 }
 
 test "Protocol.protTypeAsStr" {
+    print("                                         \n", .{});
     std.debug.print("====================================================\n", .{});
     std.debug.print("Protocol.protTypeAsStr\n", .{});
     std.debug.print("====================================================\n", .{});
@@ -34,6 +37,7 @@ test "Protocol.protTypeAsStr" {
 }
 
 test "Protocol.statusCodeAsStr" {
+    print("                                         \n", .{});
     std.debug.print("====================================================\n", .{});
     std.debug.print("Protocol.statusCodeAsStr\n", .{});
     std.debug.print("====================================================\n", .{});
@@ -55,6 +59,7 @@ test "Protocol.statusCodeAsStr" {
 }
 
 test "Protocol.strAsRetCode" {
+    print("                                         \n", .{});
     std.debug.print("====================================================\n", .{});
     std.debug.print("Protocol.stringAsRetCode\n", .{});
     std.debug.print("====================================================\n", .{});
@@ -106,8 +111,9 @@ var p: proto.Protocol = proto.Protocol.init(
 );
 
 test "Protocol.asStr" {
+    print("                                         \n", .{});
     std.debug.print("====================================================\n", .{});
     std.debug.print("Protocol.asStr\n", .{});
     std.debug.print("====================================================\n", .{});
-    try std.testing.expect(equalStr("REQ::NONE::200::fu::test::test::", p.as_str()));
+    try std.testing.expect(equalStr("REQ::NONE::200::fu::test::test::", p.asStr()));
 }

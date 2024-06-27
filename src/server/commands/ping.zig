@@ -2,7 +2,7 @@ const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
 const cmn = aids.cmn;
-const proto = aids.Protocol;
+const proto = aids.proto;
 const net = std.net;
 const SharedData = core.SharedData;
 const Peer = core.Peer;
@@ -16,7 +16,7 @@ fn printCmdUsage() void {
     std.debug.print("    * <peer_id> .... id of the peer to ping\n", .{});
 }
 
-pub fn executor(cmd: ?[]const u8, cd: ?core.CommandData) void {
+pub fn executor(cmd: ?[]const u8, cd: ?core.sc.CommandData) void {
     var split = std.mem.splitBackwardsScalar(u8, cmd.?, ' ');
     if (split.next()) |arg| {
         if (std.mem.eql(u8, arg, cmd.?)) {
@@ -76,6 +76,6 @@ pub fn executor(cmd: ?[]const u8, cd: ?core.CommandData) void {
     }
 }
 
-pub const COMMAND = aids.Stab.Command(core.CommandData){
+pub const COMMAND = aids.Stab.Command(core.sc.CommandData){
     .executor = executor,
 };

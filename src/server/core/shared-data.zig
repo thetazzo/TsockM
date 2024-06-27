@@ -1,6 +1,6 @@
 const std = @import("std");
 const pc = @import("peer.zig");
-const Server = @import("core.zig").Server;
+const Server = @import("server.zig").Server;
 
 pub const SharedData = struct {
     m: std.Thread.Mutex = undefined,

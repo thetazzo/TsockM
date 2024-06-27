@@ -1,7 +1,7 @@
 const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
-const proto = aids.Protocol;
+const proto = aids.proto;
 const net = std.net;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
@@ -9,7 +9,7 @@ const SharedData = core.SharedData;
 // TODO: try if sd.server.net_server can get the connection instead if in_conn param
 fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: proto.Protocol) void {
     _ = in_conn;
-    const opt_peer_ref = core.PeerCore.peerRefFromId(sd.peer_pool, protocol.sender_id);
+    const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
     if (opt_peer_ref) |peer_ref| {
         const peer = sd.peer_pool.items[peer_ref.ref_id];
         const endp = proto.Protocol.init(

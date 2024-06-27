@@ -2,11 +2,11 @@ const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
 const cmn = aids.cmn;
-const proto = aids.Protocol;
+const proto = aids.proto;
 const net = std.net;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
-const Peer = core.Peer;
+const Peer = core.pc.Peer;
 
 fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: proto.Protocol) void {
     const addr_str = cmn.address_as_str(in_conn.?.address);
@@ -34,7 +34,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: pr
 }
 
 fn collectRespone(sd: *SharedData, protocol: proto.Protocol) void {
-    const opt_peer_ref = core.PeerCore.peerRefFromId(sd.peer_pool, protocol.sender_id);
+    const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
     if (opt_peer_ref) |peer_ref| {
         std.debug.print("peer `{s}` is alive\n", .{peer_ref.peer.username});
     } else {

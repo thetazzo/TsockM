@@ -1,7 +1,7 @@
 const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
-const Protocol = aids.Protocol;
+const Protocol = aids.proto;
 const SharedData = core.SharedData;
 
 const str_allocator = std.heap.page_allocator;
@@ -13,7 +13,7 @@ fn printCmdUsage() void {
     std.debug.print("    * <peer_id> .... id of the peer to kill\n", .{});
 }
 
-pub fn executor(cmd: ?[]const u8, cd: ?core.CommandData) void {
+pub fn executor(cmd: ?[]const u8, cd: ?core.sc.CommandData) void {
     var split = std.mem.splitBackwardsScalar(u8, cmd.?, ' ');
     if (split.next()) |arg| {
         if (std.mem.eql(u8, arg, cmd.?)) {
@@ -26,7 +26,7 @@ pub fn executor(cmd: ?[]const u8, cd: ?core.CommandData) void {
                 act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, cd.?.sd, "");
             }
         } else {
-            const opt_peer_ref = core.PeerCore.peerRefFromId(cd.?.sd.peer_pool, arg);
+            const opt_peer_ref = core.pc.peerRefFromId(cd.?.sd.peer_pool, arg);
             if (opt_peer_ref) |peer_ref| {
                 if (cd.?.sd.server.Actioner.get(aids.Stab.Act.COMM_END)) |act| {
                     const id = std.fmt.allocPrint(str_allocator, "{d}", .{peer_ref.ref_id}) catch |err| {
@@ -41,6 +41,6 @@ pub fn executor(cmd: ?[]const u8, cd: ?core.CommandData) void {
     }
 }
 
-pub const COMMAND = aids.Stab.Command(core.CommandData){
+pub const COMMAND = aids.Stab.Command(core.sc.CommandData){
     .executor = executor,
 };

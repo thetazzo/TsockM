@@ -5,10 +5,10 @@ const SharedData = core.SharedData;
 
 pub fn executor(_: ?[]const u8, cd: ?core.CommandData) void {
     // TODO: This should be client action
-    const reqp = aids.Protocol.init(
-        aids.Protocol.Typ.REQ,
-        aids.Protocol.Act.COMM_END,
-        aids.Protocol.StatusCode.OK,
+    const reqp = aids.proto.Protocol.init(
+        aids.proto.Typ.REQ,
+        aids.proto.Act.COMM_END,
+        aids.proto.StatusCode.OK,
         cd.?.sd.client.id,
         cd.?.sd.client.client_addr_str,
         cd.?.sd.client.server_addr_str,

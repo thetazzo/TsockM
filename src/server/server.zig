@@ -3,19 +3,13 @@ const aids = @import("aids");
 const core = @import("core/core.zig");
 const ServerAction = @import("actions/actions.zig");
 const ServerCommand = @import("commands/commands.zig");
-const Server = core.Server;
-const Peer = core.Peer;
-const SharedData = core.SharedData;
-const Protocol = aids.Protocol;
-const Logging = aids.Logging;
-const Stab = aids.Stab;
 const mem = std.mem;
 const print = std.debug.print;
 
 const str_allocator = std.heap.page_allocator;
 
 /// I am thread
-fn listener(sd: *SharedData) !void {
+fn listener(sd: *core.SharedData) !void {
     while (!sd.should_exit) {
         const conn = try sd.server.net_server.accept();
 
@@ -26,7 +20,7 @@ fn listener(sd: *SharedData) !void {
         const recv = mem.sliceTo(&buf, 170);
 
         // Handle communication request
-        var protocol = Protocol.fromStr(recv); // parse protocol from recieved bytes
+        var protocol = aids.proto.fromStr(recv);
         protocol.dump(sd.server.log_level);
 
         const opt_action = sd.server.Actioner.get(aids.Stab.parseAct(protocol.action));
@@ -47,7 +41,7 @@ fn listener(sd: *SharedData) !void {
 }
 
 /// i am a thread
-fn commander(sd: *SharedData) !void {
+fn commander(sd: *core.SharedData) !void {
     while (!sd.should_exit) {
         // read for command
         var buf: [256]u8 = undefined;
@@ -57,10 +51,10 @@ fn commander(sd: *SharedData) !void {
             var splits = mem.splitScalar(u8, user_input, ' ');
             if (splits.next()) |ui| {
                 if (sd.server.Commander.get(ui)) |cmd| {
-                    cmd.executor(user_input, core.CommandData{ .sd = sd });
+                    cmd.executor(user_input, core.sc.CommandData{ .sd = sd });
                 } else {
                     std.log.err("Unknown command: `{s}`\n", .{user_input});
-                    ServerCommand.PRINT_PROGRAM_USAGE.executor(null, core.CommandData{ .sd = sd });
+                    ServerCommand.PRINT_PROGRAM_USAGE.executor(null, core.sc.CommandData{ .sd = sd });
                 }
             }
         } else {
@@ -73,7 +67,7 @@ fn commander(sd: *SharedData) !void {
 
 /// ping peers to determine ther life status
 /// this is a thread
-fn polizei(sd: *SharedData) !void {
+fn polizei(sd: *core.SharedData) !void {
     var start_t = try std.time.Instant.now();
     var lock = false;
     const CHECK_INTERVAL = 2000; // ms
@@ -81,11 +75,11 @@ fn polizei(sd: *SharedData) !void {
         const now_t = try std.time.Instant.now();
         const dt = now_t.since(start_t) / std.time.ns_per_ms;
         if (dt == CHECK_INTERVAL and !lock) {
-            ServerAction.COMM_ACTION.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd, "");
+            ServerAction.COMM_ACTION.transmit.?.request(aids.proto.TransmitionMode.BROADCAST, sd, "");
             lock = true;
         }
         if (dt == CHECK_INTERVAL + 500 and lock) {
-            ServerAction.NTFY_KILL_ACTION.transmit.?.request(Protocol.TransmitionMode.BROADCAST, sd, "");
+            ServerAction.NTFY_KILL_ACTION.transmit.?.request(aids.proto.TransmitionMode.BROADCAST, sd, "");
             lock = false;
         }
         if (dt == CHECK_INTERVAL + 1001 and !lock) {
@@ -96,21 +90,22 @@ fn polizei(sd: *SharedData) !void {
     }
 }
 
-pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
+pub fn start(hostname: []const u8, port: u16, log_level: aids.Logging.Level) !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
 
-    var server = Server.init(gpa_allocator, hostname, port, log_level, "0.3.0");
+    var server = core.sc.Server.init(gpa_allocator, str_allocator, hostname, port, log_level, "0.3.0");
     defer server.deinit();
+    defer str_allocator.free(server.address_str);
 
     // Bind server actions to the server
-    server.Actioner.add(Stab.Act.COMM, ServerAction.COMM_ACTION);
-    server.Actioner.add(Stab.Act.COMM_END, ServerAction.COMM_END_ACTION);
-    server.Actioner.add(Stab.Act.MSG, ServerAction.MSG_ACTION);
-    server.Actioner.add(Stab.Act.GET_PEER, ServerAction.GET_PEER_ACTION);
-    server.Actioner.add(Stab.Act.NTFY_KILL, ServerAction.NTFY_KILL_ACTION);
-    server.Actioner.add(Stab.Act.NONE, ServerAction.BAD_REQUEST_ACTION);
-    server.Actioner.add(Stab.Act.CLEAN_PEER_POOL, ServerAction.CLEAN_PEER_POOL_ACTION);
+    server.Actioner.add(aids.Stab.Act.COMM, ServerAction.COMM_ACTION);
+    server.Actioner.add(aids.Stab.Act.COMM_END, ServerAction.COMM_END_ACTION);
+    server.Actioner.add(aids.Stab.Act.MSG, ServerAction.MSG_ACTION);
+    server.Actioner.add(aids.Stab.Act.GET_PEER, ServerAction.GET_PEER_ACTION);
+    server.Actioner.add(aids.Stab.Act.NTFY_KILL, ServerAction.NTFY_KILL_ACTION);
+    server.Actioner.add(aids.Stab.Act.NONE, ServerAction.BAD_REQUEST_ACTION);
+    server.Actioner.add(aids.Stab.Act.CLEAN_PEER_POOL, ServerAction.CLEAN_PEER_POOL_ACTION);
 
     // Bind server commands to the server
     server.Commander.add(":exit", ServerCommand.EXIT_SERVER);
@@ -125,13 +120,13 @@ pub fn start(hostname: []const u8, port: u16, log_level: Logging.Level) !void {
     server.Commander.add(":unmute", ServerCommand.UNMUTE);
     server.Commander.add(":help", ServerCommand.PRINT_PROGRAM_USAGE);
 
-    var peer_pool = std.ArrayList(Peer).init(gpa_allocator);
+    var peer_pool = std.ArrayList(core.pc.Peer).init(gpa_allocator);
     defer peer_pool.deinit();
 
     server.start();
 
     var thread_pool: [3]std.Thread = undefined;
-    var sd = SharedData{
+    var sd = core.SharedData{
         .m = std.Thread.Mutex{},
         .should_exit = false,
         .peer_pool = &peer_pool,

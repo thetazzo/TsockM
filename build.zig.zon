@@ -15,14 +15,8 @@
     // Once all dependencies are fetched, `zig build` no longer requires
     // internet connectivity.
     .dependencies = .{
-        .sqids = .{
-            .url = "https://github.com/sqids/sqids-zig/archive/d2c00500.tar.gz",
-            .hash = "12206eb8f6d144fcf375df86e85162737068bb8cf8cb5f487ffae2e253892cf07642",
-        },
-        .@"raylib-zig" = .{
-            .url = "https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz",
-            .hash = "1220f7489d0946ca7ea7ffec154041cb862066491f789c2a5f823191ed325d4c37ef", // put the actual hash here
-        },
+        .sqids = .{ .path = "./external/sqids-zig" },
+        .@"raylib-zig" = .{ .path = "./external/raylib-zig/" },
     },
 
     // Specifies the set of files and directories that are included in this package.

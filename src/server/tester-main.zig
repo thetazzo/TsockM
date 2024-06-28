@@ -44,6 +44,7 @@ pub fn main() !void {
     var t_server = core.sc.Server.init(gpa_allocator, str_allocator, hostname, port, .DEV, "");
 
     t_server.Actioner.add(.COMM, ServerActions.COMM_ACTION);
+    t_server.Actioner.add(.MSG, ServerActions.MSG_ACTION);
 
     var peer_pool = std.ArrayList(core.pc.Peer).init(gpa_allocator);
     defer peer_pool.deinit();

@@ -1,9 +1,9 @@
 const std = @import("std");
 const aids = @import("aids");
 const cmn = aids.cmn;
-const proto = aids.proto;
 const sqids = @import("sqids");
 const net = std.net;
+const comm = aids.v2.comm;
 const mem = std.mem;
 const Server = net.Server;
 const print = std.debug.print;
@@ -47,7 +47,7 @@ pub const Peer = struct {
     pub fn construct(
         allocator: mem.Allocator,
         conn: net.Server.Connection,
-        protocol: proto.Protocol,
+        protocol: comm.Protocol,
     ) @This() {
         var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
         const s = sqids.Sqids.init(std.heap.page_allocator, .{ .min_length = 10 }) catch |err| {

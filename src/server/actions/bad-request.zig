@@ -2,26 +2,27 @@ const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
 const cmn = aids.cmn;
-const proto = aids.proto;
 const net = std.net;
+const comm = aids.v2.comm;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
-fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: proto.Protocol) void {
-    const errp = proto.Protocol.init(
-        proto.Typ.ERR,
-        protocol.action,
-        proto.StatusCode.BAD_REQUEST,
-        "server",
-        sd.server.address_str,
-        cmn.address_as_str(in_conn.?.address),
-        @tagName(proto.StatusCode.BAD_REQUEST),
-    );
+fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
+    const errp = comm.Protocol{
+        .type = .ERR,
+        .action = protocol.action,
+        .status = .BAD_REQUEST,
+        .origin = .SERVER,
+        .sender_id = "",
+        .src_addr = sd.server.address_str,
+        .dest_addr = cmn.address_as_str(in_conn.?.address),
+        .body = @tagName(comm.Status.BAD_REQUEST),
+    };
     errp.dump(sd.server.log_level);
-    _ = proto.transmit(in_conn.?.stream, errp);
+    _ = errp.transmit(in_conn.?.stream) catch 1;
 }
 
-fn collectRespone(sd: *SharedData, protocol: proto.Protocol) void {
+fn collectRespone(sd: *SharedData, protocol: comm.Protocol) void {
     _ = sd;
     _ = protocol;
     std.log.err("not implemented", .{});
@@ -31,7 +32,7 @@ fn collectError(_: *SharedData) void {
     std.log.err("not implemented", .{});
 }
 
-fn transmitRequest(mode: proto.TransmitionMode, sd: *SharedData, _: []const u8) void {
+fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, _: []const u8) void {
     _ = mode;
     _ = sd;
     std.log.err("not implemented", .{});

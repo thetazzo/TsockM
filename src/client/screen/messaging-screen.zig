@@ -1,10 +1,11 @@
 const rl = @import("raylib");
 const std = @import("std");
+const aids = @import("aids");
 const core = @import("../core/core.zig");
 const kybrd = @import("../core/keyboard.zig");
 const ClientAction = @import("../actions/actions.zig");
-const Protocol = @import("aids").Protocol;
 const sc = @import("screen.zig");
+const comm = aids.v2.comm;
 
 const MessagingUD = struct {};
 
@@ -49,7 +50,7 @@ fn update(sd: *core.SharedData, _: MessagingUD) void {
                     } else {
                         const msg = uie.message_input.value.getValueZ(str_allocator);
                         defer str_allocator.free(msg);
-                        ClientAction.MSG.transmit.?.request(Protocol.TransmitionMode.UNICAST, sd, msg);
+                        ClientAction.MSG.transmit.?.request(comm.TransmitionMode.UNICAST, sd, msg);
                     }
                     _ = uie.message_input.clean();
                 }

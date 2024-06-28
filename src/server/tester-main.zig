@@ -2,6 +2,7 @@ const std = @import("std");
 const aids = @import("aids");
 const core = @import("core/core.zig");
 const ServerActions = @import("actions/actions.zig");
+const comm = aids.v2.comm;
 
 /// I am thread
 fn listener(sd: *core.SharedData) !void {
@@ -15,7 +16,7 @@ fn listener(sd: *core.SharedData) !void {
         const recv = std.mem.sliceTo(&buf, 170);
 
         // Handle communication request
-        var protocol = aids.proto.fromStr(recv);
+        var protocol = comm.protocolFromStr(recv);
         protocol.dump(sd.server.log_level);
 
         const opt_action = sd.server.Actioner.get(aids.Stab.parseAct(protocol.action));
@@ -30,14 +31,19 @@ fn listener(sd: *core.SharedData) !void {
                     unreachable;
                 },
             }
-            //std.log.err("No valid action found: `{s}`\n", .{@tagName(protocol.action)});
         }
         if (opt_action == null) {
             std.log.err("Action not found `{s}`", .{@tagName(protocol.action)});
-            const resp = aids.proto.Protocol.init(.ERR, protocol.action, .NOT_FOUND, "server", sd.server.address_str, protocol.src, "acton not found");
+            const resp = comm.protocols.NOT_FOUND(
+                protocol.action,
+                .SERVER,
+                protocol.sender_id,
+                protocol.src_addr,
+                protocol.dest_addr,
+            );
             const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
             if (opt_peer_ref) |peer_ref| {
-                _ = aids.proto.transmit(peer_ref.peer.stream(), resp);
+                _ = try resp.transmit(peer_ref.peer.stream());
                 resp.dump(sd.server.log_level);
             }
         }
@@ -56,6 +62,7 @@ pub fn main() !void {
     t_server.Actioner.add(.COMM, ServerActions.COMM_ACTION);
     t_server.Actioner.add(.MSG, ServerActions.MSG_ACTION);
     t_server.Actioner.add(.GET_PEER, ServerActions.GET_PEER_ACTION);
+    t_server.Actioner.add(.COMM_END, ServerActions.COMM_END_ACTION);
 
     var peer_pool = std.ArrayList(core.pc.Peer).init(gpa_allocator);
     defer peer_pool.deinit();

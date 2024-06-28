@@ -1,7 +1,7 @@
 const std = @import("std");
 const aids = @import("aids");
+const comm = aids.v2.comm;
 const core = @import("../core/core.zig");
-const Protocol = aids.proto;
 const SharedData = core.SharedData;
 
 const str_allocator = std.heap.page_allocator;
@@ -23,7 +23,7 @@ pub fn executor(cmd: ?[]const u8, cd: ?core.sc.CommandData) void {
         }
         if (std.mem.eql(u8, arg, "all")) {
             if (cd.?.sd.server.Actioner.get(aids.Stab.Act.COMM_END)) |act| {
-                act.transmit.?.request(Protocol.TransmitionMode.BROADCAST, cd.?.sd, "");
+                act.transmit.?.request(comm.TransmitionMode.BROADCAST, cd.?.sd, "");
             }
         } else {
             const opt_peer_ref = core.pc.peerRefFromId(cd.?.sd.peer_pool, arg);
@@ -34,7 +34,7 @@ pub fn executor(cmd: ?[]const u8, cd: ?core.sc.CommandData) void {
                         return;
                     };
                     defer str_allocator.free(id);
-                    act.transmit.?.request(Protocol.TransmitionMode.UNICAST, cd.?.sd, id);
+                    act.transmit.?.request(comm.TransmitionMode.UNICAST, cd.?.sd, id);
                 }
             }
         }

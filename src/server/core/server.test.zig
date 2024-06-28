@@ -4,6 +4,7 @@ const aids = @import("aids");
 const sc = @import("server.zig");
 const pc = @import("peer.zig");
 const SharedData = @import("shared-data.zig").SharedData;
+const comm = aids.v2.comm;
 
 const str_allocator = std.heap.page_allocator;
 
@@ -38,12 +39,21 @@ test "Server.init" {
 test "Server.Action.COMM" {
     comm_stream = try testingStream();
     const username = "milko";
-    const reqp = aids.proto.Protocol.init(.REQ, .COMM, .OK, "tester", server.address_str, server.address_str, username);
-    _ = aids.proto.transmit(comm_stream, reqp);
-    const resp = try aids.proto.collect(str_allocator, comm_stream);
-    try std.testing.expectEqual(aids.proto.Typ.RES, resp.type);
-    try std.testing.expectEqual(aids.proto.Act.COMM, resp.action);
-    try std.testing.expectEqual(aids.proto.StatusCode.OK, resp.status_code);
+    const reqp = comm.Protocol{
+        .type = .REQ,
+        .action = .COMM,
+        .status = .OK,
+        .origin = .SERVER,
+        .sender_id = "tester",
+        .src_addr = server.address_str,
+        .dest_addr = server.address_str,
+        .body = username,
+    };
+    _ = try reqp.transmit(comm_stream);
+    const resp = try comm.collect(str_allocator, comm_stream);
+    try std.testing.expectEqual(comm.Typ.RES, resp.type);
+    try std.testing.expectEqual(comm.Act.COMM, resp.action);
+    try std.testing.expectEqual(comm.Status.OK, resp.status);
     var splits = std.mem.splitScalar(u8, resp.body, '|');
     user_id = splits.next().?;
     var unns = std.mem.splitScalar(u8, splits.next().?, '#');
@@ -53,30 +63,96 @@ test "Server.Action.COMM" {
 
 test "Server.Action.MSG" {
     const stream = try testingStream();
-    const reqp = aids.proto.Protocol.init(.REQ, .MSG, .OK, user_id, server.address_str, server.address_str, "Ojla");
-    _ = aids.proto.transmit(stream, reqp);
-    const resp = try aids.proto.collect(str_allocator, comm_stream);
-    try std.testing.expectEqual(aids.proto.Typ.RES, resp.type);
-    try std.testing.expectEqual(aids.proto.Act.MSG, resp.action);
-    try std.testing.expectEqual(aids.proto.StatusCode.OK, resp.status_code);
+    const reqp = comm.Protocol{
+        .type = .REQ,
+        .action = .MSG,
+        .status = .OK,
+        .origin = .SERVER,
+        .sender_id = user_id,
+        .src_addr = server.address_str,
+        .dest_addr = server.address_str,
+        .body = "Ojla",
+    };
+    _ = try reqp.transmit(stream);
+    const resp = try comm.collect(str_allocator, comm_stream);
+    try std.testing.expectEqual(comm.Typ.RES, resp.type);
+    try std.testing.expectEqual(comm.Act.MSG, resp.action);
+    try std.testing.expectEqual(comm.Status.OK, resp.status);
 }
 
 test "Server.Action.GET_PEER" {
     const stream = try testingStream();
-    const reqp = aids.proto.Protocol.init(.REQ, .GET_PEER, .OK, user_id, server.address_str, server.address_str, user_id);
-    _ = aids.proto.transmit(stream, reqp);
-    const resp = try aids.proto.collect(str_allocator, comm_stream);
-    try std.testing.expectEqual(aids.proto.Typ.RES, resp.type);
-    try std.testing.expectEqual(aids.proto.Act.GET_PEER, resp.action);
-    try std.testing.expectEqual(aids.proto.StatusCode.OK, resp.status_code);
+    const reqp = comm.Protocol{
+        .type = .REQ,
+        .action = .GET_PEER,
+        .status = .OK,
+        .origin = .SERVER,
+        .sender_id = user_id,
+        .src_addr = server.address_str,
+        .dest_addr = server.address_str,
+        .body = user_id,
+    };
+    _ = try reqp.transmit(stream);
+    const resp = try comm.collect(str_allocator, comm_stream);
+    try std.testing.expectEqual(comm.Typ.RES, resp.type);
+    try std.testing.expectEqual(comm.Act.GET_PEER, resp.action);
+    try std.testing.expectEqual(comm.Status.OK, resp.status);
 }
 
 test "Server.Action.GET_PEER.notFound" {
     const stream = try testingStream();
-    const reqp = aids.proto.Protocol.init(.REQ, .GET_PEER, .OK, user_id, server.address_str, server.address_str, "6942");
-    _ = aids.proto.transmit(stream, reqp);
-    const resp = try aids.proto.collect(str_allocator, comm_stream);
-    try std.testing.expectEqual(aids.proto.Typ.ERR, resp.type);
-    try std.testing.expectEqual(aids.proto.Act.GET_PEER, resp.action);
-    try std.testing.expectEqual(aids.proto.StatusCode.NOT_FOUND, resp.status_code);
+    const reqp = comm.Protocol{
+        .type = .REQ,
+        .action = .GET_PEER,
+        .status = .OK,
+        .origin = .SERVER,
+        .sender_id = user_id,
+        .src_addr = server.address_str,
+        .dest_addr = server.address_str,
+        .body = "6942",
+    };
+    _ = try reqp.transmit(stream);
+    const resp = try comm.collect(str_allocator, comm_stream);
+    try std.testing.expectEqual(comm.Typ.ERR, resp.type);
+    try std.testing.expectEqual(comm.Act.GET_PEER, resp.action);
+    try std.testing.expectEqual(comm.Status.NOT_FOUND, resp.status);
 }
+
+test "Server.Action.COMM_END" {
+    const comm_stream_alt = try testingStream();
+    const username = "tilko";
+    const reqp = comm.Protocol{
+        .type = .REQ,
+        .action = .COMM,
+        .status = .OK,
+        .origin = .SERVER,
+        .sender_id = "tester",
+        .src_addr = server.address_str,
+        .dest_addr = server.address_str,
+        .body = username,
+    };
+    _ = try reqp.transmit(comm_stream_alt);
+    const resp = try comm.collect(str_allocator, comm_stream_alt);
+    var splits = std.mem.splitScalar(u8, resp.body, '|');
+    const user_id_alt = splits.next().?;
+
+    const stream = try testingStream();
+    const kill_reqp = comm.Protocol{
+        .type = .REQ,
+        .action = .COMM_END,
+        .status = .OK,
+        .origin = .CLIENT,
+        .sender_id = user_id_alt,
+        .src_addr = server.address_str,
+        .dest_addr = server.address_str,
+        .body = "",
+    };
+    _ = try kill_reqp.transmit(stream);
+    const kill_resp = try comm.collect(str_allocator, comm_stream_alt);
+    try std.testing.expectEqual(comm.Typ.RES, kill_resp.type);
+    try std.testing.expectEqual(comm.Act.COMM_END, kill_resp.action);
+    try std.testing.expectEqual(comm.Status.OK, kill_resp.status);
+}
+// TODO: NTFY-KILL
+//test "Server.Action.NTFY_KILL" {
+//}

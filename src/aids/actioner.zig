@@ -1,15 +1,15 @@
 const std = @import("std");
-const proto = @import("protocol.zig");
+const comm = @import("communication/communication.zig");
 
 pub fn Action(comptime T: type) type {
     return struct {
         collect: ?struct {
-            request: *const fn (?std.net.Server.Connection, *T, proto.Protocol) void,
-            response: *const fn (*T, proto.Protocol) void,
+            request: *const fn (?std.net.Server.Connection, *T, comm.Protocol) void,
+            response: *const fn (*T, comm.Protocol) void,
             err: *const fn (*T) void,
         },
         transmit: ?struct {
-            request: *const fn (proto.TransmitionMode, *T, []const u8) void,
+            request: *const fn (comm.TransmitionMode, *T, []const u8) void,
             response: *const fn () void,
             err: *const fn () void,
         },
@@ -27,7 +27,7 @@ pub const Act = enum(u8) {
     CLEAN_PEER_POOL,
 };
 
-pub fn parseAct(act: proto.Act) Act {
+pub fn parseAct(act: comm.Act) Act {
     return switch (act) {
         .COMM => Act.COMM,
         .COMM_END => Act.COMM_END,
@@ -67,10 +67,10 @@ test "Act-len" {
 }
 
 test "parseAct" {
-    try std.testing.expectEqual(Act.NONE, parseAct(proto.Act.NONE));
-    try std.testing.expectEqual(Act.MSG, parseAct(proto.Act.MSG));
-    try std.testing.expectEqual(Act.COMM, parseAct(proto.Act.COMM));
-    try std.testing.expectEqual(Act.COMM_END, parseAct(proto.Act.COMM_END));
-    try std.testing.expectEqual(Act.GET_PEER, parseAct(proto.Act.GET_PEER));
-    try std.testing.expectEqual(Act.NTFY_KILL, parseAct(proto.Act.NTFY_KILL));
+    try std.testing.expectEqual(Act.NONE, parseAct(.NONE));
+    try std.testing.expectEqual(Act.MSG, parseAct(.MSG));
+    try std.testing.expectEqual(Act.COMM, parseAct(.COMM));
+    try std.testing.expectEqual(Act.COMM_END, parseAct(.COMM_END));
+    try std.testing.expectEqual(Act.GET_PEER, parseAct(.GET_PEER));
+    try std.testing.expectEqual(Act.NTFY_KILL, parseAct(.NTFY_KILL));
 }

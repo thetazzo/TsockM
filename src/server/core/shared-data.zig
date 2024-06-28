@@ -20,17 +20,16 @@ pub const SharedData = struct {
         self.peer_pool.clearAndFree();
     }
 
-    pub fn peerRemove(self: *@This(), pid: usize) void {
+    pub fn peerPoolRemove(self: *@This(), pid: usize) void {
         self.m.lock();
         defer self.m.unlock();
         _ = self.peer_pool.orderedRemove(pid);
     }
 
-    pub fn removePeerFromPool(self: *@This(), peer_ref: pc.PeerRef) void {
+    pub fn markPeerForDeath(self: *@This(), peer_id: usize) void {
         self.m.lock();
         defer self.m.unlock();
-        self.peer_pool.items[peer_ref.ref_id].alive = false;
-        _ = self.peer_pool.orderedRemove(peer_ref.ref_id);
+        self.peer_pool.items[peer_id].alive = false;
     }
 
     pub fn peerPoolAppend(self: *@This(), peer: pc.Peer) !void {

@@ -3,6 +3,7 @@ const aids = @import("aids");
 const core = @import("core/core.zig");
 const ServerAction = @import("actions/actions.zig");
 const ServerCommand = @import("commands/commands.zig");
+const comm = aids.v2.comm;
 const mem = std.mem;
 const print = std.debug.print;
 
@@ -20,7 +21,7 @@ fn listener(sd: *core.SharedData) !void {
         const recv = mem.sliceTo(&buf, 170);
 
         // Handle communication request
-        var protocol = aids.proto.fromStr(recv);
+        var protocol = comm.protocolFromStr(recv);
         protocol.dump(sd.server.log_level);
 
         const opt_action = sd.server.Actioner.get(aids.Stab.parseAct(protocol.action));
@@ -38,10 +39,16 @@ fn listener(sd: *core.SharedData) !void {
         }
         if (opt_action == null) {
             std.log.err("Action not found `{s}`", .{@tagName(protocol.action)});
-            const resp = aids.proto.Protocol.init(.ERR, protocol.action, .NOT_FOUND, "server", sd.server.address_str, protocol.src, "acton not found");
+            const resp = comm.protocols.NOT_FOUND(
+                protocol.action,
+                .SERVER,
+                "",
+                sd.server.address_str,
+                protocol.src_addr,
+            );
             const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
             if (opt_peer_ref) |peer_ref| {
-                _ = aids.proto.transmit(peer_ref.peer.stream(), resp);
+                _ = resp.transmit(peer_ref.peer.stream()) catch 1;
                 resp.dump(sd.server.log_level);
             }
         }
@@ -74,7 +81,7 @@ fn commander(sd: *core.SharedData) !void {
     print("Thread `run_cmd` finished\n", .{});
 }
 
-/// ping peers to determine ther life status
+/// ping peers to determine their life status
 /// this is a thread
 fn polizei(sd: *core.SharedData) !void {
     var start_t = try std.time.Instant.now();
@@ -84,15 +91,15 @@ fn polizei(sd: *core.SharedData) !void {
         const now_t = try std.time.Instant.now();
         const dt = now_t.since(start_t) / std.time.ns_per_ms;
         if (dt == CHECK_INTERVAL and !lock) {
-            ServerAction.COMM_ACTION.transmit.?.request(aids.proto.TransmitionMode.BROADCAST, sd, "");
+            ServerAction.COMM_ACTION.transmit.?.request(comm.TransmitionMode.BROADCAST, sd, "");
             lock = true;
         }
         if (dt == CHECK_INTERVAL + 500 and lock) {
-            ServerAction.NTFY_KILL_ACTION.transmit.?.request(aids.proto.TransmitionMode.BROADCAST, sd, "");
+            ServerAction.NTFY_KILL_ACTION.transmit.?.request(comm.TransmitionMode.BROADCAST, sd, "");
             lock = false;
         }
         if (dt == CHECK_INTERVAL + 1001 and !lock) {
-            ServerAction.CLEAN_PEER_POOL_ACTION.internal.?(sd);
+            ServerCommand.CLEAN_PEER_POOL.executor("", core.sc.CommandData{ .sd = sd });
             lock = false;
             start_t = try std.time.Instant.now();
         }
@@ -114,7 +121,6 @@ pub fn start(hostname: []const u8, port: u16, log_level: aids.Logging.Level) !vo
     server.Actioner.add(aids.Stab.Act.GET_PEER, ServerAction.GET_PEER_ACTION);
     server.Actioner.add(aids.Stab.Act.NTFY_KILL, ServerAction.NTFY_KILL_ACTION);
     server.Actioner.add(aids.Stab.Act.NONE, ServerAction.BAD_REQUEST_ACTION);
-    server.Actioner.add(aids.Stab.Act.CLEAN_PEER_POOL, ServerAction.CLEAN_PEER_POOL_ACTION);
 
     // Bind server commands to the server
     server.Commander.add(":exit", ServerCommand.EXIT_SERVER);

@@ -1,18 +1,18 @@
 const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
-const proto = aids.proto;
 const net = std.net;
+const comm = aids.v2.comm;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
-fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: proto.Protocol) void {
+fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
     _ = in_conn;
     _ = sd;
     _ = protocol;
 }
 
-fn collectRespone(sd: *SharedData, protocol: proto.Protocol) void {
+fn collectRespone(sd: *SharedData, protocol: comm.Protocol) void {
     _ = sd;
     _ = protocol;
     std.log.err("not implemented", .{});
@@ -22,7 +22,7 @@ fn collectError(_: *SharedData) void {
     std.log.err("not implemented", .{});
 }
 
-fn transmitRequest(mode: proto.TransmitionMode, sd: *SharedData, _: []const u8) void {
+fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, _: []const u8) void {
     switch (mode) {
         .UNICAST => {
             std.log.err("not implemented", .{});
@@ -34,16 +34,17 @@ fn transmitRequest(mode: proto.TransmitionMode, sd: *SharedData, _: []const u8) 
                     // TODO: peer_broadcast_death
                     for (sd.peer_pool.items) |ap| {
                         if (!std.mem.eql(u8, ap.id, peer.id)) {
-                            const ntfy = proto.Protocol.init(
-                                proto.Typ.REQ,
-                                proto.Act.NTFY_KILL,
-                                proto.StatusCode.OK,
-                                "server",
-                                sd.server.address_str,
-                                peer.commAddressAsStr(),
-                                peer.id,
-                            );
-                            _ = proto.transmit(ap.stream(), ntfy);
+                            const reqp = comm.Protocol{
+                                .type = comm.Typ.REQ,
+                                .action = comm.Act.NTFY_KILL,
+                                .status = comm.Status.OK,
+                                .origin = .SERVER,
+                                .sender_id = "",
+                                .src_addr = sd.server.address_str,
+                                .dest_addr = peer.commAddressAsStr(),
+                                .body = peer.id,
+                            };
+                            _ = reqp.transmit(ap.stream()) catch 1;
                         }
                     }
                 }

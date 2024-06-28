@@ -5,16 +5,6 @@ const Logging = @import("../logging.zig");
 const mem = std.mem;
 const print = std.debug.print;
 
-// TODO: make this part of the protocol
-//       as of right now this is only used
-//       on transmition of servercationsc
-// TODO: allow protocols to specify how they
-//       should be transmitted and to where
-//       they should be transmitted
-pub const TransmitionMode = enum {
-    UNICAST,
-    BROADCAST,
-};
 /// Protocol structure
 ///     shape: [type]::[action]::[status_code]::[sender_id]::[src_addr]::[dest_addr]::[body]
 pub const Protocol = struct {
@@ -85,8 +75,9 @@ pub const Protocol = struct {
         return self.action == act;
     }
     /// returns 1 when stream is closed
-    pub fn transmit(self: @This(), stream: std.net.Stream) !void {
-        _ = try stream.write(self.asStr());
+    pub fn transmit(self: @This(), stream: std.net.Stream) !usize {
+        const q = try stream.write(self.asStr());
+        return q;
     }
 
     pub fn eql(self: @This(), prot: Protocol) bool {
@@ -142,15 +133,6 @@ pub const Protocol = struct {
         return true;
     }
 };
-
-pub fn collect(allocator: mem.Allocator, stream: std.net.Stream) !Protocol {
-    var buf: [1024]u8 = undefined;
-    _ = try stream.read(&buf);
-    const resps = mem.sliceTo(&buf, 170);
-    const respss = try std.fmt.allocPrint(allocator, "{s}", .{resps});
-    const resp = Protocol.fromStr(respss);
-    return resp;
-}
 
 test "protocol as string" {
     var p: Protocol = Protocol{

@@ -1,22 +1,23 @@
 const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
+const comm = aids.v2.comm;
 const SharedData = core.SharedData;
 
 pub fn executor(_: ?[]const u8, cd: ?core.CommandData) void {
     // TODO: This should be client action
-    const reqp = aids.proto.Protocol.init(
-        aids.proto.Typ.REQ,
-        aids.proto.Act.COMM_END,
-        aids.proto.StatusCode.OK,
-        cd.?.sd.client.id,
-        cd.?.sd.client.client_addr_str,
-        cd.?.sd.client.server_addr_str,
-        "OK",
-    );
+    const reqp = comm.Protocol{
+        .type = .REQ,
+        .action = .COMM_END,
+        .status_code = .OK,
+        .sender_id = cd.?.sd.client.id,
+        .src_addr = cd.?.sd.client.client_addr_str,
+        .dest_addr = cd.?.sd.client.server_addr_str,
+        .body = "OK",
+    };
     cd.?.sd.client.sendRequestToServer(reqp);
     // Collect death request response and if successful kill the client
-    const resp = core.Protocol.collect(std.heap.page_allocator, cd.?.sd.client.stream) catch |err| {
+    const resp = comm.collect(std.heap.page_allocator, cd.?.sd.client.stream) catch |err| {
         std.log.err("exit-client::executor: {any}", .{err});
         std.posix.exit(1);
     };

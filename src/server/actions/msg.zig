@@ -1,8 +1,8 @@
 const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
-const proto = aids.proto;
 const net = std.net;
+const comm = aids.v2.comm;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
@@ -11,43 +11,43 @@ fn broadcastMessage(sd: *SharedData, peer_ref: core.pc.PeerRef, sender_id: []con
         if (peer_ref.ref_id != pid and peer.alive) {
             const src_addr = peer_ref.peer.commAddressAsStr();
             const dst_addr = peer.commAddressAsStr();
-            const msgp = proto.Protocol.init(
-                proto.Typ.RES,
-                proto.Act.MSG,
-                proto.StatusCode.OK,
-                sender_id,
-                src_addr,
-                dst_addr,
-                message,
-            );
-            msgp.dump(sd.server.log_level);
-            _ = proto.transmit(peer.stream(), msgp);
+            const resp = comm.Protocol{
+                .type = .RES,
+                .action = .MSG,
+                .status_code = .OK,
+                .sender_id = sender_id,
+                .src_addr = src_addr,
+                .dest_addr = dst_addr,
+                .body = message,
+            };
+            resp.dump(sd.server.log_level);
+            _ = resp.transmit(peer.stream()) catch 1;
         }
     }
 }
 
-fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: proto.Protocol) void {
+fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
     _ = in_conn;
     const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
     if (opt_peer_ref) |peer_ref| {
         broadcastMessage(sd, peer_ref, protocol.sender_id, protocol.body);
         const src_addr = peer_ref.peer.commAddressAsStr();
         const dst_addr = src_addr;
-        const msgp = proto.Protocol.init(
-            proto.Typ.RES,
-            proto.Act.MSG,
-            proto.StatusCode.OK,
-            protocol.sender_id,
-            src_addr,
-            dst_addr,
-            "OK",
-        );
-        msgp.dump(sd.server.log_level);
-        _ = proto.transmit(peer_ref.peer.stream(), msgp);
+        const resp = comm.Protocol{
+            .type = .RES,
+            .action = .MSG,
+            .status_code = .OK,
+            .sender_id = protocol.sender_id,
+            .src_addr = src_addr,
+            .dest_addr = dst_addr,
+            .body = "OK",
+        };
+        resp.dump(sd.server.log_level);
+        _ = resp.transmit(peer_ref.peer.stream()) catch 1;
     }
 }
 
-fn collectRespone(sd: *SharedData, protocol: proto.Protocol) void {
+fn collectRespone(sd: *SharedData, protocol: comm.Protocol) void {
     _ = sd;
     _ = protocol;
     std.log.err("not implemented", .{});
@@ -57,7 +57,7 @@ fn collectError(_: *SharedData) void {
     std.log.err("not implemented", .{});
 }
 
-fn transmitRequest(mode: proto.TransmitionMode, sd: *SharedData, _: []const u8) void {
+fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, _: []const u8) void {
     _ = mode;
     _ = sd;
     std.log.err("not implemented", .{});

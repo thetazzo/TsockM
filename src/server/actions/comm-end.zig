@@ -1,33 +1,33 @@
 const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
-const proto = aids.proto;
 const net = std.net;
+const comm = aids.v2.comm;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
 // TODO: try if sd.server.net_server can get the connection instead if in_conn param
-fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: proto.Protocol) void {
+fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
     _ = in_conn;
     const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
     if (opt_peer_ref) |peer_ref| {
         const peer = sd.peer_pool.items[peer_ref.ref_id];
-        const endp = proto.Protocol.init(
-            proto.Typ.RES,
-            proto.Act.COMM_END,
-            proto.StatusCode.OK,
-            "server",
-            sd.server.address_str,
-            peer.commAddressAsStr(),
-            "OK",
-        );
-        endp.dump(sd.server.log_level);
-        _ = proto.transmit(peer.stream(), endp);
-        sd.peerRemove(peer_ref.ref_id);
+        const resp = comm.Protocol{
+            .type = .RES,
+            .action = .COMM_END,
+            .status_code = .OK,
+            .sender_id = "server",
+            .src_addr = sd.server.address_str,
+            .dest_addr = peer.commAddressAsStr(),
+            .body = "OK",
+        };
+        resp.dump(sd.server.log_level);
+        _ = resp.transmit(peer.stream()) catch 1;
+        sd.markPeerForDeath(peer_ref.ref_id);
     }
 }
 
-fn collectRespone(sd: *SharedData, protocol: proto.Protocol) void {
+fn collectRespone(sd: *SharedData, protocol: comm.Protocol) void {
     _ = sd;
     _ = protocol;
     std.log.err("not implemented", .{});
@@ -37,7 +37,7 @@ fn collectError(_: *SharedData) void {
     std.log.err("not implemented", .{});
 }
 
-fn transmitRequest(mode: proto.TransmitionMode, sd: *SharedData, request_data: []const u8) void {
+fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, request_data: []const u8) void {
     switch (mode) {
         .UNICAST => {
             const ref_id = std.fmt.parseInt(usize, request_data, 10) catch |err| {
@@ -45,31 +45,31 @@ fn transmitRequest(mode: proto.TransmitionMode, sd: *SharedData, request_data: [
                 return;
             };
             const peer = sd.peer_pool.items[ref_id];
-            const endp = proto.Protocol.init(
-                proto.Typ.REQ,
-                proto.Act.COMM_END,
-                proto.StatusCode.OK,
-                "server",
-                sd.server.address_str,
-                peer.commAddressAsStr(),
-                "OK",
-            );
-            endp.dump(sd.server.log_level);
-            _ = proto.transmit(peer.stream(), endp);
+            const reqp = comm.Protocol{
+                .type = comm.Typ.REQ,
+                .action = comm.Act.COMM_END,
+                .status_code = comm.Status.OK,
+                .sender_id = "server",
+                .src_addr = sd.server.address_str,
+                .dest_addr = peer.commAddressAsStr(),
+                .body = "OK",
+            };
+            reqp.dump(sd.server.log_level);
+            _ = reqp.transmit(peer.stream()) catch 1;
         },
         .BROADCAST => {
             for (sd.peer_pool.items[0..]) |peer| {
-                const endp = proto.Protocol.init(
-                    proto.Typ.REQ,
-                    proto.Act.COMM_END,
-                    proto.StatusCode.OK,
-                    "server",
-                    sd.server.address_str,
-                    peer.commAddressAsStr(),
-                    "OK",
-                );
-                endp.dump(sd.server.log_level);
-                _ = proto.transmit(peer.stream(), endp);
+                const reqp = comm.Protocol{
+                    .type = comm.Typ.REQ,
+                    .action = comm.Act.COMM_END,
+                    .status_code = comm.Status.OK,
+                    .sender_id = "server",
+                    .src_addr = sd.server.address_str,
+                    .dest_addr = peer.commAddressAsStr(),
+                    .body = "OK",
+                };
+                reqp.dump(sd.server.log_level);
+                _ = reqp.transmit(peer.stream()) catch 1;
             }
             sd.clearPeerPool();
         },

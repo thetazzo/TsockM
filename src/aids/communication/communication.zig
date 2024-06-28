@@ -24,6 +24,14 @@ pub const Status = enum(u16) {
     BAD_GATEWAY = 502,
 };
 
+// TODO: allow protocols to specify how they
+//       should be transmitted and to where
+//       they should be transmitted
+pub const TransmitionMode = enum {
+    UNICAST,
+    BROADCAST,
+};
+
 pub const Protocol = @import("protocol.zig").Protocol;
 
 pub const protocols = struct {
@@ -121,6 +129,15 @@ pub fn protocolFromStr(str: []const u8) Protocol {
         .dest_addr = prot_dest_addr_str,
         .body = prot_body_str,
     };
+}
+
+pub fn collect(allocator: std.mem.Allocator, stream: std.net.Stream) !Protocol {
+    var buf: [1024]u8 = undefined;
+    _ = try stream.read(&buf);
+    const resps = std.mem.sliceTo(&buf, 170);
+    const respss = try std.fmt.allocPrint(allocator, "{s}", .{resps});
+    const resp = protocolFromStr(respss);
+    return resp;
 }
 
 test "communication type" {

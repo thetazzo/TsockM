@@ -4,27 +4,27 @@ const ui = @import("../ui/ui.zig");
 const core = @import("../core/core.zig");
 const ClientAction = @import("actions.zig");
 const Message = @import("../ui/display.zig").Message;
-const proto = aids.Protocol;
 const net = std.net;
+const comm = aids.v2.comm;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
-fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: proto.Protocol) void {
+fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
     _ = in_conn;
     _ = sd;
     _ = protocol;
     std.log.err("not implemented", .{});
 }
 
-fn collectRespone(sd: *SharedData, protocol: proto.Protocol) void {
+fn collectRespone(sd: *SharedData, protocol: comm.Protocol) void {
     // TODO: MSG client action
-    if (protocol.status_code == proto.StatusCode.OK) {
-        ClientAction.GET_PEER.transmit.?.request(proto.TransmitionMode.UNICAST, sd, protocol.sender_id);
+    if (protocol.status_code == .OK) {
+        ClientAction.GET_PEER.transmit.?.request(comm.TransmitionMode.UNICAST, sd, protocol.sender_id);
         // collect GET_PEER response
         // TODO: maybe collect* functions should return the protocol they collected?
         // TODO: GET_PEER.collect.response
         const collocator = std.heap.page_allocator;
-        const np = proto.collect(collocator, sd.client.stream) catch |err| {
+        const np = comm.collect(collocator, sd.client.stream) catch |err| {
             std.log.err("actions::msg::collectRespose: {any}", .{err});
             std.posix.exit(1);
         };
@@ -59,17 +59,17 @@ fn collectError(_: *SharedData) void {
     std.log.err("not implemented", .{});
 }
 
-fn transmitRequest(_: proto.TransmitionMode, sd: *SharedData, msg: []const u8) void {
+fn transmitRequest(_: comm.TransmitionMode, sd: *SharedData, msg: []const u8) void {
     // handle sending a message
-    const reqp = proto.Protocol.init(
-        proto.Typ.REQ,
-        proto.Act.MSG,
-        proto.StatusCode.OK,
-        sd.client.id,
-        sd.client.client_addr_str,
-        sd.client.server_addr_str,
-        msg,
-    );
+    const reqp = comm.Protocol{
+        .type = .REQ,
+        .action = .MSG,
+        .status_code = .OK,
+        .sender_id = sd.client.id,
+        .src_addr = sd.client.client_addr_str,
+        .dest_addr = sd.client.server_addr_str,
+        .body = msg,
+    };
     sd.client.sendRequestToServer(reqp);
 
     const baked_msg = std.fmt.allocPrint(std.heap.page_allocator, "{s}", .{msg}) catch |err| {

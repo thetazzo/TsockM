@@ -3,7 +3,7 @@ const ui = @import("../ui/ui.zig");
 const rl = @import("raylib");
 const sc = @import("../screen/screen.zig");
 const aids = @import("aids");
-pub const Protocol = aids.Protocol;
+const comm = aids.v2.comm;
 const Logging = aids.Logging;
 const Stab = aids.Stab;
 
@@ -100,25 +100,25 @@ pub const SharedData = struct {
             return;
         };
         // request connection
-        const reqp = Protocol.init(
-            Protocol.Typ.REQ,
-            Protocol.Act.COMM,
-            Protocol.StatusCode.OK,
-            "client",
-            "client",
-            dst_addr,
-            username,
-        );
+        const reqp = comm.Protocol{
+            .type = .REQ,
+            .action = .COMM,
+            .status_code = .OK,
+            .sender_id = "client",
+            .src_addr = "client",
+            .dest_addr = dst_addr,
+            .body = username,
+        };
         reqp.dump(self.client.log_level);
-        _ = Protocol.transmit(stream, reqp);
+        _ = reqp.transmit(stream) catch 1;
 
-        const resp = Protocol.collect(allocator, stream) catch |err| {
+        const resp = comm.collect(allocator, stream) catch |err| {
             std.log.err("client::connect: {any}", .{err});
             std.posix.exit(1);
         };
         resp.dump(self.client.log_level);
 
-        if (resp.status_code == Protocol.StatusCode.OK) {
+        if (resp.status_code == .OK) {
             var peer_spl = std.mem.split(u8, resp.body, "|");
             const id = peer_spl.next().?;
             const username_ = peer_spl.next().?;
@@ -127,7 +127,7 @@ pub const SharedData = struct {
             self.client.stream = stream;
             self.client.server_addr = addr;
             self.client.server_addr_str = dst_addr;
-            self.client.client_addr_str = resp.dst;
+            self.client.client_addr_str = resp.dest_addr;
             self.connected = true;
 
             const succ_str = std.fmt.allocPrintZ(allocator, "Client connected successfully to `{s}` :)", .{self.client.server_addr_str}) catch |err| {
@@ -151,15 +151,15 @@ pub const SharedData = struct {
         self.m.lock();
         defer self.m.unlock();
         // TODO: This should be client action
-        const reqp = aids.Protocol.init(
-            aids.Protocol.Typ.REQ,
-            aids.Protocol.Act.COMM_END,
-            aids.Protocol.StatusCode.OK,
-            self.client.id,
-            self.client.client_addr_str,
-            self.client.server_addr_str,
-            "OK",
-        );
+        const reqp = comm.Protocol{
+            .type = .REQ,
+            .action = .COMM_END,
+            .status_code = .OK,
+            .sender_id = self.client.id,
+            .src_addr = self.client.client_addr_str,
+            .dest_addr = self.client.server_addr_str,
+            .body = "OK",
+        };
         self.client.sendRequestToServer(reqp);
 
         self.connected = false;
@@ -252,7 +252,7 @@ pub const Client = struct {
         std.debug.print("------------------------------------\n", .{});
     }
 
-    pub fn sendRequestToServer(self: @This(), request: Protocol) void {
+    pub fn sendRequestToServer(self: @This(), request: comm.Protocol) void {
         // Open a sterm to the server
         const req_stream = std.net.tcpConnectToAddress(self.server_addr) catch |err| {
             std.log.err("client::sendRequestToServer: {any}", .{err});
@@ -261,6 +261,6 @@ pub const Client = struct {
         defer req_stream.close();
         // send protocol to server
         request.dump(self.log_level);
-        _ = Protocol.transmit(req_stream, request);
+        _ = request.transmit(req_stream) catch 1;
     }
 };

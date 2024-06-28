@@ -9,10 +9,10 @@ const rl = @import("raylib");
 const LoginScreen = sc.LOGIN_SCREEN;
 const MessagingScreen = sc.MESSAGING_SCREEN;
 const Client = core.Client;
-const Protocol = aids.Protocol;
 const Logging = aids.Logging;
 const mem = std.mem;
 const net = std.net;
+const comm = aids.v2.comm;
 const print = std.debug.print;
 
 const str_allocator = std.heap.page_allocator;
@@ -49,7 +49,7 @@ fn acceptConnections(sd: *core.SharedData) !void {
     while (!sd.should_exit) {
         while (sd.connected) {
             turnery = true;
-            const resp = try Protocol.collect(str_allocator, sd.client.stream);
+            const resp = try comm.collect(str_allocator, sd.client.stream);
             const opt_action = sd.client.Actioner.get(aids.Stab.parseAct(resp.action));
             if (opt_action) |act| {
                 resp.dump(sd.client.log_level);

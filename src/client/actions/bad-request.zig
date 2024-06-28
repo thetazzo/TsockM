@@ -2,16 +2,16 @@ const std = @import("std");
 const aids = @import("aids");
 const core = @import("../core/core.zig");
 const cmn = aids.cmn;
-const Protocol = aids.Protocol;
 const net = std.net;
+const comm = aids.v2.comm;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
-fn collectRequest(_: ?net.Server.Connection, _: *SharedData, _: Protocol) void {
+fn collectRequest(_: ?net.Server.Connection, _: *SharedData, _: comm.Protocol) void {
     std.log.err("`bad-request::collectRequest` action not implemented", .{});
 }
 
-fn collectRespone(sd: *SharedData, protocol: Protocol) void {
+fn collectRespone(sd: *SharedData, protocol: comm.Protocol) void {
     _ = sd;
     _ = protocol;
     std.log.err("`bad-request::collectRespone` action not implemented", .{});
@@ -22,7 +22,7 @@ fn collectError(sd: *SharedData) void {
     sd.closeConnection();
 }
 
-fn transmitRequest(mode: Protocol.TransmitionMode, sd: *SharedData, _: []const u8) void {
+fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, _: []const u8) void {
     _ = mode;
     _ = sd;
     std.log.err("`bad-request::transmitRequest` action not implemented", .{});
@@ -38,14 +38,14 @@ fn transmitError() void {
 
 pub const ACTION = Action(SharedData){
     .collect = .{
-        .request  = collectRequest,
+        .request = collectRequest,
         .response = collectRespone,
-        .err      = collectError,
+        .err = collectError,
     },
     .transmit = .{
-        .request  = transmitRequest,
+        .request = transmitRequest,
         .response = transmitRespone,
-        .err      = transmitError,
+        .err = transmitError,
     },
     .internal = null,
 };

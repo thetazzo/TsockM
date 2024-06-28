@@ -5,17 +5,17 @@ const ui = @import("../ui/ui.zig");
 const core = @import("../core/core.zig");
 const ClientActions = @import("actions.zig");
 const Message = @import("../ui/display.zig").Message;
-const Protocol = aids.Protocol;
 const net = std.net;
+const comm = aids.v2.comm;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
-fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Protocol) void {
+fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
     _ = in_conn;
-    ClientActions.GET_PEER.transmit.?.request(aids.Protocol.TransmitionMode.UNICAST, sd, protocol.body);
+    ClientActions.GET_PEER.transmit.?.request(comm.TransmitionMode.UNICAST, sd, protocol.body);
     const collocator = std.heap.page_allocator;
     // maybe i should free the collocator ??
-    const get_peer_resp = Protocol.collect(collocator, sd.client.stream) catch |err| {
+    const get_peer_resp = comm.collect(collocator, sd.client.stream) catch |err| {
         std.log.err("ntfy-kill::collectRequest: {any}", .{err});
         std.posix.exit(1);
     };
@@ -44,7 +44,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: Pr
     };
 }
 
-fn collectRespone(sd: *SharedData, protocol: Protocol) void {
+fn collectRespone(sd: *SharedData, protocol: comm.Protocol) void {
     _ = sd;
     _ = protocol;
     std.log.err("not implemented", .{});
@@ -54,7 +54,7 @@ fn collectError(_: *SharedData) void {
     std.log.err("not implemented", .{});
 }
 
-fn transmitRequest(_: Protocol.TransmitionMode, _: *SharedData, _: []const u8) void {
+fn transmitRequest(_: comm.TransmitionMode, _: *SharedData, _: []const u8) void {
     std.log.err("not implemented", .{});
 }
 

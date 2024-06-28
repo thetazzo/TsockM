@@ -62,6 +62,7 @@ pub fn main() !void {
     t_server.Actioner.add(.COMM, ServerActions.COMM_ACTION);
     t_server.Actioner.add(.MSG, ServerActions.MSG_ACTION);
     t_server.Actioner.add(.GET_PEER, ServerActions.GET_PEER_ACTION);
+    t_server.Actioner.add(.COMM_END, ServerActions.COMM_END_ACTION);
 
     var peer_pool = std.ArrayList(core.pc.Peer).init(gpa_allocator);
     defer peer_pool.deinit();

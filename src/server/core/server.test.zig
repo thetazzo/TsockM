@@ -80,11 +80,6 @@ test "Server.Action.MSG" {
     try std.testing.expectEqual(comm.Status.OK, resp.status);
 }
 
-fn timeout() !void {
-    std.time.sleep(1000000000 * 2);
-    std.log.err("fuck you time", .{});
-}
-
 test "Server.Action.GET_PEER" {
     const stream = try testingStream();
     const reqp = comm.Protocol{
@@ -102,7 +97,6 @@ test "Server.Action.GET_PEER" {
     try std.testing.expectEqual(comm.Typ.RES, resp.type);
     try std.testing.expectEqual(comm.Act.GET_PEER, resp.action);
     try std.testing.expectEqual(comm.Status.OK, resp.status);
-    _ = try std.Thread.spawn(.{}, timeout, .{});
 }
 
 test "Server.Action.GET_PEER.notFound" {
@@ -124,5 +118,41 @@ test "Server.Action.GET_PEER.notFound" {
     try std.testing.expectEqual(comm.Status.NOT_FOUND, resp.status);
 }
 
+test "Server.Action.COMM_END" {
+    const comm_stream_alt = try testingStream();
+    const username = "tilko";
+    const reqp = comm.Protocol{
+        .type = .REQ,
+        .action = .COMM,
+        .status = .OK,
+        .origin = .SERVER,
+        .sender_id = "tester",
+        .src_addr = server.address_str,
+        .dest_addr = server.address_str,
+        .body = username,
+    };
+    _ = try reqp.transmit(comm_stream_alt);
+    const resp = try comm.collect(str_allocator, comm_stream_alt);
+    var splits = std.mem.splitScalar(u8, resp.body, '|');
+    const user_id_alt = splits.next().?;
+
+    const stream = try testingStream();
+    const kill_reqp = comm.Protocol{
+        .type = .REQ,
+        .action = .COMM_END,
+        .status = .OK,
+        .origin = .CLIENT,
+        .sender_id = user_id_alt,
+        .src_addr = server.address_str,
+        .dest_addr = server.address_str,
+        .body = "",
+    };
+    _ = try kill_reqp.transmit(stream);
+    const kill_resp = try comm.collect(str_allocator, comm_stream_alt);
+    try std.testing.expectEqual(comm.Typ.RES, kill_resp.type);
+    try std.testing.expectEqual(comm.Act.COMM_END, kill_resp.action);
+    try std.testing.expectEqual(comm.Status.OK, kill_resp.status);
+}
 // TODO: NTFY-KILL
-// TODO: COMM-END
+//test "Server.Action.NTFY_KILL" {
+//}

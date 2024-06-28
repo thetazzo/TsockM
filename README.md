@@ -146,6 +146,7 @@ zig build client -- <subcommand>
     * [ ] `InsertCursor` place where char should be appended
 #### 0.5.x
 * [ ] Unit tests
+* [ ] when a message is sent to the server the server responds with `OK`, this should not be printed
 #### 0.4.8
 * [x] {UPDATE} `INSERT` mode for input-box
 * [x] {UPDATE} selection cursor movement ~ not all text selected at once

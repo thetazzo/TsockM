@@ -13,10 +13,8 @@ const port = 8888;
 var tmp = std.heap.GeneralPurposeAllocator(.{}){};
 const gpa_allocator = tmp.allocator();
 var server: sc.Server = undefined;
-test "Server.init" {
-    server = sc.Server.init(gpa_allocator, str_allocator, hostname, port, .DEV, "");
-    try std.testing.expectEqualStrings("127.0.0.1:8888", server.address_str);
-}
+var user_id: []const u8 = "";
+var comm_stream: std.net.Stream = undefined;
 
 fn testingStream() !std.net.Stream {
     const addr = try std.net.Address.resolveIp(server.hostname, server.port);
@@ -32,8 +30,11 @@ fn testingStream() !std.net.Stream {
     }
 }
 
-var user_id: []const u8 = "";
-var comm_stream: std.net.Stream = undefined;
+test "Server.init" {
+    server = sc.Server.init(gpa_allocator, str_allocator, hostname, port, .DEV, "");
+    try std.testing.expectEqualStrings("127.0.0.1:8888", server.address_str);
+}
+
 test "Server.Action.COMM" {
     comm_stream = try testingStream();
     const username = "milko";

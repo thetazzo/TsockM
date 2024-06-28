@@ -11,8 +11,8 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: pr
     const opt_server_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
     const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.body);
     if (opt_server_peer_ref) |server_peer_ref| {
+        const dst_addr = server_peer_ref.peer.commAddressAsStr();
         if (opt_peer_ref) |peer_ref| {
-            const dst_addr = server_peer_ref.peer.commAddressAsStr();
             const resp = proto.Protocol.init(
                 proto.Typ.RES, // type
                 proto.Act.GET_PEER, // action
@@ -21,6 +21,18 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: pr
                 sd.server.address_str, // src
                 dst_addr, // dst
                 peer_ref.peer.username, // body
+            );
+            resp.dump(sd.server.log_level);
+            _ = proto.transmit(server_peer_ref.peer.stream(), resp);
+        } else {
+            const resp = proto.Protocol.init(
+                proto.Typ.ERR, // type
+                proto.Act.GET_PEER, // action
+                proto.StatusCode.NOT_FOUND, // status code
+                "server", // sender id
+                sd.server.address_str, // src
+                dst_addr, // dst
+                "peer not found", // body
             );
             resp.dump(sd.server.log_level);
             _ = proto.transmit(server_peer_ref.peer.stream(), resp);

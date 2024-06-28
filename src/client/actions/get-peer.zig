@@ -29,7 +29,8 @@ fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, sender_id: []con
             const reqp = comm.Protocol{
                 .type = .REQ, // type
                 .action = .GET_PEER, // action
-                .status_code = .OK, // status code
+                .status = .OK, // status code
+                .origin = .CLIENT,
                 .sender_id = sd.client.id, // sender id
                 .src_addr = sd.client.client_addr_str, // src address
                 .dest_addr = sd.client.server_addr_str, // destination address

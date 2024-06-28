@@ -45,7 +45,7 @@ zig build client -- <subcommand>
 * Communication between *server* and *client* is achived through the use of `TsockM.Protocol` 
 * Protocol definition:
 ```
-[type]::[action]::[status_code]::[sender_id]::[src]::[dst]::[body]
+[type]::[action]::[status]::[origin]::[sender_id]::[src]::[dst]::[body]
 ```
 * `[type]` defines the protocol type:
     * `REQ`: request protocol
@@ -57,12 +57,16 @@ zig build client -- <subcommand>
     * `MSG`: message handling 
     * `GET_PEER`: when pinging a peer
     * `NTFY_KILL`: reporting termination of a peer
-* `[status_code]` defines the status code of the program (based on HTTP status codes)
+* `[status]` defines the status code of the program (based on HTTP status codes)
     * `OK`: 200
     * `BAD_REQUEST`: 400
     * `NOT_FOUND`: 404
     * `METHOD_NOT_ALLOWED`: 405,
     * `BAD_GATEWAY`: 502,
+* `[origin]` defines the status code of the program (based on HTTP status codes)
+    * `CLIENT`: protocol comes from the client app
+    * `SERVER`: protocol comes from the server
+    * `UNKNOWN`: I don't know from where the protocol is comming from :)
 * `[sender_id]` defines some unsigned integer value
     * Used when communicating the `sender id` value
     * Used when communicating the `error code` of an *error protocol*
@@ -145,8 +149,9 @@ zig build client -- <subcommand>
     * [ ] `SelectionCursor` move around text
     * [ ] `InsertCursor` place where char should be appended
 #### 0.5.x
-* [ ] Unit tests
-* [ ] when a message is sent to the server the server responds with `OK`, this should not be printed
+* [ ] {FEAT} Unit tests
+* [ ] {BUG} when a message is sent to the server the server responds with `OK`, this should not be printed
+* [ ] {BUG} message input box not in bounds (overflows)
 #### 0.4.8
 * [x] {UPDATE} `INSERT` mode for input-box
 * [x] {UPDATE} selection cursor movement ~ not all text selected at once

@@ -6,24 +6,21 @@ const mem = std.mem;
 const print = std.debug.print;
 
 /// Protocol structure
-///     shape: [type]::[action]::[status_code]::[sender_id]::[src_addr]::[dest_addr]::[body]
+///     shape: [type]::[action]::[status]::[origin]::[sender_id]::[src_addr]::[dest_addr]::[body]
 pub const Protocol = struct {
     type: comm.Typ,
     action: comm.Act,
-    status_code: comm.Status,
+    status: comm.Status,
+    origin: comm.Origin,
     sender_id: []const u8,
     body: []const u8,
     src_addr: []const u8,
     dest_addr: []const u8,
     pub fn dump(self: @This(), log_level: Logging.Level) void {
         if (log_level == Logging.Level.SILENT) return;
-
         if (log_level == Logging.Level.COMPACT) {
             print("{s}\n", .{self.asStr()});
         } else {
-            // TODO: Logging.filter
-            //if (log_level == Logging.Level.REQ and self.type != Typ.REQ) return;
-
             print("====================================\n", .{});
             print(" {s}: `{s}` {{{s}}}                 \n", .{
                 comm.typAsStr(self.type),
@@ -35,10 +32,11 @@ pub const Protocol = struct {
                 print(" Protocol \n", .{});
                 print("     type:      `{s}`\n", .{@tagName(self.type)});
                 print("     action:    `{s}`\n", .{@tagName(self.action)});
-                print("     status_code:  `{s}`\n", .{comm.statusAsStr(self.status_code)});
+                print("     status:    `{s}`\n", .{comm.statusAsStr(self.status)});
+                print("     origin:    `{s}`\n", .{@tagName(self.origin)});
                 print("     sender_id: `{s}`\n", .{self.sender_id});
                 print("     src_addr:  `{s}`\n", .{self.src_addr});
-                print("     dest_addr:  `{s}`\n", .{self.dest_addr});
+                print("     dest_addr: `{s}`\n", .{self.dest_addr});
                 print("     body:      `{s}`\n", .{self.body});
             }
             print("====================================\n", .{});
@@ -52,7 +50,9 @@ pub const Protocol = struct {
         _ = string.appendSlice("::") catch "OutOfMemory";
         _ = string.appendSlice(@tagName(self.action)) catch "OutOfMemory";
         _ = string.appendSlice("::") catch "OutOfMemory";
-        _ = string.appendSlice(comm.statusAsStr(self.status_code)) catch "OutOfMemory";
+        _ = string.appendSlice(comm.statusAsStr(self.status)) catch "OutOfMemory";
+        _ = string.appendSlice("::") catch "OutOfMemory";
+        _ = string.appendSlice(@tagName(self.origin)) catch "OutOfMemory";
         _ = string.appendSlice("::") catch "OutOfMemory";
         _ = string.appendSlice(self.sender_id) catch "OutOfMemory";
         _ = string.appendSlice("::") catch "OutOfMemory";
@@ -79,7 +79,6 @@ pub const Protocol = struct {
         const q = try stream.write(self.asStr());
         return q;
     }
-
     pub fn eql(self: @This(), prot: Protocol) bool {
         if (prot.type != self.type) {
             std.log.err(
@@ -95,10 +94,17 @@ pub const Protocol = struct {
             );
             return false;
         }
-        if (prot.status_code != self.status_code) {
+        if (prot.status != self.status) {
             std.log.err(
-                "protocols `status_code` are not equal. Expected `{s}`, Found `{s}`",
-                .{ @tagName(self.status_code), @tagName(prot.status_code) },
+                "protocols `status` are not equal. Expected `{s}`, Found `{s}`",
+                .{ @tagName(self.status), @tagName(prot.status) },
+            );
+            return false;
+        }
+        if (prot.origin != self.origin) {
+            std.log.err(
+                "protocols `origin` are not equal. Expected `{s}`, Found `{s}`",
+                .{ @tagName(self.origin), @tagName(prot.origin) },
             );
             return false;
         }
@@ -138,11 +144,12 @@ test "protocol as string" {
     var p: Protocol = Protocol{
         .type = .REQ,
         .action = .NONE,
-        .status_code = .OK,
+        .status = .OK,
+        .origin = .UNKNOWN,
         .sender_id = "tester",
         .src_addr = "test",
         .dest_addr = "test",
         .body = "",
     };
-    try std.testing.expectEqualStrings("REQ::NONE::200::tester::test::test::", p.asStr());
+    try std.testing.expectEqualStrings("REQ::NONE::200::UNKNOWN::tester::test::test::", p.asStr());
 }

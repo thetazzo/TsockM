@@ -11,8 +11,9 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
     const errp = comm.Protocol{
         .type = .ERR,
         .action = protocol.action,
-        .status_code = .BAD_REQUEST,
-        .sender_id = "server",
+        .status = .BAD_REQUEST,
+        .origin = .SERVER,
+        .sender_id = "",
         .src_addr = sd.server.address_str,
         .dest_addr = cmn.address_as_str(in_conn.?.address),
         .body = @tagName(comm.Status.BAD_REQUEST),

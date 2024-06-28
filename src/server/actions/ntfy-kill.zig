@@ -37,8 +37,9 @@ fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, _: []const u8) v
                             const reqp = comm.Protocol{
                                 .type = comm.Typ.REQ,
                                 .action = comm.Act.NTFY_KILL,
-                                .status_code = comm.Status.OK,
-                                .sender_id = "server",
+                                .status = comm.Status.OK,
+                                .origin = .SERVER,
+                                .sender_id = "",
                                 .src_addr = sd.server.address_str,
                                 .dest_addr = peer.commAddressAsStr(),
                                 .body = peer.id,

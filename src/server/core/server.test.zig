@@ -42,7 +42,8 @@ test "Server.Action.COMM" {
     const reqp = comm.Protocol{
         .type = .REQ,
         .action = .COMM,
-        .status_code = .OK,
+        .status = .OK,
+        .origin = .SERVER,
         .sender_id = "tester",
         .src_addr = server.address_str,
         .dest_addr = server.address_str,
@@ -52,7 +53,7 @@ test "Server.Action.COMM" {
     const resp = try comm.collect(str_allocator, comm_stream);
     try std.testing.expectEqual(comm.Typ.RES, resp.type);
     try std.testing.expectEqual(comm.Act.COMM, resp.action);
-    try std.testing.expectEqual(comm.Status.OK, resp.status_code);
+    try std.testing.expectEqual(comm.Status.OK, resp.status);
     var splits = std.mem.splitScalar(u8, resp.body, '|');
     user_id = splits.next().?;
     var unns = std.mem.splitScalar(u8, splits.next().?, '#');
@@ -65,7 +66,8 @@ test "Server.Action.MSG" {
     const reqp = comm.Protocol{
         .type = .REQ,
         .action = .MSG,
-        .status_code = .OK,
+        .status = .OK,
+        .origin = .SERVER,
         .sender_id = user_id,
         .src_addr = server.address_str,
         .dest_addr = server.address_str,
@@ -75,7 +77,7 @@ test "Server.Action.MSG" {
     const resp = try comm.collect(str_allocator, comm_stream);
     try std.testing.expectEqual(comm.Typ.RES, resp.type);
     try std.testing.expectEqual(comm.Act.MSG, resp.action);
-    try std.testing.expectEqual(comm.Status.OK, resp.status_code);
+    try std.testing.expectEqual(comm.Status.OK, resp.status);
 }
 
 fn timeout() !void {
@@ -88,7 +90,8 @@ test "Server.Action.GET_PEER" {
     const reqp = comm.Protocol{
         .type = .REQ,
         .action = .GET_PEER,
-        .status_code = .OK,
+        .status = .OK,
+        .origin = .SERVER,
         .sender_id = user_id,
         .src_addr = server.address_str,
         .dest_addr = server.address_str,
@@ -98,7 +101,7 @@ test "Server.Action.GET_PEER" {
     const resp = try comm.collect(str_allocator, comm_stream);
     try std.testing.expectEqual(comm.Typ.RES, resp.type);
     try std.testing.expectEqual(comm.Act.GET_PEER, resp.action);
-    try std.testing.expectEqual(comm.Status.OK, resp.status_code);
+    try std.testing.expectEqual(comm.Status.OK, resp.status);
     _ = try std.Thread.spawn(.{}, timeout, .{});
 }
 
@@ -107,7 +110,8 @@ test "Server.Action.GET_PEER.notFound" {
     const reqp = comm.Protocol{
         .type = .REQ,
         .action = .GET_PEER,
-        .status_code = .OK,
+        .status = .OK,
+        .origin = .SERVER,
         .sender_id = user_id,
         .src_addr = server.address_str,
         .dest_addr = server.address_str,
@@ -117,7 +121,7 @@ test "Server.Action.GET_PEER.notFound" {
     const resp = try comm.collect(str_allocator, comm_stream);
     try std.testing.expectEqual(comm.Typ.ERR, resp.type);
     try std.testing.expectEqual(comm.Act.GET_PEER, resp.action);
-    try std.testing.expectEqual(comm.Status.NOT_FOUND, resp.status_code);
+    try std.testing.expectEqual(comm.Status.NOT_FOUND, resp.status);
 }
 
 // TODO: NTFY-KILL

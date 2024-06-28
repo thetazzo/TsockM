@@ -103,7 +103,8 @@ pub const SharedData = struct {
         const reqp = comm.Protocol{
             .type = .REQ,
             .action = .COMM,
-            .status_code = .OK,
+            .status = .OK,
+            .origin = .CLIENT,
             .sender_id = "client",
             .src_addr = "client",
             .dest_addr = dst_addr,
@@ -118,7 +119,7 @@ pub const SharedData = struct {
         };
         resp.dump(self.client.log_level);
 
-        if (resp.status_code == .OK) {
+        if (resp.status == .OK) {
             var peer_spl = std.mem.split(u8, resp.body, "|");
             const id = peer_spl.next().?;
             const username_ = peer_spl.next().?;
@@ -154,7 +155,8 @@ pub const SharedData = struct {
         const reqp = comm.Protocol{
             .type = .REQ,
             .action = .COMM_END,
-            .status_code = .OK,
+            .status = .OK,
+            .origin = .CLIENT,
             .sender_id = self.client.id,
             .src_addr = self.client.client_addr_str,
             .dest_addr = self.client.server_addr_str,

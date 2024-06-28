@@ -18,7 +18,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
 
 fn collectRespone(sd: *SharedData, protocol: comm.Protocol) void {
     // TODO: MSG client action
-    if (protocol.status_code == .OK) {
+    if (protocol.status == .OK) {
         ClientAction.GET_PEER.transmit.?.request(comm.TransmitionMode.UNICAST, sd, protocol.sender_id);
         // collect GET_PEER response
         // TODO: maybe collect* functions should return the protocol they collected?
@@ -64,7 +64,8 @@ fn transmitRequest(_: comm.TransmitionMode, sd: *SharedData, msg: []const u8) vo
     const reqp = comm.Protocol{
         .type = .REQ,
         .action = .MSG,
-        .status_code = .OK,
+        .origin = .CLIENT,
+        .status = .OK,
         .sender_id = sd.client.id,
         .src_addr = sd.client.client_addr_str,
         .dest_addr = sd.client.server_addr_str,

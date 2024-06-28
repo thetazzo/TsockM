@@ -39,7 +39,13 @@ fn listener(sd: *core.SharedData) !void {
         }
         if (opt_action == null) {
             std.log.err("Action not found `{s}`", .{@tagName(protocol.action)});
-            const resp = comm.protocols.NOT_FOUND(sd.server.address_str, protocol.src_addr, "server", protocol.action);
+            const resp = comm.protocols.NOT_FOUND(
+                protocol.action,
+                .SERVER,
+                "",
+                sd.server.address_str,
+                protocol.src_addr,
+            );
             const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
             if (opt_peer_ref) |peer_ref| {
                 _ = resp.transmit(peer_ref.peer.stream()) catch 1;

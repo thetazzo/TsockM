@@ -30,8 +30,9 @@ pub fn executor(cmd: ?[]const u8, cd: ?core.sc.CommandData) void {
                 const reqp = comm.Protocol{
                     .type = .REQ, // type
                     .action = .COMM, // action
-                    .status_code = .OK, // status_code
-                    .sender_id = "server", // sender_id
+                    .status = .OK, // status
+                    .origin = .SERVER,
+                    .sender_id = "", // sender_id
                     .src_addr = cd.?.sd.server.address_str, // src_address
                     .dest_addr = peer.commAddressAsStr(), // dst address
                     .body = "check?", // body
@@ -52,8 +53,9 @@ pub fn executor(cmd: ?[]const u8, cd: ?core.sc.CommandData) void {
                     const reqp = comm.Protocol{
                         .type = .REQ, // type
                         .action = .COMM, // action
-                        .status_code = .OK, // status_code
-                        .sender_id = "server", // sender_id
+                        .status = .OK, // status
+                        .origin = .SERVER,
+                        .sender_id = "", // sender_id
                         .src_addr = cd.?.sd.server.address_str, // src_address
                         .dest_addr = peer.commAddressAsStr(), // dst address
                         .body = "check?", // body

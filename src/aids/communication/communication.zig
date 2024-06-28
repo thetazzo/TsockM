@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = @import("../assert.zig").assert;
 
 pub const Typ = enum(u8) {
     REQ,
@@ -24,6 +25,12 @@ pub const Status = enum(u16) {
     BAD_GATEWAY = 502,
 };
 
+pub const Origin = enum(u8) {
+    CLIENT,
+    SERVER,
+    UNKNOWN,
+};
+
 // TODO: allow protocols to specify how they
 //       should be transmitted and to where
 //       they should be transmitted
@@ -38,7 +45,21 @@ pub const protocols = struct {
     pub const NOT_FOUND = @import("not-found.zig").NotFound;
 };
 
+pub fn originFromStr(str: []const u8) Origin {
+    assert(std.meta.fields(Origin).len == 3, "unhandled origins");
+    if (std.mem.eql(u8, str, @tagName(.CLIENT))) {
+        return .CLIENT;
+    } else if (std.mem.eql(u8, str, @tagName(.SERVER))) {
+        return .SERVER;
+    } else if (std.mem.eql(u8, str, @tagName(.UNKNOWN))) {
+        return .UNKNOWN;
+    } else {
+        unreachable;
+    }
+}
+
 pub fn typAsStr(typ: Typ) []const u8 {
+    assert(std.meta.fields(Typ).len == 4, "unhandled typs");
     switch (typ) {
         .REQ => return "request",
         .RES => return "response",
@@ -79,6 +100,7 @@ pub fn protocolFromStr(str: []const u8) Protocol {
     var prot_type: Typ = undefined;
     var prot_action: Act = undefined;
     var prot_status: Status = undefined;
+    var prot_origin: Origin = .UNKNOWN;
     var prot_sender_id: []const u8 = "unknown";
     var prot_src_addr_str: []const u8 = "unknown";
     var prot_dest_addr_str: []const u8 = "unknown";
@@ -108,6 +130,9 @@ pub fn protocolFromStr(str: []const u8) Protocol {
     if (spl.next()) |rc| {
         prot_status = statusFromStr(rc);
     }
+    if (spl.next()) |og| {
+        prot_origin = originFromStr(og);
+    }
     if (spl.next()) |id| {
         prot_sender_id = id;
     }
@@ -123,7 +148,8 @@ pub fn protocolFromStr(str: []const u8) Protocol {
     return Protocol{
         .type = prot_type,
         .action = prot_action,
-        .status_code = prot_status,
+        .status = prot_status,
+        .origin = prot_origin,
         .sender_id = prot_sender_id,
         .src_addr = prot_src_addr_str,
         .dest_addr = prot_dest_addr_str,
@@ -167,13 +193,14 @@ test "protocol from string" {
     const prot: Protocol = Protocol{
         .type = .REQ,
         .action = .NONE,
-        .status_code = .OK,
+        .status = .OK,
+        .origin = .UNKNOWN,
         .sender_id = "tester",
         .src_addr = "test",
         .dest_addr = "test",
         .body = "",
     };
-    const prot_str = "REQ::NONE::200::tester::test::test::";
+    const prot_str = "REQ::NONE::200::UNKNOWN::tester::test::test::";
 
     try std.testing.expect(prot.eql(protocolFromStr(prot_str)));
 }

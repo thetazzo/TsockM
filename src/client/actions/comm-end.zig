@@ -8,7 +8,7 @@ const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
 fn collectRequest(_: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
-    if (protocol.status_code == .OK) {
+    if (protocol.status == .OK) {
         sd.setShouldExit(true);
         return;
     }
@@ -17,7 +17,7 @@ fn collectRequest(_: ?net.Server.Connection, sd: *SharedData, protocol: comm.Pro
 fn collectRespone(sd: *SharedData, protocol: comm.Protocol) void {
     _ = sd;
     _ = protocol;
-    // if (protocol.status_code == comm.Protocol.StatusCode.OK) {
+    // if (protocol.status == comm.Protocol.StatusCode.OK) {
     //     sd.setShouldExit(true);
     // }
 }
@@ -30,7 +30,8 @@ fn transmitRequest(_: comm.TransmitionMode, sd: *SharedData, _: []const u8) void
     const reqp = comm.Protocol{
         .type = .REQ,
         .action = .COMM_END,
-        .status_code = .OK,
+        .status = .OK,
+        .origin = .CLIENT,
         .sender_id = sd.client.id,
         .src_addr = sd.client.client_addr_str,
         .dest_addr = sd.client.server_addr_str,

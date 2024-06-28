@@ -23,8 +23,9 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
     const resp = comm.Protocol{
         .type = .RES, // type
         .action = .COMM, // action
-        .status_code = .OK, // status code
-        .sender_id = "server", // sender id
+        .status = .OK, // status code
+        .origin = .SERVER,
+        .sender_id = "", // sender id
         .src_addr = sd.server.address_str, // sender address
         .dest_addr = addr_str, // reciever address
         .body = peer_str, // body
@@ -57,8 +58,9 @@ fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, _: []const u8) v
                 const reqp = comm.Protocol{
                     .type = comm.Typ.REQ, // type
                     .action = comm.Act.COMM, // action
-                    .status_code = comm.Status.OK, // status_code
-                    .sender_id = "server", // sender_id
+                    .status = comm.Status.OK, // status
+                    .origin = .SERVER,
+                    .sender_id = "", // sender_id
                     .src_addr = sd.server.address_str, // src_address
                     .dest_addr = peer.commAddressAsStr(), // dst address
                     .body = "check", // body

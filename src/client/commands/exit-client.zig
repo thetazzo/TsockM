@@ -9,7 +9,8 @@ pub fn executor(_: ?[]const u8, cd: ?core.CommandData) void {
     const reqp = comm.Protocol{
         .type = .REQ,
         .action = .COMM_END,
-        .status_code = .OK,
+        .status = .OK,
+        .origin = .CLIENT,
         .sender_id = cd.?.sd.client.id,
         .src_addr = cd.?.sd.client.client_addr_str,
         .dest_addr = cd.?.sd.client.server_addr_str,
@@ -21,7 +22,7 @@ pub fn executor(_: ?[]const u8, cd: ?core.CommandData) void {
         std.log.err("exit-client::executor: {any}", .{err});
         std.posix.exit(1);
     };
-    if (resp.status_code == .OK) {
+    if (resp.status == .OK) {
         cd.?.sd.setShouldExit(true);
     } else {
         // TODO: handle not OK case

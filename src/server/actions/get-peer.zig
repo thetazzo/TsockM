@@ -16,8 +16,9 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
             const resp = comm.Protocol{
                 .type = .RES, // type
                 .action = .GET_PEER, // action
-                .status_code = .OK, // status code
-                .sender_id = "server", // sender id
+                .origin = .SERVER,
+                .status = .OK, // status code
+                .sender_id = "", // sender id
                 .src_addr = sd.server.address_str, // src
                 .dest_addr = dst_addr, // dst
                 .body = peer_ref.peer.username, // body
@@ -28,8 +29,9 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
             const resp = comm.Protocol{
                 .type = comm.Typ.ERR, // type
                 .action = comm.Act.GET_PEER, // action
-                .status_code = comm.Status.NOT_FOUND, // status code
-                .sender_id = "server", // sender id
+                .status = comm.Status.NOT_FOUND, // status code
+                .origin = .SERVER,
+                .sender_id = "", // sender id
                 .src_addr = sd.server.address_str, // src
                 .dest_addr = dst_addr, // dst, resp);
                 .body = "peer not found", // body

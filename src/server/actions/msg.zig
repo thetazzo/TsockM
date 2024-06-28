@@ -14,7 +14,8 @@ fn broadcastMessage(sd: *SharedData, peer_ref: core.pc.PeerRef, sender_id: []con
             const resp = comm.Protocol{
                 .type = .RES,
                 .action = .MSG,
-                .status_code = .OK,
+                .status = .OK,
+                .origin = .SERVER,
                 .sender_id = sender_id,
                 .src_addr = src_addr,
                 .dest_addr = dst_addr,
@@ -36,7 +37,8 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
         const resp = comm.Protocol{
             .type = .RES,
             .action = .MSG,
-            .status_code = .OK,
+            .status = .OK,
+            .origin = .SERVER,
             .sender_id = protocol.sender_id,
             .src_addr = src_addr,
             .dest_addr = dst_addr,

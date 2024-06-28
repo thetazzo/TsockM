@@ -82,16 +82,17 @@ zig build client -- <subcommand>
 #### 0.5.x
 * [ ] {FEAT} encrypt body of the protocol
 * [ ] {FEAT} store messages
-#### 0.4.x
+#### 0.4.4
 * [ ] {TEST} `peer`
-* [x] {TEST} `protocol`
-* [x] {TEST} `actioner`
-* [ ] {UPDATE} `core.zig` rename to `server.zig`
-* [ ] {UPDATE} make `Protocol` more robust with more functions and quality of life things
 * [ ] {UPDATE} make `Peer` more robust with more functions and quality of life things
 * [ ] {UPDATE} `Commander::Command::executor` generic type is not a ptr anymore
+#### 0.4.3
+* [x] {TEST} `protocol`
+* [x] {UPDATE} `core.zig` rename to `server.zig`
+* [x] {TEST} `actioner`
+* [x] {UPDATE} make `Protocol` more robust with more functions and quality of life things
 * [x] {FIX} report unknown argument
-* [ ] {FEAT} ERROR protocol sent when peer was ping that does not exist
+* [x] {FEAT} ERROR protocol sent when peer was ping that does not exist
 #### 0.3.0
 * [x] {FEAT} Introduce server commands
 * [x] {FEAT} Introduce server actions

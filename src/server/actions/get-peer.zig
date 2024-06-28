@@ -8,8 +8,8 @@ const SharedData = core.SharedData;
 
 fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
     _ = in_conn;
-    const opt_server_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
-    const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.body);
+    const opt_server_peer_ref = sd.peerPoolFindId(protocol.sender_id);
+    const opt_peer_ref = sd.peerPoolFindId(protocol.body);
     if (opt_server_peer_ref) |server_peer_ref| {
         const dst_addr = server_peer_ref.peer.commAddressAsStr();
         if (opt_peer_ref) |peer_ref| {

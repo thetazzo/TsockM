@@ -6,7 +6,7 @@ const net = std.net;
 const comm = aids.v2.comm;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
-const Peer = core.pc.Peer;
+const Peer = core.Peer;
 
 fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
     const addr_str = cmn.address_as_str(in_conn.?.address);
@@ -14,7 +14,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
 
     // TODO: find a way around the allocator
     const tmp_allocator = std.heap.page_allocator;
-    const peer = Peer.construct(tmp_allocator, in_conn.?, protocol);
+    const peer = Peer.init(tmp_allocator, in_conn.?, protocol);
     const peer_str = std.fmt.allocPrint(tmp_allocator, "{s}|{s}", .{ peer.id, peer.username }) catch "format failed";
     sd.peerPoolAppend(peer) catch |err| {
         std.log.err("`comm-action::collectRequest::peerPoolAppend`: {any}", .{err});
@@ -35,7 +35,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
 }
 
 fn collectRespone(sd: *SharedData, protocol: comm.Protocol) void {
-    const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
+    const opt_peer_ref = sd.peerPoolFindId(protocol.sender_id);
     if (opt_peer_ref) |peer_ref| {
         std.debug.print("peer `{s}` is alive\n", .{peer_ref.peer.username});
     } else {

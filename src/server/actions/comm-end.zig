@@ -9,7 +9,7 @@ const SharedData = core.SharedData;
 // TODO: try if sd.server.net_server can get the connection instead if in_conn param
 fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
     _ = in_conn;
-    const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
+    const opt_peer_ref = sd.peerPoolFindId(protocol.sender_id);
     if (opt_peer_ref) |peer_ref| {
         const peer = sd.peer_pool.items[peer_ref.ref_id];
         const resp = comm.Protocol{
@@ -74,7 +74,7 @@ fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, request_data: []
                 reqp.dump(sd.server.log_level);
                 _ = reqp.transmit(peer.stream()) catch 1;
             }
-            sd.clearPeerPool();
+            sd.peerPoolClear();
         },
     }
 }

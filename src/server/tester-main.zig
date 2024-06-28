@@ -41,7 +41,7 @@ fn listener(sd: *core.SharedData) !void {
                 protocol.src_addr,
                 protocol.dest_addr,
             );
-            const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
+            const opt_peer_ref = sd.peerPoolFindId(protocol.sender_id);
             if (opt_peer_ref) |peer_ref| {
                 _ = try resp.transmit(peer_ref.peer.stream());
                 resp.dump(sd.server.log_level);
@@ -64,7 +64,7 @@ pub fn main() !void {
     t_server.Actioner.add(.GET_PEER, ServerActions.GET_PEER_ACTION);
     t_server.Actioner.add(.COMM_END, ServerActions.COMM_END_ACTION);
 
-    var peer_pool = std.ArrayList(core.pc.Peer).init(gpa_allocator);
+    var peer_pool = std.ArrayList(core.Peer).init(gpa_allocator);
     defer peer_pool.deinit();
 
     t_server.start();

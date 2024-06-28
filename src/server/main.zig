@@ -16,7 +16,7 @@ fn print_usage(program: []const u8) void {
     std.debug.print("        --addr <hostname:port> ....... specify server address (default: 127.0.0.1:6969)\n", .{});
 }
 
-pub const SERVER_VERSION = "0.3.2";
+pub const SERVER_VERSION = "0.4.0";
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -35,7 +35,7 @@ pub fn main() !void {
         } else if (std.mem.eql(u8, subcommand, "version")) {
             std.debug.print("{s}\n", .{SERVER_VERSION});
         } else if (std.mem.eql(u8, subcommand, "start")) {
-            if (argv.next()) |arg| {
+            while (argv.next()) |arg| {
                 if (std.mem.eql(u8, arg, "--addr")) {
                     const opt_ip = argv.next();
                     if (opt_ip) |ip| {

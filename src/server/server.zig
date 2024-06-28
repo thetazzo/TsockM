@@ -36,6 +36,15 @@ fn listener(sd: *core.SharedData) !void {
                 },
             }
         }
+        if (opt_action == null) {
+            std.log.err("Action not found `{s}`", .{@tagName(protocol.action)});
+            const resp = aids.proto.Protocol.init(.ERR, protocol.action, .NOT_FOUND, "server", sd.server.address_str, protocol.src, "acton not found");
+            const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
+            if (opt_peer_ref) |peer_ref| {
+                _ = aids.proto.transmit(peer_ref.peer.stream(), resp);
+                resp.dump(sd.server.log_level);
+            }
+        }
     }
     print("Ending `listener`\n", .{});
 }

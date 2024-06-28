@@ -6,27 +6,44 @@ const net = std.net;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
+fn broadcastMessage(sd: *SharedData, peer_ref: core.pc.PeerRef, sender_id: []const u8, message: []const u8) void {
+    for (sd.peer_pool.items, 0..) |peer, pid| {
+        if (peer_ref.ref_id != pid and peer.alive) {
+            const src_addr = peer_ref.peer.commAddressAsStr();
+            const dst_addr = peer.commAddressAsStr();
+            const msgp = proto.Protocol.init(
+                proto.Typ.RES,
+                proto.Act.MSG,
+                proto.StatusCode.OK,
+                sender_id,
+                src_addr,
+                dst_addr,
+                message,
+            );
+            msgp.dump(sd.server.log_level);
+            _ = proto.transmit(peer.stream(), msgp);
+        }
+    }
+}
+
 fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: proto.Protocol) void {
     _ = in_conn;
     const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
     if (opt_peer_ref) |peer_ref| {
-        for (sd.peer_pool.items, 0..) |peer, pid| {
-            if (peer_ref.ref_id != pid and peer.alive) {
-                const src_addr = peer_ref.peer.commAddressAsStr();
-                const dst_addr = peer.commAddressAsStr();
-                const msgp = proto.Protocol.init(
-                    proto.Typ.RES,
-                    proto.Act.MSG,
-                    proto.StatusCode.OK,
-                    protocol.sender_id,
-                    src_addr,
-                    dst_addr,
-                    protocol.body,
-                );
-                msgp.dump(sd.server.log_level);
-                _ = proto.transmit(peer.stream(), msgp);
-            }
-        }
+        broadcastMessage(sd, peer_ref, protocol.sender_id, protocol.body);
+        const src_addr = peer_ref.peer.commAddressAsStr();
+        const dst_addr = src_addr;
+        const msgp = proto.Protocol.init(
+            proto.Typ.RES,
+            proto.Act.MSG,
+            proto.StatusCode.OK,
+            protocol.sender_id,
+            src_addr,
+            dst_addr,
+            "OK",
+        );
+        msgp.dump(sd.server.log_level);
+        _ = proto.transmit(peer_ref.peer.stream(), msgp);
     }
 }
 

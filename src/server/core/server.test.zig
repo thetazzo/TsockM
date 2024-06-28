@@ -58,5 +58,24 @@ test "Server.Action.MSG" {
     try std.testing.expectEqual(aids.proto.Typ.RES, resp.type);
     try std.testing.expectEqual(aids.proto.Act.MSG, resp.action);
     try std.testing.expectEqual(aids.proto.StatusCode.OK, resp.status_code);
-    try std.testing.expect(true);
+}
+
+test "Server.Action.GET_PEER" {
+    const stream = try testingStream();
+    const reqp = aids.proto.Protocol.init(.REQ, .GET_PEER, .OK, user_id, server.address_str, server.address_str, user_id);
+    _ = aids.proto.transmit(stream, reqp);
+    const resp = try aids.proto.collect(str_allocator, comm_stream);
+    try std.testing.expectEqual(aids.proto.Typ.RES, resp.type);
+    try std.testing.expectEqual(aids.proto.Act.GET_PEER, resp.action);
+    try std.testing.expectEqual(aids.proto.StatusCode.OK, resp.status_code);
+}
+
+test "Server.Action.GET_PEER.notFound" {
+    const stream = try testingStream();
+    const reqp = aids.proto.Protocol.init(.REQ, .GET_PEER, .OK, user_id, server.address_str, server.address_str, "6942");
+    _ = aids.proto.transmit(stream, reqp);
+    const resp = try aids.proto.collect(str_allocator, comm_stream);
+    try std.testing.expectEqual(aids.proto.Typ.ERR, resp.type);
+    try std.testing.expectEqual(aids.proto.Act.GET_PEER, resp.action);
+    try std.testing.expectEqual(aids.proto.StatusCode.NOT_FOUND, resp.status_code);
 }

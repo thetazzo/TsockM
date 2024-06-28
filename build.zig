@@ -224,6 +224,8 @@ pub fn build(b: *std.Build) !void {
         std.log.err("build::STEP_release_client: {any}", .{err});
         std.posix.exit(1);
     };
+
+    // TODO: organize testing steps
     const server_unit_tests = b.addTest(.{
         .root_source_file = b.path("src/server/main.zig"),
         .target = target,

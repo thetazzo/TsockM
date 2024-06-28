@@ -30,6 +30,16 @@ fn listener(sd: *core.SharedData) !void {
                     unreachable;
                 },
             }
+            //std.log.err("No valid action found: `{s}`\n", .{@tagName(protocol.action)});
+        }
+        if (opt_action == null) {
+            std.log.err("Action not found `{s}`", .{@tagName(protocol.action)});
+            const resp = aids.proto.Protocol.init(.ERR, protocol.action, .NOT_FOUND, "server", sd.server.address_str, protocol.src, "acton not found");
+            const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
+            if (opt_peer_ref) |peer_ref| {
+                _ = aids.proto.transmit(peer_ref.peer.stream(), resp);
+                resp.dump(sd.server.log_level);
+            }
         }
     }
     std.debug.print("Ending `listener`\n", .{});
@@ -45,6 +55,7 @@ pub fn main() !void {
 
     t_server.Actioner.add(.COMM, ServerActions.COMM_ACTION);
     t_server.Actioner.add(.MSG, ServerActions.MSG_ACTION);
+    t_server.Actioner.add(.GET_PEER, ServerActions.GET_PEER_ACTION);
 
     var peer_pool = std.ArrayList(core.pc.Peer).init(gpa_allocator);
     defer peer_pool.deinit();

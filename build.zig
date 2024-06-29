@@ -107,6 +107,22 @@ fn STEP_server_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: st
     step.dependOn(&run_server_artifact.step);
 }
 
+fn STEP_testing_server(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step) !void {
+    const sqids = Sqids(b);
+
+    const server_program = Program(b, .{ .name = "tsockm-server", .root_source_file = b.path("./src/server/main.zig"), .target = target, .optimize = optimize });
+    server_program.module.addImport("sqids", sqids.module);
+
+    // Build server
+    const server_artifact = b.addInstallArtifact(server_program.exe, .{});
+    // Run server
+    const run_server_artifact = b.addRunArtifact(server_program.exe);
+    // add command line arguments to run server step
+    run_server_artifact.addArgs(&.{ "start", "--addr", "127.0.0.1:8888", "--log-level", "DEV" });
+    step.dependOn(&server_artifact.step);
+    step.dependOn(&run_server_artifact.step);
+}
+
 fn STEP_client_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step, raylib: MAD) !void {
     // this target does not work with raylib
     const client_program = Program(b, .{
@@ -234,8 +250,7 @@ pub fn build(b: *std.Build) !void {
     server_unit_tests.root_module.addImport("aids", Aids(b).module);
     server_unit_tests.root_module.addImport("sqids", Sqids(b).module);
     const run_server_unit_test = b.addRunArtifact(server_unit_tests);
-    const server_test_step = b.step("test-server", "Run unit tests for the server");
-    server_test_step.dependOn(&run_server_unit_test.step);
+
     const aids_unit_tests = b.addTest(.{
         .root_source_file = b.path("src/aids/aids.zig"),
         .target = target,
@@ -243,19 +258,14 @@ pub fn build(b: *std.Build) !void {
     });
     aids_unit_tests.root_module.addImport("aids", Aids(b).module);
     const run_aids_unit_test = b.addRunArtifact(aids_unit_tests);
-    const aids_test_step = b.step("test-aids", "Run unit tests for the aids");
-    aids_test_step.dependOn(&run_aids_unit_test.step);
 
-    const server_program = Program(b, .{ .name = "testing-server", .root_source_file = b.path("./src/server/tester-main.zig"), .target = target, .optimize = optimize });
-    server_program.exe.root_module.addImport("sqids", Sqids(b).module);
-    const server_artifact = b.addInstallArtifact(server_program.exe, .{});
-    const run_server_artifact = b.addRunArtifact(server_program.exe);
+    const run_testing_server = b.step("testing-server", "Run unit tests for everything");
+    _ = STEP_testing_server(b, target, optimize, run_testing_server) catch |err| {
+        std.log.err("build::STEP_testing_server: {any}", .{err});
+        std.posix.exit(1);
+    };
 
     const whole_test_step = b.step("test", "Run unit tests for everything");
     whole_test_step.dependOn(&run_server_unit_test.step);
     whole_test_step.dependOn(&run_aids_unit_test.step);
-
-    const run_test_server = b.step("run-test-server", "Run unit tests for everything");
-    run_test_server.dependOn(&server_artifact.step);
-    run_test_server.dependOn(&run_server_artifact.step);
 }

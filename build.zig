@@ -104,7 +104,7 @@ fn STEP_testing_server(b: *std.Build, target: std.Build.ResolvedTarget, optimize
     // Run server
     const run_server_artifact = b.addRunArtifact(server_program.exe);
     // add command line arguments to run server step
-    run_server_artifact.addArgs(&.{ "start", "--addr", "127.0.0.1:8888", "--log-level", "DEV" });
+    run_server_artifact.addArgs(&.{ "start", "--tester" });
     step.dependOn(&server_artifact.step);
     step.dependOn(&run_server_artifact.step);
 }

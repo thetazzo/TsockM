@@ -9,4 +9,3 @@ pub const PRINT_PROGRAM_USAGE = @import("print-program-usage.zig").COMMAND;
 const mute = @import("mute.zig");
 pub const MUTE = mute.COMMAND_MUTE;
 pub const UNMUTE = mute.COMMAND_UNMUTE;
-

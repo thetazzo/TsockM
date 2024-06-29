@@ -57,7 +57,10 @@ fn listener(sd: *core.SharedData) !void {
 }
 
 /// i am a thread
-fn commander(sd: *core.SharedData) !void {
+fn commander(tester: bool, sd: *core.SharedData) !void {
+    if (tester) {
+        return;
+    }
     while (!sd.should_exit) {
         // read for command
         var buf: [256]u8 = undefined;
@@ -106,7 +109,7 @@ fn polizei(sd: *core.SharedData) !void {
     }
 }
 
-pub fn start(hostname: []const u8, port: u16, log_level: aids.Logging.Level) !void {
+pub fn start(hostname: []const u8, port: u16, log_level: aids.Logging.Level, tester: bool) !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa_allocator = gpa.allocator();
 
@@ -148,7 +151,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: aids.Logging.Level) !vo
         .server = server,
     };
     {
-        thread_pool[0] = try std.Thread.spawn(.{}, commander, .{&sd});
+        thread_pool[0] = try std.Thread.spawn(.{}, commander, .{ tester, &sd });
         thread_pool[1] = try std.Thread.spawn(.{}, listener, .{&sd});
         thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{&sd});
         defer for (thread_pool) |thr| thr.join();

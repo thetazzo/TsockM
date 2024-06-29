@@ -8,18 +8,14 @@ const mem = std.mem;
 const Server = net.Server;
 const print = std.debug.print;
 
-/// Generates a randomized sequence of characters using `Sqids` as a generator
-fn generateRadomId(generator: sqids.Sqids) []const u8 {
-    var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
-    const id = generator.encode(&.{
-        rand.random().int(u64),
-        rand.random().int(u64),
-        rand.random().int(u64),
-    }) catch |err| {
-        std.log.err("server::core::peer::generateRandomId: {any}", .{err});
-        std.posix.exit(1);
-    };
-    return id;
+pub fn generateId(id_len: usize, string: *std.ArrayList(u8)) ![]const u8 {
+    const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    var rand = std.crypto.random;
+    for (0..id_len) |_| {
+        const f = @mod(rand.int(usize), 62);
+        try string.append(alphabet[f]);
+    }
+    return string.items;
 }
 
 pub const Peer = struct {
@@ -30,23 +26,30 @@ pub const Peer = struct {
     conn_address: net.Address = undefined,
     conn_address_str: []const u8 = "",
     alive: bool = true,
+    arena: std.heap.ArenaAllocator,
     pub fn init(
         allocator: mem.Allocator,
         username: []const u8,
     ) Peer {
-        const generator = sqids.Sqids.init(allocator, .{ .min_length = 10 }) catch |err| {
-            std.log.warn("{any}", .{err});
+        const str_alloc = std.heap.page_allocator;
+        var id_sa = std.ArrayList(u8).init(str_alloc);
+        const arena = std.heap.ArenaAllocator.init(str_alloc);
+        const id = generateId(32, &id_sa) catch |err| {
+            std.log.err("Peer:init: {any}", .{err});
             std.posix.exit(1);
         };
-        defer generator.deinit();
-        const id = generateRadomId(generator);
-        const user_sig = generateRadomId(generator);
+        var un_sa = std.ArrayList(u8).init(str_alloc);
+        const user_sig = generateId(8, &un_sa) catch |err| {
+            std.log.err("Peer:init: {any}", .{err});
+            std.posix.exit(1);
+        };
         // DON'T EVER FORGET TO ALLOCATE MEMORY !!!!!!
         const aun = std.fmt.allocPrint(allocator, "{s}#{s}", .{ username, user_sig }) catch "format failed";
         return Peer{
             .id = id,
             .username = aun,
             .allocator = allocator,
+            .arena = arena,
         };
     }
     pub fn bindConnection(self: *@This(), conn: net.Server.Connection) void {
@@ -69,7 +72,7 @@ pub const Peer = struct {
         print("====================================\n", .{});
     }
     pub fn deinit(self: *@This()) void {
-        _ = self;
+        self.arena.deinit();
     }
 };
 

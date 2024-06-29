@@ -12,6 +12,7 @@ fn print_usage(program: []const u8) void {
     std.debug.print("    help ............................. print program usage\n", .{});
     std.debug.print("    version .......................... print program version\n", .{});
     std.debug.print("    start <flag> ..................... start the server\n", .{});
+    std.debug.print("        --tester ..................... start the server in testing mode (disabled commander)\n", .{});
     std.debug.print("        --log-level <level> .......... DEV|D or SILENT|S or COMPACT|C (default: COMPACT)\n", .{});
     std.debug.print("        --addr <hostname:port> ....... specify server address (default: 127.0.0.1:6969)\n", .{});
 }
@@ -28,6 +29,7 @@ pub fn main() !void {
     var server_addr: []const u8 = SERVER_ADDRESS;
     var server_port: u16 = SERVER_PORT;
     var log_level: Logging.Level = Logging.Level.COMPACT;
+    var tester: bool = false;
 
     if (subc) |subcommand| {
         if (std.mem.eql(u8, subcommand, "help")) {
@@ -36,7 +38,12 @@ pub fn main() !void {
             std.debug.print("{s}\n", .{SERVER_VERSION});
         } else if (std.mem.eql(u8, subcommand, "start")) {
             while (argv.next()) |arg| {
-                if (std.mem.eql(u8, arg, "--addr")) {
+                if (std.mem.eql(u8, arg, "--tester")) {
+                    tester = true;
+                    server_addr = "127.0.0.1";
+                    server_port = 8888;
+                    log_level = .DEV;
+                } else if (std.mem.eql(u8, arg, "--addr")) {
                     const opt_ip = argv.next();
                     if (opt_ip) |ip| {
                         var splits = std.mem.splitScalar(u8, ip, ':');
@@ -77,7 +84,7 @@ pub fn main() !void {
                     return;
                 }
             }
-            _ = try server.start(server_addr, server_port, log_level);
+            _ = try server.start(server_addr, server_port, log_level, tester);
         }
     } else {
         std.log.err("missing subcommand!", .{});

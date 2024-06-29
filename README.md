@@ -228,5 +228,4 @@ zig build client -- <subcommand>
 
 # References
 
-* SQIDS: https://github.com/sqids/sqids-zig
 * Raylib.zig: https://github.com/Not-Nik/raylib-zig

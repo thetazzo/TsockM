@@ -15,14 +15,6 @@ fn Aids(b: *std.Build) struct { module: *std.Build.Module } {
     };
 }
 
-fn Sqids(b: *std.Build) struct { module: *std.Build.Module } {
-    const sqids_dep = b.dependency("sqids", .{});
-    const mod = sqids_dep.module("sqids");
-    return .{
-        .module = mod,
-    };
-}
-
 const MAD = struct {
     module: *std.Build.Module,
     artifact: *std.Build.Step.Compile,
@@ -90,10 +82,7 @@ pub fn Program(b: *std.Build, opts: std.Build.ExecutableOptions) struct { exe: *
 }
 
 fn STEP_server_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step) !void {
-    const sqids = Sqids(b);
-
     const server_program = Program(b, .{ .name = "tsockm-server", .root_source_file = b.path("./src/server/main.zig"), .target = target, .optimize = optimize });
-    server_program.module.addImport("sqids", sqids.module);
 
     // Build server
     const server_artifact = b.addInstallArtifact(server_program.exe, .{});
@@ -108,10 +97,7 @@ fn STEP_server_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: st
 }
 
 fn STEP_testing_server(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step) !void {
-    const sqids = Sqids(b);
-
     const server_program = Program(b, .{ .name = "tsockm-server", .root_source_file = b.path("./src/server/main.zig"), .target = target, .optimize = optimize });
-    server_program.module.addImport("sqids", sqids.module);
 
     // Build server
     const server_artifact = b.addInstallArtifact(server_program.exe, .{});
@@ -148,8 +134,6 @@ fn STEP_client_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: st
 }
 
 fn STEP_release_server(b: *std.Build, targets: []const std.Target.Query, step: *std.Build.Step) !void {
-    const sqids = Sqids(b);
-
     for (targets) |t| {
         const target = b.resolveTargetQuery(t);
         const server = Program(b, .{
@@ -158,7 +142,6 @@ fn STEP_release_server(b: *std.Build, targets: []const std.Target.Query, step: *
             .target = target,
             .optimize = .ReleaseSafe,
         });
-        server.module.addImport("sqids", sqids.module);
         const target_tripple = try target.result.linuxTriple(b.allocator);
         const out_dir_path = try std.fmt.allocPrint(b.allocator, "tsockm-server-{s}-{s}", .{ server_version, target_tripple });
         const client_install = b.addInstallArtifact(server.exe, .{
@@ -248,7 +231,6 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
     server_unit_tests.root_module.addImport("aids", Aids(b).module);
-    server_unit_tests.root_module.addImport("sqids", Sqids(b).module);
     const run_server_unit_test = b.addRunArtifact(server_unit_tests);
 
     const aids_unit_tests = b.addTest(.{

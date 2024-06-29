@@ -16,7 +16,7 @@ fn print_usage(program: []const u8) void {
     std.debug.print("        --addr <hostname:port> ....... specify server address (default: 127.0.0.1:6969)\n", .{});
 }
 
-pub const SERVER_VERSION = "0.4.0";
+pub const SERVER_VERSION = "0.4.4";
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;

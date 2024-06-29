@@ -29,10 +29,10 @@ pub fn render(self: *@This(), messages: std.ArrayList(Message), allocator: std.m
     rl.drawRectangleRounded(self.rec, 0.05, 0, rl.Color.black);
     const padd = 40;
     for (messages.items, 0..) |msg, i| {
-        const msgg = try std.fmt.allocPrintZ(allocator, "{s}: {s}", .{msg.author, msg.text});
+        const msgg = try std.fmt.allocPrintZ(allocator, "{s}: {s}", .{ msg.author, msg.text });
         defer allocator.free(msgg);
         const msg_height = rl.measureTextEx(font, msgg, font_size, 0).y;
-        const msg_pos = rl.Vector2{.x = self.rec.x + padd, .y = self.rec.y + padd + msg_height*@as(f32, @floatFromInt(i))};
-        rl.drawTextEx(font, msgg, msg_pos, font_size, 0,  msg.text_color);
+        const msg_pos = rl.Vector2{ .x = self.rec.x + padd, .y = self.rec.y + padd + msg_height * @as(f32, @floatFromInt(i)) };
+        rl.drawTextEx(font, msgg, msg_pos, font_size, 0, msg.text_color);
     }
 }

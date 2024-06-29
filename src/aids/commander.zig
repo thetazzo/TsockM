@@ -9,12 +9,12 @@ pub fn Command(comptime T: type) type {
 }
 
 pub fn Commander(comptime T: type) type {
-    return struct{
-        commands: std.StringHashMap(T), 
+    return struct {
+        commands: std.StringHashMap(T),
         pub fn init(allocator: std.mem.Allocator) Commander(T) {
             const commands = std.StringHashMap(T).init(allocator);
             return Commander(T){
-                .commands = commands, 
+                .commands = commands,
             };
         }
         pub fn add(self: *@This(), caller: CMD, cmd: T) void {

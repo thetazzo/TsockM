@@ -83,9 +83,8 @@ zig build client -- <subcommand>
 * [ ] {FEAT} encrypt body of the protocol
 * [ ] {FEAT} store messages
 #### 0.4.4
-* [ ] {TEST} `peer`
-* [ ] {UPDATE} make `Peer` more robust with more functions and quality of life things
-* [ ] {UPDATE} `Commander::Command::executor` generic type is not a ptr anymore
+* [x] {TEST} `peer`
+* [x] {UPDATE} make `Peer` more robust with more functions and quality of life things
 #### 0.4.3
 * [x] {TEST} `protocol`
 * [x] {UPDATE} `core.zig` rename to `server.zig`
@@ -153,6 +152,7 @@ zig build client -- <subcommand>
 * [ ] {FEAT} Unit tests
 * [ ] {BUG} when a message is sent to the server the server responds with `OK`, this should not be printed
 * [ ] {BUG} message input box not in bounds (overflows)
+* [ ] {BUG} client should respond with `OK` on `ping` ??
 #### 0.4.8
 * [x] {UPDATE} `INSERT` mode for input-box
 * [x] {UPDATE} selection cursor movement ~ not all text selected at once

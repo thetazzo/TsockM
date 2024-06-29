@@ -21,7 +21,11 @@ jobs:
         with:
           version: 0.13.0
           cache: false
-      - run: zig build testing-server
+
+      - run: zig env
+
+      - name: Run server 
+        run: zig build testing-server
   build:
     strategy:
       fail-fast: false

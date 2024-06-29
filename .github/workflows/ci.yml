@@ -8,6 +8,20 @@ on:
   workflow_dispatch:
 
 jobs:
+  test-server:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+          cache: false
+      - run: zig build testing-server
   build:
     strategy:
       fail-fast: false

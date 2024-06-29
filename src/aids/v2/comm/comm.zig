@@ -1,5 +1,5 @@
 const std = @import("std");
-const assert = @import("../assert.zig").assert;
+const assert = @import("../../assert.zig").assert;
 
 pub const Typ = enum(u8) {
     REQ,

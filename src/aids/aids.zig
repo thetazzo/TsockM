@@ -6,7 +6,7 @@ const Commander_ = @import("commander.zig");
 const Actioner_ = @import("actioner.zig");
 
 pub const v2 = struct {
-    pub const comm = @import("./communication/communication.zig");
+    pub const comm = @import("./v2/comm/comm.zig");
 };
 
 pub const Stab = struct {
@@ -19,7 +19,7 @@ pub const Stab = struct {
 };
 
 test "AIDS" {
-    _ = @import("communication/communication.zig");
+    _ = @import("v2/comm/comm.zig");
     _ = @import("actioner.zig");
     @import("std").testing.refAllDecls(@This());
 }

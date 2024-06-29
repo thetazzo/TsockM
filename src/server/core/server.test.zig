@@ -150,7 +150,7 @@ test "Server.Action.COMM_END" {
     _ = try kill_reqp.transmit(stream);
     const kill_resp = try comm.collect(str_allocator, comm_stream_alt);
     try std.testing.expectEqual(comm.Typ.RES, kill_resp.type);
-    try std.testing.expectEqual(comm.Act.NONE, kill_resp.action);
+    try std.testing.expectEqual(comm.Act.COMM_END, kill_resp.action);
     try std.testing.expectEqual(comm.Status.OK, kill_resp.status);
 }
 // TODO: NTFY-KILL

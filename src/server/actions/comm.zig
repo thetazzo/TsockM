@@ -62,7 +62,7 @@ fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, _: []const u8) v
                     .origin = .SERVER,
                     .sender_id = "", // sender_id
                     .src_addr = sd.server.address_str, // src_address
-                    .dest_addr = peer.commAddressAsStr(), // dst address
+                    .dest_addr = peer.comm_address_str, // dst address
                     .body = "check", // body
                 };
                 reqp.dump(sd.server.log_level);

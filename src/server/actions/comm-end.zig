@@ -19,7 +19,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
             .origin = .SERVER,
             .sender_id = "",
             .src_addr = sd.server.address_str,
-            .dest_addr = peer.commAddressAsStr(),
+            .dest_addr = peer.comm_address_str,
             .body = "OK",
         };
         resp.dump(sd.server.log_level);
@@ -53,7 +53,7 @@ fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, request_data: []
                 .origin = .SERVER,
                 .sender_id = "",
                 .src_addr = sd.server.address_str,
-                .dest_addr = peer.commAddressAsStr(),
+                .dest_addr = peer.comm_address_str,
                 .body = "OK",
             };
             reqp.dump(sd.server.log_level);
@@ -68,7 +68,7 @@ fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, request_data: []
                     .origin = .SERVER,
                     .sender_id = "",
                     .src_addr = sd.server.address_str,
-                    .dest_addr = peer.commAddressAsStr(),
+                    .dest_addr = peer.comm_address_str,
                     .body = "OK",
                 };
                 reqp.dump(sd.server.log_level);

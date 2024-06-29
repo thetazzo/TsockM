@@ -8,33 +8,33 @@ const SharedData = core.SharedData;
 
 fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
     _ = in_conn;
-    const opt_server_peer_ref = sd.peerPoolFindId(protocol.sender_id);
-    const opt_peer_ref = sd.peerPoolFindId(protocol.body);
-    if (opt_server_peer_ref) |server_peer_ref| {
-        const dst_addr = server_peer_ref.peer.commAddressAsStr();
-        if (opt_peer_ref) |peer_ref| {
+    const opt_sender_peer_ref = sd.peerPoolFindId(protocol.sender_id);
+    const opt_search_peer_ref = sd.peerPoolFindId(protocol.body);
+    if (opt_sender_peer_ref) |server_peer_ref| {
+        const dest_addr_str = server_peer_ref.peer.comm_address_str;
+        if (opt_search_peer_ref) |peer_ref| {
             const resp = comm.Protocol{
-                .type = .RES, // type
-                .action = .GET_PEER, // action
+                .type = .RES,
+                .action = .GET_PEER,
                 .origin = .SERVER,
-                .status = .OK, // status code
-                .sender_id = "", // sender id
-                .src_addr = sd.server.address_str, // src
-                .dest_addr = dst_addr, // dst
-                .body = peer_ref.peer.username, // body
+                .status = .OK,
+                .sender_id = "",
+                .src_addr = sd.server.address_str,
+                .dest_addr = dest_addr_str,
+                .body = peer_ref.peer.username,
             };
             resp.dump(sd.server.log_level);
             _ = resp.transmit(server_peer_ref.peer.stream()) catch 1;
         } else {
             const resp = comm.Protocol{
-                .type = comm.Typ.ERR, // type
-                .action = comm.Act.GET_PEER, // action
-                .status = comm.Status.NOT_FOUND, // status code
+                .type = comm.Typ.ERR,
+                .action = comm.Act.GET_PEER,
+                .status = comm.Status.NOT_FOUND,
                 .origin = .SERVER,
-                .sender_id = "", // sender id
-                .src_addr = sd.server.address_str, // src
-                .dest_addr = dst_addr, // dst, resp);
-                .body = "peer not found", // body
+                .sender_id = "",
+                .src_addr = sd.server.address_str,
+                .dest_addr = dest_addr_str,
+                .body = "peer not found",
             };
             resp.dump(sd.server.log_level);
             _ = resp.transmit(server_peer_ref.peer.stream()) catch 1;

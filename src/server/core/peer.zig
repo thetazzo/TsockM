@@ -10,28 +10,24 @@ const print = std.debug.print;
 
 pub const Peer = struct {
     allocator: std.mem.Allocator, // used in deinit
-    conn: Server.Connection,
     id: []const u8,
     username: []const u8,
+    conn: Server.Connection,
+    comm_address: net.Address,
+    comm_address_str: []const u8,
     alive: bool = true,
     pub fn stream(self: @This()) net.Stream {
         return self.conn.stream;
     }
-    pub fn commAddress(self: @This()) net.Address {
-        return self.conn.address;
-    }
-    pub fn commAddressAsStr(self: @This()) []const u8 {
-        return cmn.address_as_str(self.conn.address);
-    }
     pub fn dump(self: @This()) void {
-        print("------------------------------------\n", .{});
+        print("====================================\n", .{});
         print("Peer {{\n", .{});
-        print("    id: `{s}`\n", .{self.id});
-        print("    username: `{s}`\n", .{self.username});
-        print("    comm_addr: `{any}`\n", .{self.commAddress()});
-        print("    alive: `{any}`\n", .{self.alive});
+        print("    id:        `{s}`\n", .{self.id});
+        print("    username:  `{s}`\n", .{self.username});
+        print("    comm_addr: `{s}`\n", .{self.comm_address_str});
+        print("    alive:     `{any}`\n", .{self.alive});
         print("}}\n", .{});
-        print("------------------------------------\n", .{});
+        print("====================================\n", .{});
     }
     pub fn init(
         allocator: mem.Allocator,
@@ -52,16 +48,19 @@ pub const Peer = struct {
             std.posix.exit(1);
         };
         // DON'T EVER FORGET TO ALLOCATE MEMORY !!!!!!
-        // TODO: Peer deinit
         const aun = std.fmt.allocPrint(allocator, "{s}#{s}", .{ protocol.body, user_sig }) catch "format failed";
+        const addr_str = std.fmt.allocPrint(allocator, "{any}", .{conn.address}) catch "format failed";
         return Peer{
             .conn = conn,
             .id = id,
             .username = aun,
             .allocator = allocator,
+            .comm_address = conn.address,
+            .comm_address_str = addr_str,
         };
     }
     pub fn deinit(self: *@This()) void {
         self.allocator.free(self.username);
+        self.allocator.free(self.comm_address_str);
     }
 };

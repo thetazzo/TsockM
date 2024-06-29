@@ -45,7 +45,7 @@ jobs:
         run: zig fmt --check .
 
       - name: Run server 
-        run: zig build testing-server
-
-      - name: Run Tests
-        run: zig build test --summary all
+        run: |
+            zig build testing-server & 
+            sleep 10
+            zig build test --summary all

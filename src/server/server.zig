@@ -140,7 +140,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: aids.Logging.Level) !vo
 
     server.start();
 
-    var thread_pool: [3]std.Thread = undefined;
+    var thread_pool: [2]std.Thread = undefined;
     var sd = core.SharedData{
         .m = std.Thread.Mutex{},
         .should_exit = false,
@@ -148,9 +148,9 @@ pub fn start(hostname: []const u8, port: u16, log_level: aids.Logging.Level) !vo
         .server = server,
     };
     {
-        thread_pool[0] = try std.Thread.spawn(.{}, commander, .{&sd});
-        thread_pool[1] = try std.Thread.spawn(.{}, listener, .{&sd});
-        thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{&sd});
+        //thread_pool[0] = try std.Thread.spawn(.{}, commander, .{&sd});
+        thread_pool[0] = try std.Thread.spawn(.{}, listener, .{&sd});
+        thread_pool[1] = try std.Thread.spawn(.{}, polizei, .{&sd});
         defer for (thread_pool) |thr| thr.join();
     }
 }

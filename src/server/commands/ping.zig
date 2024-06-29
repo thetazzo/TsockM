@@ -34,7 +34,7 @@ pub fn executor(cmd: ?[]const u8, cd: ?core.sc.CommandData) void {
                     .origin = .SERVER,
                     .sender_id = "", // sender_id
                     .src_addr = cd.?.sd.server.address_str, // src_address
-                    .dest_addr = peer.commAddressAsStr(), // dst address
+                    .dest_addr = peer.conn_address_str, // dst address
                     .body = "check?", // body
                 };
                 reqp.dump(aids.Logging.Level.DEV);
@@ -51,14 +51,14 @@ pub fn executor(cmd: ?[]const u8, cd: ?core.sc.CommandData) void {
             for (cd.?.sd.peer_pool.items, 0..) |peer, pid| {
                 if (std.mem.eql(u8, peer.id, arg)) {
                     const reqp = comm.Protocol{
-                        .type = .REQ, // type
-                        .action = .COMM, // action
-                        .status = .OK, // status
+                        .type = .REQ,
+                        .action = .COMM,
+                        .status = .OK,
                         .origin = .SERVER,
-                        .sender_id = "", // sender_id
-                        .src_addr = cd.?.sd.server.address_str, // src_address
-                        .dest_addr = peer.commAddressAsStr(), // dst address
-                        .body = "check?", // body
+                        .sender_id = "",
+                        .src_addr = cd.?.sd.server.address_str,
+                        .dest_addr = peer.conn_address_str,
+                        .body = "check?",
                     };
                     reqp.dump(aids.Logging.Level.DEV);
                     // TODO: I don't know why but i must send 2 requests to determine the status of the stream

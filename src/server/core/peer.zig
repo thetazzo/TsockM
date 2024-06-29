@@ -8,88 +8,81 @@ const mem = std.mem;
 const Server = net.Server;
 const print = std.debug.print;
 
-pub const Peer = struct {
-    pub const PEER_ID = []const u8;
-    pub const PEER_USERNAME = []const u8;
-    conn: Server.Connection,
-    id: PEER_ID,
-    username: PEER_USERNAME = "", // TODO: why do i allow empty username?
-    alive: bool = true,
+/// Generates a randomized sequence of characters using `Sqids` as a generator
+fn generateRadomId(generator: sqids.Sqids) []const u8 {
+    var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
+    const id = generator.encode(&.{
+        rand.random().int(u64),
+        rand.random().int(u64),
+        rand.random().int(u64),
+    }) catch |err| {
+        std.log.err("server::core::peer::generateRandomId: {any}", .{err});
+        std.posix.exit(1);
+    };
+    return id;
+}
 
-    pub fn init(conn: Server.Connection, id: PEER_ID) @This() {
-        // TODO: check for peer.id collisions
-        return @This(){
-            .id = id,
-            .conn = conn,
+pub const Peer = struct {
+    allocator: std.mem.Allocator, // used in deinit
+    id: []const u8,
+    username: []const u8,
+    conn: Server.Connection = undefined,
+    conn_address: net.Address = undefined,
+    conn_address_str: []const u8 = "",
+    alive: bool = true,
+    pub fn init(
+        allocator: mem.Allocator,
+        username: []const u8,
+    ) Peer {
+        const generator = sqids.Sqids.init(allocator, .{ .min_length = 10 }) catch |err| {
+            std.log.warn("{any}", .{err});
+            std.posix.exit(1);
         };
+        defer generator.deinit();
+        const id = generateRadomId(generator);
+        const user_sig = generateRadomId(generator);
+        // DON'T EVER FORGET TO ALLOCATE MEMORY !!!!!!
+        const aun = std.fmt.allocPrint(allocator, "{s}#{s}", .{ username, user_sig }) catch "format failed";
+        return Peer{
+            .id = id,
+            .username = aun,
+            .allocator = allocator,
+        };
+    }
+    pub fn bindConnection(self: *@This(), conn: net.Server.Connection) void {
+        self.conn = conn;
+        self.conn_address = conn.address;
+        const addr_str = std.fmt.allocPrint(self.allocator, "{any}", .{conn.address}) catch "format failed";
+        self.conn_address_str = addr_str;
     }
     pub fn stream(self: @This()) net.Stream {
         return self.conn.stream;
     }
-    pub fn commAddress(self: @This()) net.Address {
-        return self.conn.address;
-    }
-    pub fn commAddressAsStr(self: @This()) []const u8 {
-        return cmn.address_as_str(self.conn.address);
-    }
-
     pub fn dump(self: @This()) void {
-        print("------------------------------------\n", .{});
+        print("====================================\n", .{});
         print("Peer {{\n", .{});
-        print("    id: `{s}`\n", .{self.id});
-        print("    username: `{s}`\n", .{self.username});
-        print("    comm_addr: `{any}`\n", .{self.commAddress()});
-        print("    alive: `{any}`\n", .{self.alive});
+        print("    id:        `{s}`\n", .{self.id});
+        print("    username:  `{s}`\n", .{self.username});
+        print("    comm_addr: `{s}`\n", .{self.conn_address_str});
+        print("    alive:     `{any}`\n", .{self.alive});
         print("}}\n", .{});
-        print("------------------------------------\n", .{});
+        print("====================================\n", .{});
     }
-    // TODO: replace with init
-    pub fn construct(
-        allocator: mem.Allocator,
-        conn: net.Server.Connection,
-        protocol: comm.Protocol,
-    ) @This() {
-        var rand = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
-        const s = sqids.Sqids.init(std.heap.page_allocator, .{ .min_length = 10 }) catch |err| {
-            std.log.warn("{any}", .{err});
-            std.posix.exit(1);
-        };
-        const id = s.encode(&.{ rand.random().int(u64), rand.random().int(u64), rand.random().int(u64) }) catch |err| {
-            std.log.warn("{any}", .{err});
-            std.posix.exit(1);
-        };
-        var peer = @This().init(conn, id);
-        const user_sig = s.encode(&.{ rand.random().int(u8), rand.random().int(u8), rand.random().int(u8) }) catch |err| {
-            std.log.warn("{any}", .{err});
-            std.posix.exit(1);
-        };
-        // DON'T EVER FORGET TO ALLOCATE MEMORY !!!!!!
-        // TODO: try fmn.comptimeAlloc
-        const aun = std.fmt.allocPrint(allocator, "{s}#{s}", .{ protocol.body, user_sig }) catch "format failed";
-        peer.username = aun;
-        dump(peer);
-        return peer;
+    pub fn deinit(self: *@This()) void {
+        _ = self;
     }
 };
 
-pub const PeerRef = struct { peer: Peer, ref_id: usize };
-
-pub fn peerRefFromId(peer_pool: *std.ArrayList(Peer), id: Peer.PEER_ID) ?PeerRef {
-    // O(n)
-    for (peer_pool.items, 0..) |peer, i| {
-        if (mem.eql(u8, peer.id, id)) {
-            return .{ .peer = peer, .ref_id = i };
-        }
+test "Peer.init1000" {
+    const str_allocator = std.heap.page_allocator;
+    const n = 1000;
+    var testers: [n]Peer = undefined;
+    for (0..n) |i| {
+        testers[i] = Peer.init(str_allocator, "tester");
+        std.time.sleep(200000); // because if two peers get created at exactly the same time their IDs are generated equal // TODO: check for ID collisions
     }
-    return null;
-}
-
-pub fn peerRefFromUsername(peer_pool: *std.ArrayList(Peer), username: []const u8) ?PeerRef {
-    // O(n)
-    for (peer_pool.items, 0..) |peer, i| {
-        if (mem.eql(u8, peer.username, username)) {
-            return .{ .peer = peer, .ref_id = i };
-        }
+    for (0..(n - 1)) |i| {
+        const res = !std.mem.eql(u8, testers[i].username, testers[i + 1].username);
+        try std.testing.expect(res);
     }
-    return null;
 }

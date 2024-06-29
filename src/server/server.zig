@@ -46,7 +46,7 @@ fn listener(sd: *core.SharedData) !void {
                 sd.server.address_str,
                 protocol.src_addr,
             );
-            const opt_peer_ref = core.pc.peerRefFromId(sd.peer_pool, protocol.sender_id);
+            const opt_peer_ref = sd.peerPoolFindId(protocol.sender_id);
             if (opt_peer_ref) |peer_ref| {
                 _ = resp.transmit(peer_ref.peer.stream()) catch 1;
                 resp.dump(sd.server.log_level);
@@ -135,7 +135,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: aids.Logging.Level) !vo
     server.Commander.add(":unmute", ServerCommand.UNMUTE);
     server.Commander.add(":help", ServerCommand.PRINT_PROGRAM_USAGE);
 
-    var peer_pool = std.ArrayList(core.pc.Peer).init(gpa_allocator);
+    var peer_pool = std.ArrayList(core.Peer).init(gpa_allocator);
     defer peer_pool.deinit();
 
     server.start();

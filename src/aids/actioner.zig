@@ -1,5 +1,5 @@
 const std = @import("std");
-const comm = @import("communication/communication.zig");
+const comm = @import("aids.zig").v2.comm;
 
 pub fn Action(comptime T: type) type {
     return struct {

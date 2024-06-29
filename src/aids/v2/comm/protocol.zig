@@ -1,7 +1,7 @@
 const std = @import("std");
-const tc = @import("../text_color.zig");
-const comm = @import("communication.zig");
-const Logging = @import("../logging.zig");
+const comm = @import("comm.zig");
+const tc = @import("../../text_color.zig");
+const Logging = @import("../../logging.zig");
 const mem = std.mem;
 const print = std.debug.print;
 
@@ -25,7 +25,7 @@ pub const Protocol = struct {
             print(" {s}: `{s}` {{{s}}}                 \n", .{
                 comm.typAsStr(self.type),
                 @tagName(self.action),
-                self.sender_id,
+                @tagName(self.origin),
             });
             if (log_level == Logging.Level.DEV) {
                 print("------------------------------------\n", .{});

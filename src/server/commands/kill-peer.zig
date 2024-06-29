@@ -26,7 +26,7 @@ pub fn executor(cmd: ?[]const u8, cd: ?core.sc.CommandData) void {
                 act.transmit.?.request(comm.TransmitionMode.BROADCAST, cd.?.sd, "");
             }
         } else {
-            const opt_peer_ref = core.pc.peerRefFromId(cd.?.sd.peer_pool, arg);
+            const opt_peer_ref = cd.?.sd.peerPoolFindId(arg);
             if (opt_peer_ref) |peer_ref| {
                 if (cd.?.sd.server.Actioner.get(aids.Stab.Act.COMM_END)) |act| {
                     const id = std.fmt.allocPrint(str_allocator, "{d}", .{peer_ref.ref_id}) catch |err| {

@@ -1,4 +1,4 @@
-const comm = @import("communication.zig");
+const comm = @import("comm.zig");
 
 pub fn NotFound(
     act: comm.Act,

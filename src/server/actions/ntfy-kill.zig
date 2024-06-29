@@ -41,7 +41,7 @@ fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, _: []const u8) v
                                 .origin = .SERVER,
                                 .sender_id = "",
                                 .src_addr = sd.server.address_str,
-                                .dest_addr = peer.commAddressAsStr(),
+                                .dest_addr = peer.conn_address_str,
                                 .body = peer.id,
                             };
                             _ = reqp.transmit(ap.stream()) catch 1;

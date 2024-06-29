@@ -11,7 +11,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
     const opt_sender_peer_ref = sd.peerPoolFindId(protocol.sender_id);
     const opt_search_peer_ref = sd.peerPoolFindId(protocol.body);
     if (opt_sender_peer_ref) |server_peer_ref| {
-        const dest_addr_str = server_peer_ref.peer.comm_address_str;
+        const dest_addr_str = server_peer_ref.peer.conn_address_str;
         if (opt_search_peer_ref) |peer_ref| {
             const resp = comm.Protocol{
                 .type = .RES,

@@ -34,7 +34,7 @@ pub fn executor(cmd: ?[]const u8, cd: ?core.sc.CommandData) void {
                     .origin = .SERVER,
                     .sender_id = "", // sender_id
                     .src_addr = cd.?.sd.server.address_str, // src_address
-                    .dest_addr = peer.comm_address_str, // dst address
+                    .dest_addr = peer.conn_address_str, // dst address
                     .body = "check?", // body
                 };
                 reqp.dump(aids.Logging.Level.DEV);
@@ -57,7 +57,7 @@ pub fn executor(cmd: ?[]const u8, cd: ?core.sc.CommandData) void {
                         .origin = .SERVER,
                         .sender_id = "",
                         .src_addr = cd.?.sd.server.address_str,
-                        .dest_addr = peer.comm_address_str,
+                        .dest_addr = peer.conn_address_str,
                         .body = "check?",
                     };
                     reqp.dump(aids.Logging.Level.DEV);

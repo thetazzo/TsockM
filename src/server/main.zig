@@ -86,6 +86,6 @@ pub fn main() !void {
 }
 
 test {
-    _ = @import("core/server.test.zig");
+    _ = @import("core/core.zig");
     std.testing.refAllDecls(@This());
 }

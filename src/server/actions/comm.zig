@@ -14,7 +14,8 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
 
     // TODO: find a way around the allocator
     const tmp_allocator = std.heap.page_allocator;
-    const peer = Peer.init(tmp_allocator, in_conn.?, protocol);
+    var peer = Peer.init(tmp_allocator, protocol.body);
+    peer.bindConnection(in_conn.?);
     const peer_str = std.fmt.allocPrint(tmp_allocator, "{s}|{s}", .{ peer.id, peer.username }) catch "format failed";
     sd.peerPoolAppend(peer) catch |err| {
         std.log.err("`comm-action::collectRequest::peerPoolAppend`: {any}", .{err});
@@ -62,7 +63,7 @@ fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, _: []const u8) v
                     .origin = .SERVER,
                     .sender_id = "", // sender_id
                     .src_addr = sd.server.address_str, // src_address
-                    .dest_addr = peer.comm_address_str, // dst address
+                    .dest_addr = peer.conn_address_str, // dst address
                     .body = "check", // body
                 };
                 reqp.dump(sd.server.log_level);

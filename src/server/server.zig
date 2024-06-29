@@ -86,7 +86,8 @@ fn commander(tester: bool, sd: *core.SharedData) !void {
 
 /// ping peers to determine their life status
 /// this is a thread
-fn polizei(sd: *core.SharedData) !void {
+fn polizei(tester: bool, sd: *core.SharedData) !void {
+    _ = tester;
     var start_t = try std.time.Instant.now();
     var lock = false;
     const CHECK_INTERVAL = 2000; // ms
@@ -153,7 +154,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: aids.Logging.Level, tes
     {
         thread_pool[0] = try std.Thread.spawn(.{}, commander, .{ tester, &sd });
         thread_pool[1] = try std.Thread.spawn(.{}, listener, .{&sd});
-        thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{&sd});
+        thread_pool[2] = try std.Thread.spawn(.{}, polizei, .{ tester, &sd });
         defer for (thread_pool) |thr| thr.join();
     }
 }

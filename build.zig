@@ -188,6 +188,22 @@ fn STEP_release_client(b: *std.Build, target: std.Build.ResolvedTarget, optimize
     step.dependOn(&cpa.step);
 }
 
+fn addTestRunner(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    root_path: []const u8,
+) *std.Build.Step.Run {
+    const server_unit_tests = b.addTest(.{
+        .root_source_file = b.path(root_path),
+        .target = target,
+        .optimize = optimize,
+    });
+    server_unit_tests.root_module.addImport("aids", Aids(b).module);
+    const run_server_unit_test = b.addRunArtifact(server_unit_tests);
+    return run_server_unit_test;
+}
+
 // TODO: client and server versioning
 //          * have a file where all versins get written
 //          * check that no already existing versions get overwritten
@@ -224,22 +240,8 @@ pub fn build(b: *std.Build) !void {
         std.posix.exit(1);
     };
 
-    // TODO: organize testing steps
-    const server_unit_tests = b.addTest(.{
-        .root_source_file = b.path("src/server/main.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    server_unit_tests.root_module.addImport("aids", Aids(b).module);
-    const run_server_unit_test = b.addRunArtifact(server_unit_tests);
-
-    const aids_unit_tests = b.addTest(.{
-        .root_source_file = b.path("src/aids/aids.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    aids_unit_tests.root_module.addImport("aids", Aids(b).module);
-    const run_aids_unit_test = b.addRunArtifact(aids_unit_tests);
+    var server_unit_tests = addTestRunner(b, target, optimize, "src/server/main.zig");
+    var aids_unit_tests = addTestRunner(b, target, optimize, "src/aids/aids.zig");
 
     const run_testing_server = b.step("testing-server", "Run unit tests for everything");
     _ = STEP_testing_server(b, target, optimize, run_testing_server) catch |err| {
@@ -248,6 +250,6 @@ pub fn build(b: *std.Build) !void {
     };
 
     const whole_test_step = b.step("test", "Run unit tests for everything");
-    whole_test_step.dependOn(&run_server_unit_test.step);
-    whole_test_step.dependOn(&run_aids_unit_test.step);
+    whole_test_step.dependOn(&server_unit_tests.step);
+    whole_test_step.dependOn(&aids_unit_tests.step);
 }

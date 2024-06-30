@@ -9,11 +9,11 @@ const Server = net.Server;
 const print = std.debug.print;
 
 ///Generate a unique sequence of characters
-///Using a Secure PRG
+///Using a Secure PRNG
 pub fn generateId(allocator: std.mem.Allocator, comptime id_len: usize) []const u8 {
     const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     var id = [_]u8{0} ** id_len;
-    var rand = std.crypto.random; // secure PRG
+    var rand = std.crypto.random; // secure PRNG
     for (0..id_len) |i| {
         const f = @mod(rand.int(usize), 62);
         id[i] = alphabet[f];
@@ -78,26 +78,37 @@ pub const Peer = struct {
     }
 };
 
-test "Peer.init1000" {
+test "Peer.init10000" {
     const str_allocator = std.heap.page_allocator;
-    for (0..10) |_| {
-        const n = 10000;
-        var testers: [n]Peer = undefined;
-        for (0..n) |i| {
-            testers[i] = Peer.init(str_allocator, "tester");
+    const n = 10000;
+    var testers: [n]Peer = undefined;
+    for (0..n) |i| {
+        testers[i] = Peer.init(str_allocator, "tester");
+    }
+    // test for duplicate ids
+    var hits: usize = 0;
+    for (0..(n - 1)) |i| { // O(n^2)
+        for ((i + 1)..(n)) |j| {
+            const id_hit = std.mem.eql(u8, testers[i].id, testers[j].id);
+            if (id_hit) {
+                std.debug.print("{s} :: {s} | {d} :: {d}\n", .{ testers[i].id, testers[j].id, i, j });
+                hits += 1;
+            }
+            try std.testing.expectEqual(0, hits);
         }
-        // test for duplicate ids
-        for (0..(n - 1)) |i| {
-            const res = !std.mem.eql(u8, testers[i].id, testers[i + 1].id);
-            try std.testing.expect(res);
+    }
+    // test for duplicate usernames
+    for (0..(n - 1)) |i| {
+        for ((i + 1)..(n - 1)) |j| {
+            const username_hit = std.mem.eql(u8, testers[i].username, testers[j].username);
+            if (username_hit) {
+                std.debug.print("{s} :: {s} | {d} :: {d}\n", .{ testers[i].username, testers[j].username, i, j });
+                hits += 1;
+            }
+            try std.testing.expectEqual(0, hits);
         }
-        // test for duplicate usernames
-        for (0..(n - 1)) |i| {
-            const res = !std.mem.eql(u8, testers[i].username, testers[i + 1].username);
-            try std.testing.expect(res);
-        }
-        for (0..n) |i| {
-            testers[i].deinit();
-        }
+    }
+    for (0..n) |i| {
+        testers[i].deinit();
     }
 }

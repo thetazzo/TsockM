@@ -10,7 +10,7 @@ const print = std.debug.print;
 
 ///Generate a unique sequence of characters
 ///Using a Secure PRG
-pub fn generateId(allocator: std.mem.Allocator, comptime id_len: usize) ![]const u8 {
+pub fn generateId(allocator: std.mem.Allocator, comptime id_len: usize) []const u8 {
     const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     var id = [_]u8{0} ** id_len;
     var rand = std.crypto.random; // secure PRG
@@ -18,7 +18,11 @@ pub fn generateId(allocator: std.mem.Allocator, comptime id_len: usize) ![]const
         const f = @mod(rand.int(usize), 62);
         id[i] = alphabet[f];
     }
-    return try std.fmt.allocPrint(allocator, "{s}", .{id});
+    const id_allocd = std.fmt.allocPrint(allocator, "{s}", .{id}) catch |err| {
+        std.log.err("Peer::generateId::id_allocd: {any}", .{err});
+        std.posix.exit(1);
+    };
+    return id_allocd;
 }
 
 pub const Peer = struct {
@@ -34,17 +38,11 @@ pub const Peer = struct {
         username: []const u8,
     ) Peer {
         var arena = std.heap.ArenaAllocator.init(allocator);
-        const id = generateId(arena.allocator(), 32) catch |err| {
-            std.log.err("Peer:init: {any}", .{err});
-            std.posix.exit(1);
-        };
-        const user_sig = generateId(arena.allocator(), 8) catch |err| {
-            std.log.err("Peer:init: {any}", .{err});
-            std.posix.exit(1);
-        };
+        const id = generateId(arena.allocator(), 32);
+        const user_sig = generateId(arena.allocator(), 8);
         // DON'T EVER FORGET TO ALLOCATE MEMORY !!!!!!
         const username_allocd = std.fmt.allocPrint(arena.allocator(), "{s}#{s}", .{ username, user_sig }) catch |err| {
-            std.log.err("Peer:init: {any}", .{err});
+            std.log.err("Peer::init::username_allocd: {any}", .{err});
             std.posix.exit(1);
         };
         return Peer{
@@ -56,7 +54,10 @@ pub const Peer = struct {
     pub fn bindConnection(self: *@This(), conn: net.Server.Connection) void {
         self.conn = conn;
         self.conn_address = conn.address;
-        const addr_str = std.fmt.allocPrint(self.arena.allocator(), "{any}", .{conn.address}) catch "format failed";
+        const addr_str = std.fmt.allocPrint(self.arena.allocator(), "{any}", .{conn.address}) catch |err| {
+            std.log.err("{any}", .{err});
+            std.posix.exit(1);
+        };
         self.conn_address_str = addr_str;
     }
     pub fn stream(self: @This()) net.Stream {
@@ -79,8 +80,8 @@ pub const Peer = struct {
 
 test "Peer.init1000" {
     const str_allocator = std.heap.page_allocator;
-    for (0..6) |_| {
-        const n = 100000;
+    for (0..10) |_| {
+        const n = 10000;
         var testers: [n]Peer = undefined;
         for (0..n) |i| {
             testers[i] = Peer.init(str_allocator, "tester");

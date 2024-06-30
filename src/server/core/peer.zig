@@ -8,18 +8,20 @@ const mem = std.mem;
 const Server = net.Server;
 const print = std.debug.print;
 
-pub fn generateId(id_len: usize, string: *std.ArrayList(u8)) ![]const u8 {
+///Generate a unique sequence of characters
+///Using a Secure PRG
+pub fn generateId(allocator: std.mem.Allocator, comptime id_len: usize) ![]const u8 {
     const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    var rand = std.crypto.random;
-    for (0..id_len) |_| {
+    var id = [_]u8{0} ** id_len;
+    var rand = std.crypto.random; // secure PRG
+    for (0..id_len) |i| {
         const f = @mod(rand.int(usize), 62);
-        try string.append(alphabet[f]);
+        id[i] = alphabet[f];
     }
-    return string.items;
+    return try std.fmt.allocPrint(allocator, "{s}", .{id});
 }
 
 pub const Peer = struct {
-    allocator: std.mem.Allocator, // used in deinit
     id: []const u8,
     username: []const u8,
     conn: Server.Connection = undefined,
@@ -31,31 +33,30 @@ pub const Peer = struct {
         allocator: mem.Allocator,
         username: []const u8,
     ) Peer {
-        const str_alloc = std.heap.page_allocator;
-        var id_sa = std.ArrayList(u8).init(str_alloc);
-        const arena = std.heap.ArenaAllocator.init(str_alloc);
-        const id = generateId(32, &id_sa) catch |err| {
+        var arena = std.heap.ArenaAllocator.init(allocator);
+        const id = generateId(arena.allocator(), 32) catch |err| {
             std.log.err("Peer:init: {any}", .{err});
             std.posix.exit(1);
         };
-        var un_sa = std.ArrayList(u8).init(str_alloc);
-        const user_sig = generateId(8, &un_sa) catch |err| {
+        const user_sig = generateId(arena.allocator(), 8) catch |err| {
             std.log.err("Peer:init: {any}", .{err});
             std.posix.exit(1);
         };
         // DON'T EVER FORGET TO ALLOCATE MEMORY !!!!!!
-        const aun = std.fmt.allocPrint(allocator, "{s}#{s}", .{ username, user_sig }) catch "format failed";
+        const username_allocd = std.fmt.allocPrint(arena.allocator(), "{s}#{s}", .{ username, user_sig }) catch |err| {
+            std.log.err("Peer:init: {any}", .{err});
+            std.posix.exit(1);
+        };
         return Peer{
             .id = id,
-            .username = aun,
-            .allocator = allocator,
+            .username = username_allocd,
             .arena = arena,
         };
     }
     pub fn bindConnection(self: *@This(), conn: net.Server.Connection) void {
         self.conn = conn;
         self.conn_address = conn.address;
-        const addr_str = std.fmt.allocPrint(self.allocator, "{any}", .{conn.address}) catch "format failed";
+        const addr_str = std.fmt.allocPrint(self.arena.allocator(), "{any}", .{conn.address}) catch "format failed";
         self.conn_address_str = addr_str;
     }
     pub fn stream(self: @This()) net.Stream {
@@ -78,14 +79,24 @@ pub const Peer = struct {
 
 test "Peer.init1000" {
     const str_allocator = std.heap.page_allocator;
-    const n = 1000;
-    var testers: [n]Peer = undefined;
-    for (0..n) |i| {
-        testers[i] = Peer.init(str_allocator, "tester");
-        std.time.sleep(200000); // because if two peers get created at exactly the same time their IDs are generated equal // TODO: check for ID collisions
-    }
-    for (0..(n - 1)) |i| {
-        const res = !std.mem.eql(u8, testers[i].username, testers[i + 1].username);
-        try std.testing.expect(res);
+    for (0..6) |_| {
+        const n = 100000;
+        var testers: [n]Peer = undefined;
+        for (0..n) |i| {
+            testers[i] = Peer.init(str_allocator, "tester");
+        }
+        // test for duplicate ids
+        for (0..(n - 1)) |i| {
+            const res = !std.mem.eql(u8, testers[i].id, testers[i + 1].id);
+            try std.testing.expect(res);
+        }
+        // test for duplicate usernames
+        for (0..(n - 1)) |i| {
+            const res = !std.mem.eql(u8, testers[i].username, testers[i + 1].username);
+            try std.testing.expect(res);
+        }
+        for (0..n) |i| {
+            testers[i].deinit();
+        }
     }
 }

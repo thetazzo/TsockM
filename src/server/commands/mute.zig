@@ -6,7 +6,7 @@ const SharedData = core.SharedData;
 fn printUnmuteUsage() void {
     std.debug.print("usage: :unmute <flag>\n", .{});
     std.debug.print("FLAGS:\n", .{});
-    std.debug.print("    * dev|DEV|D ........ print all the things\n", .{});
+    std.debug.print("    * dev|DEV|D ............ print all the things\n", .{});
     std.debug.print("    * compact|COMPACT|C .... print compact protocols\n", .{});
 }
 

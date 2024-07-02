@@ -9,6 +9,7 @@ pub fn executor(_: ?[]const u8, _: ?core.sc.CommandData) void {
     std.debug.print("    * :c .............................. clear screen\n", .{});
     std.debug.print("    * :info ........................... print server statiistics\n", .{});
     std.debug.print("    * :mute ........................... disable logging\n", .{});
+    std.debug.print("    * :unmute <log level> ............. enable logging\n", .{});
     std.debug.print("    * :exit ........................... terminate server\n", .{});
     std.debug.print("    * :help ........................... print server commands\n", .{});
     std.debug.print("    * :clean-pool ..................... removes dead peers\n", .{});

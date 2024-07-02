@@ -79,9 +79,14 @@ zig build client -- <subcommand>
 
 ### TODO
 
-#### 0.5.x
+#### 0.6.x
 * [ ] {FEAT} encrypt body of the protocol
 * [ ] {FEAT} store messages
+#### 0.5.x
+* [ ] {FEAT} PeerPool v2
+    * Hash table approach
+#### 0.4.5
+* [x] {FIX} printing commands
 #### 0.4.4
 * [x] {TEST} `peer`
 * [x] {UPDATE} make `Peer` more robust with more functions and quality of life things

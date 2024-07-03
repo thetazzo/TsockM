@@ -25,6 +25,12 @@ pub fn generateId(allocator: std.mem.Allocator, comptime id_len: usize) []const 
     return id_allocd;
 }
 
+///Structure holding data about a connected client (peer)
+///id - []const u8
+///username - []const u8
+///conn - net.Server.Connection
+///conn_address - net.Address
+///conn_address_str - []const u8
 pub const Peer = struct {
     id: []const u8,
     username: []const u8,

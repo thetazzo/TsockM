@@ -14,7 +14,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
 
     // TODO: find a way around the allocator
     const tmp_allocator = std.heap.page_allocator;
-    var peer = Peer.init(tmp_allocator, protocol.body);
+    var peer = Peer.init(tmp_allocator, core.randomByteSequence(tmp_allocator, 8), protocol.body);
     peer.bindConnection(in_conn.?);
     const peer_str = std.fmt.allocPrint(tmp_allocator, "{s}|{s}", .{ peer.id, peer.username }) catch "format failed";
     sd.peerPoolAppend(peer) catch |err| {

@@ -110,7 +110,6 @@ test "PeerPool.insert" {
     const test_allocator = std.heap.page_allocator;
     const pool_capacity = 10;
     var pp = PeerPool.init(test_allocator, pool_capacity);
-
     _ = pp.insert("SnoopyDoggy Dog");
     _ = pp.insert("Luka");
     _ = pp.insert("Mare");
@@ -121,15 +120,15 @@ test "PeerPool.insert" {
     _ = pp.insert("Milanic");
     _ = pp.insert("Vake");
     _ = pp.insert("Aralica");
-
     try std.testing.expectEqual(0, pp.capacity);
+    pp.deinit();
 }
 
-test "PeerPool.insert.validate" {
+test "PeerPool.getPeer" {
     const test_allocator = std.heap.page_allocator;
     const pool_capacity = 10;
     var pp = PeerPool.init(test_allocator, pool_capacity);
-
+    // insert 10 peers
     const test_peers = [_][]const u8{
         "SnoopyDoggy Dog",
         "Luka",
@@ -147,6 +146,7 @@ test "PeerPool.insert.validate" {
         const peer = pp.insert(peer_name);
         testing_sigs[i] = peer.signature;
     }
+    // using getPeer validate that correct peers were inserted
     for (testing_sigs, 0..testing_sigs.len) |sig, _| {
         var sig_split = std.mem.splitScalar(u8, sig, '#');
         const name = sig_split.next().?;
@@ -156,4 +156,20 @@ test "PeerPool.insert.validate" {
             try std.testing.expectEqualStrings(name, peer.username);
         }
     }
+    pp.deinit();
+}
+
+// Test insertion time of 1 milion peers, it should be around 10s :D
+test "PeerPool.stressTest" {
+    const test_allocator = std.heap.page_allocator;
+    const pool_capacity = 1 * 1000001;
+    var pp = PeerPool.init(test_allocator, pool_capacity);
+    const start = try std.time.Instant.now();
+    for (0..pool_capacity) |_| {
+        _ = pp.insert("tester");
+    }
+    pp.deinit();
+    const end = try std.time.Instant.now();
+    const dt = end.since(start);
+    try std.testing.expect((dt / std.time.ns_per_s) < 15); // expected time to be less then 15 seconds
 }

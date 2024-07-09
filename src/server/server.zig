@@ -139,7 +139,7 @@ pub fn start(hostname: []const u8, port: u16, log_level: aids.Logging.Level, tes
     server.Commander.add(":unmute", ServerCommand.UNMUTE);
     server.Commander.add(":help", ServerCommand.PRINT_PROGRAM_USAGE);
 
-    var peer_pool = std.ArrayList(core.Peer).init(gpa_allocator);
+    var peer_pool = core.PeerPool.init(str_allocator, 1001);
     defer peer_pool.deinit();
 
     server.start();

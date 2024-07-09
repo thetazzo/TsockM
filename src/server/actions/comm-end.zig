@@ -7,11 +7,12 @@ const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
 // TODO: try if sd.server.net_server can get the connection instead if in_conn param
+///This occurs when a client requests a tqermination
+///Ussulay happens when the client exits
 fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
     _ = in_conn;
-    const opt_peer_ref = sd.peerPoolFindId(protocol.sender_id);
-    if (opt_peer_ref) |peer_ref| {
-        const peer = sd.peer_pool.items[peer_ref.ref_id];
+    const opt_peer = sd.peer_pool.get(protocol.sender_id);
+    if (opt_peer) |peer| {
         const resp = comm.Protocol{
             .type = .RES,
             .action = .COMM_END,
@@ -24,7 +25,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
         };
         resp.dump(sd.server.log_level);
         _ = resp.transmit(peer.stream()) catch 1;
-        sd.markPeerForDeath(peer_ref.ref_id);
+        peer.alive = false;
     }
 }
 
@@ -38,29 +39,32 @@ fn collectError(_: *SharedData) void {
     std.log.err("not implemented", .{});
 }
 
+///This happens when the server kills a peer
 fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, request_data: []const u8) void {
     switch (mode) {
         .UNICAST => {
-            const ref_id = std.fmt.parseInt(usize, request_data, 10) catch |err| {
-                std.log.err("provided request data `{any}` is not a number\n{any}", .{ request_data, err });
-                return;
-            };
-            const peer = sd.peer_pool.items[ref_id];
-            const reqp = comm.Protocol{
-                .type = comm.Typ.REQ,
-                .action = comm.Act.COMM_END,
-                .status = comm.Status.OK,
-                .origin = .SERVER,
-                .sender_id = "",
-                .src_addr = sd.server.address_str,
-                .dest_addr = peer.conn_address_str,
-                .body = "OK",
-            };
-            reqp.dump(sd.server.log_level);
-            _ = reqp.transmit(peer.stream()) catch 1;
+            _ = request_data;
+            @panic("Not implemented yet");
+            //const ref_id = std.fmt.parseInt(usize, request_data, 10) catch |err| {
+            //    std.log.err("provided request data `{any}` is not a number\n{any}", .{ request_data, err });
+            //    return;
+            //};
+            //const peer = sd.peer_pool.items[ref_id];
+            //const reqp = comm.Protocol{
+            //    .type = comm.Typ.REQ,
+            //    .action = comm.Act.COMM_END,
+            //    .status = comm.Status.OK,
+            //    .origin = .SERVER,
+            //    .sender_id = "",
+            //    .src_addr = sd.server.address_str,
+            //    .dest_addr = peer.conn_address_str,
+            //    .body = "OK",
+            //};
+            //reqp.dump(sd.server.log_level);
+            //_ = reqp.transmit(peer.stream()) catch 1;
         },
         .BROADCAST => {
-            for (sd.peer_pool.items[0..]) |peer| {
+            for (sd.peer_pool.peers) |opt_peer| {
                 const reqp = comm.Protocol{
                     .type = comm.Typ.REQ,
                     .action = comm.Act.COMM_END,

@@ -1,6 +1,7 @@
 const std = @import("std");
 pub const Peer = @import("peer.zig").Peer;
 pub const sc = @import("server.zig");
+pub const PeerPool = @import("peer-pool.zig").PeerPool;
 pub const SharedData = @import("shared-data.zig").SharedData;
 
 ///Generates a sequence of bytes {characters} using a secure PRNG and an alphabet
@@ -22,6 +23,6 @@ pub fn randomByteSequence(allocator: std.mem.Allocator, comptime seq_len: usize)
 
 test {
     _ = @import("server.test.zig");
-    _ = @import("peer-pool.zig");
+    //_ = @import("peer-pool.zig");
     @import("std").testing.refAllDecls(@This());
 }

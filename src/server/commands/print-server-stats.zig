@@ -13,7 +13,7 @@ pub fn executor(_: ?[]const u8, cd: ?core.sc.CommandData) void {
     std.debug.print("Server status\n", .{});
     std.debug.print("--------------------------------------------------\n", .{});
     std.debug.print("version: {s}\n", .{cd.?.sd.server.__version__});
-    std.debug.print("peers connected: {d}\n", .{cd.?.sd.peer_pool.items.len});
+    std.debug.print("peers connected: {d}\n", .{cd.?.sd.peer_pool.peers.len});
     std.debug.print("uptime: {d:.3}s\n", .{dt});
     std.debug.print("address: {s}\n", .{cd.?.sd.server.address_str});
     std.debug.print("log_level: {s}\n", .{@tagName(cd.?.sd.server.log_level)});

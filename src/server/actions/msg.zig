@@ -6,33 +6,36 @@ const comm = aids.v2.comm;
 const Action = aids.Stab.Action;
 const SharedData = core.SharedData;
 
-fn broadcastMessage(sd: *SharedData, peer_ref: struct { peer: core.Peer, id: usize }, sender_id: []const u8, message: []const u8) void {
-    for (sd.peer_pool.items, 0..) |peer, pid| {
-        if (peer_ref.id != pid and peer.alive) {
-            const src_addr_str = peer_ref.peer.conn_address_str;
-            const dest_addr_str = peer.conn_address_str;
-            const resp = comm.Protocol{
-                .type = .RES,
-                .action = .MSG,
-                .status = .OK,
-                .origin = .SERVER,
-                .sender_id = sender_id,
-                .src_addr = src_addr_str,
-                .dest_addr = dest_addr_str,
-                .body = message,
-            };
-            resp.dump(sd.server.log_level);
-            _ = resp.transmit(peer.stream()) catch 1;
+fn broadcastMessage(sd: *SharedData, peer: core.Peer, sender_id: []const u8, message: []const u8) void {
+    for (sd.peer_pool.peers) |opt_peer| {
+        if (opt_peer) |pool_peer| {
+            if (!std.mem.eql(u8, pool_peer.id, peer.id) and pool_peer.alive) {
+                const src_addr_str = peer.conn_address_str;
+                const dest_addr_str = pool_peer.conn_address_str;
+                const resp = comm.Protocol{
+                    .type = .RES,
+                    .action = .MSG,
+                    .status = .OK,
+                    .origin = .SERVER,
+                    .sender_id = sender_id,
+                    .src_addr = src_addr_str,
+                    .dest_addr = dest_addr_str,
+                    .body = message,
+                };
+                resp.dump(sd.server.log_level);
+                _ = resp.transmit(pool_peer.stream()) catch 1;
+            }
         }
     }
 }
 
+// NOTE: peer does not get bound to communution in COMM server action
 fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
     _ = in_conn;
-    const opt_peer_ref = sd.peerPoolFindId(protocol.sender_id);
-    if (opt_peer_ref) |peer_ref| {
-        broadcastMessage(sd, .{ .peer = peer_ref.peer, .id = peer_ref.ref_id }, protocol.sender_id, protocol.body);
-        const src_addr_str = peer_ref.peer.conn_address_str;
+    const opt_peer = sd.peer_pool.get(protocol.sender_id);
+    if (opt_peer) |peer| {
+        broadcastMessage(sd, peer, protocol.sender_id, protocol.body);
+        const src_addr_str = peer.conn_address_str;
         const dest_addr_str = src_addr_str;
         const resp = comm.Protocol{
             .type = .RES,
@@ -45,7 +48,9 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
             .body = "OK",
         };
         resp.dump(sd.server.log_level);
-        _ = resp.transmit(peer_ref.peer.stream()) catch 1;
+        _ = resp.transmit(peer.stream()) catch 1;
+        peer.dump();
+        @panic("eze");
     }
 }
 

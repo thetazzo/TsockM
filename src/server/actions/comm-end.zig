@@ -13,6 +13,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
     _ = in_conn;
     const opt_peer = sd.peer_pool.get(protocol.sender_id);
     if (opt_peer) |peer| {
+        var mut_peer = peer;
         const resp = comm.Protocol{
             .type = .RES,
             .action = .COMM_END,
@@ -20,12 +21,12 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
             .origin = .SERVER,
             .sender_id = "",
             .src_addr = sd.server.address_str,
-            .dest_addr = peer.conn_address_str,
+            .dest_addr = mut_peer.conn_address_str,
             .body = "OK",
         };
         resp.dump(sd.server.log_level);
-        _ = resp.transmit(peer.stream()) catch 1;
-        peer.alive = false;
+        _ = resp.transmit(mut_peer.stream()) catch 1;
+        mut_peer.alive = false;
     }
 }
 
@@ -65,18 +66,20 @@ fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, request_data: []
         },
         .BROADCAST => {
             for (sd.peer_pool.peers) |opt_peer| {
-                const reqp = comm.Protocol{
-                    .type = comm.Typ.REQ,
-                    .action = comm.Act.COMM_END,
-                    .status = comm.Status.OK,
-                    .origin = .SERVER,
-                    .sender_id = "",
-                    .src_addr = sd.server.address_str,
-                    .dest_addr = peer.conn_address_str,
-                    .body = "OK",
-                };
-                reqp.dump(sd.server.log_level);
-                _ = reqp.transmit(peer.stream()) catch 1;
+                if (opt_peer) |peer| {
+                    const reqp = comm.Protocol{
+                        .type = comm.Typ.REQ,
+                        .action = comm.Act.COMM_END,
+                        .status = comm.Status.OK,
+                        .origin = .SERVER,
+                        .sender_id = "",
+                        .src_addr = sd.server.address_str,
+                        .dest_addr = peer.conn_address_str,
+                        .body = "OK",
+                    };
+                    reqp.dump(sd.server.log_level);
+                    _ = reqp.transmit(peer.stream()) catch 1;
+                }
             }
             sd.peerPoolClear();
         },

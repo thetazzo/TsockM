@@ -29,22 +29,26 @@ fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, _: []const u8) v
             unreachable;
         },
         .BROADCAST => {
-            for (sd.peer_pool.items) |peer| {
-                if (peer.alive == false) {
-                    // TODO: peer_broadcast_death
-                    for (sd.peer_pool.items) |ap| {
-                        if (!std.mem.eql(u8, ap.id, peer.id)) {
-                            const reqp = comm.Protocol{
-                                .type = comm.Typ.REQ,
-                                .action = comm.Act.NTFY_KILL,
-                                .status = comm.Status.OK,
-                                .origin = .SERVER,
-                                .sender_id = "",
-                                .src_addr = sd.server.address_str,
-                                .dest_addr = peer.conn_address_str,
-                                .body = peer.id,
-                            };
-                            _ = reqp.transmit(ap.stream()) catch 1;
+            for (sd.peer_pool.peers) |opt_peer| {
+                if (opt_peer) |peer| {
+                    if (peer.alive == false) {
+                        // TODO: peer_broadcast_death
+                        for (sd.peer_pool.peers) |opt_peer_2| {
+                            if (opt_peer_2) |peer_2| {
+                                if (!std.mem.eql(u8, peer.id, peer_2.id)) {
+                                    const reqp = comm.Protocol{
+                                        .type = comm.Typ.REQ,
+                                        .action = comm.Act.NTFY_KILL,
+                                        .status = comm.Status.OK,
+                                        .origin = .SERVER,
+                                        .sender_id = "",
+                                        .src_addr = sd.server.address_str,
+                                        .dest_addr = peer_2.conn_address_str,
+                                        .body = peer_2.id,
+                                    };
+                                    _ = reqp.transmit(peer.stream()) catch 1;
+                                }
+                            }
                         }
                     }
                 }

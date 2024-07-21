@@ -54,10 +54,9 @@ test "Server.Action.COMM" {
     try std.testing.expectEqual(comm.Typ.RES, resp.type);
     try std.testing.expectEqual(comm.Act.COMM, resp.action);
     try std.testing.expectEqual(comm.Status.OK, resp.status);
-    var splits = std.mem.splitScalar(u8, resp.body, '|');
+    var splits = std.mem.splitScalar(u8, resp.body, '#');
+    const og_name = splits.next().?;
     user_id = splits.next().?;
-    var unns = std.mem.splitScalar(u8, splits.next().?, '#');
-    const og_name = unns.first();
     try std.testing.expectEqualStrings(username, og_name);
 }
 

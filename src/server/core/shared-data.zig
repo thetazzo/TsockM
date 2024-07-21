@@ -36,13 +36,17 @@ pub const SharedData = struct {
     pub fn peerPoolClear(self: *@This()) void {
         self.m.lock();
         defer self.m.unlock();
-        self.peer_pool.clearAndFree();
+        self.peer_pool.deinit();
     }
     pub fn peerPoolRemove(self: *@This(), pid: usize) void {
         self.m.lock();
         defer self.m.unlock();
-        self.peer_pool.items[pid].deinit();
-        _ = self.peer_pool.orderedRemove(pid);
+        const opt_peer = self.peer_pool.peers[pid];
+        if (opt_peer) |peer| {
+            var mut_peer = peer;
+            mut_peer.deinit();
+            self.peer_pool.peers[pid] = null;
+        }
     }
     pub fn peerPoolAppend(self: *@This(), peer_name: []const u8) Peer {
         self.m.lock();

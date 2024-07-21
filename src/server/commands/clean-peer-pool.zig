@@ -6,12 +6,14 @@ const SharedData = core.SharedData;
 /// Remove dead peers
 /// Does not kill any peer
 pub fn executor(_: ?[]const u8, cd: ?core.sc.CommandData) void {
-    var pp_len: usize = cd.?.sd.peer_pool.items.len;
+    var pp_len: usize = cd.?.sd.peer_pool.peers.len;
     while (pp_len > 0) {
         pp_len -= 1;
-        const p = cd.?.sd.peer_pool.items[pp_len];
-        if (p.alive == false) {
-            _ = cd.?.sd.peerPoolRemove(pp_len);
+        const opt_peer = cd.?.sd.peer_pool.peers[pp_len];
+        if (opt_peer) |peer| {
+            if (peer.alive == false) {
+                _ = cd.?.sd.peerPoolRemove(pp_len);
+            }
         }
     }
 }

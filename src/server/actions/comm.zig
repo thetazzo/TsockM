@@ -12,8 +12,10 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
     const addr_str = cmn.address_as_str(in_conn.?.address);
     const stream = in_conn.?.stream;
 
-    var peer = sd.peerPoolAppend(protocol.body);
-    peer.bindConnection(in_conn.?);
+    const peer = sd.peerPoolAppend(protocol.body);
+
+    var tmp = sd.peer_pool.get(peer.id);
+    tmp.?.bindConnection(in_conn.?);
 
     const resp = comm.Protocol{
         .type = .RES, // type

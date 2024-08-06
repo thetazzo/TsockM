@@ -184,7 +184,8 @@ pub const InputBox = struct {
             if (self.opts.clipboard) {
                 if (kybrd.isValidControlCombination()) {
                     if (rl.isKeyPressed(.key_v)) {
-                        self.pushSlice(rl.getClipboardText());
+                        const cd = rl.getClipboardText();
+                        self.pushSlice(std.mem.sliceTo(cd, 0));
                     }
                 }
             }

@@ -25,15 +25,15 @@ sudo yum install wayland-devel.x86_64 libxkbcommon-devel.x86_64 mesa-libGL-devel
 ```
 
 ## Quick Start
-* Zig version at least `0.12.0`
+* Zig version >= `0.12.0`
 
 * **SERVER**
 ```bash
-zig build server -- <subcommand>
+zig build dev-server -- <subcommand>
 ```
 * **CLIENT**
 ```bash
-zig build client -- <subcommand>
+zig build dev-client -- <subcommand>
 ```
 
 ## Server

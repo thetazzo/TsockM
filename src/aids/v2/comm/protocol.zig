@@ -77,6 +77,7 @@ pub const Protocol = struct {
     /// returns 1 when stream is closed
     pub fn transmit(self: @This(), stream: std.net.Stream) !usize {
         const q = try stream.write(self.asStr());
+        std.debug.print("\n", .{});
         return q;
     }
     pub fn eql(self: @This(), prot: Protocol) bool {

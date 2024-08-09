@@ -66,7 +66,7 @@ fn transmitRequest(mode: comm.TransmitionMode, sd: *SharedData, _: []const u8) v
                         .dest_addr = peer.conn_address_str, // dst address
                         .body = "check", // body
                     };
-                    reqp.dump(sd.server.log_level);
+                    //reqp.dump(sd.server.log_level);
                     // TODO: I don't know why but i must send 2 requests to determine the status of the stream
                     const status = reqp.transmit(peer.stream()) catch 1;
                     if (status == 1) {

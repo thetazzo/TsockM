@@ -10,12 +10,6 @@ const Server = net.Server;
 const print = std.debug.print;
 
 ///Structure holding data about a connected client (peer)
-///id - []const u8
-///username - []const u8
-///signature - []const u8 .... username#id combination
-///conn - net.Server.Connection
-///conn_address - net.Address
-///conn_address_str - []const u8
 pub const Peer = struct {
     id: []const u8,
     username: []const u8,

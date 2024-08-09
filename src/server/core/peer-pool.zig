@@ -12,9 +12,7 @@ fn hasher(peer_id: []const u8) usize {
     return hash;
 }
 
-///Structure holding an array of connected clients (peers)
-///peers - []Peer
-///arena - heap.ArenaAllocator
+///Structure for storing an array of connected clients (peers) with unique ids
 pub const PeerPool = struct {
     peers: []?Peer,
     arena: std.heap.ArenaAllocator,
@@ -37,10 +35,7 @@ pub const PeerPool = struct {
     pub fn deinit(self: *@This()) void {
         self.arena.deinit();
     }
-    ///Create a Peer instance and insert it into the peer pool
-    ///Peer IDs are generated such that they can be mapped to peer position in the pool
-    ///   :: name - []const u8
-    ///   -> Peer
+    ///Create a Peer instance and insert it into the peer pool where each Peer.id is generated such that they are unique and can be mapped to peer position in the pool
     pub fn insert(self: *@This(), name: []const u8) Peer {
         if (self.capacity == 0) {
             @panic("No more space left in the pool");

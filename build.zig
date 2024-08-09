@@ -15,13 +15,13 @@ fn Aids(b: *std.Build) struct { module: *std.Build.Module } {
     };
 }
 
-const MAD = struct {
+const MADL = struct {
     module: *std.Build.Module,
     artifact: *std.Build.Step.Compile,
     dependency: *std.Build.Dependency,
     LDB: rlz.LinuxDisplayBackend,
 };
-fn Raylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, ldb: rlz.LinuxDisplayBackend) MAD {
+fn Raylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, ldb: rlz.LinuxDisplayBackend) MADL {
     const raylib_dep = b.dependency("raylib-zig", .{
         .target = target,
         .optimize = optimize,
@@ -109,7 +109,7 @@ fn STEP_testing_server(b: *std.Build, target: std.Build.ResolvedTarget, optimize
     step.dependOn(&run_server_artifact.step);
 }
 
-fn STEP_client_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step, raylib: MAD) !void {
+fn STEP_client_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step, raylib: MADL) !void {
     // this target does not work with raylib
     const client_program = Program(b, .{
         .name = "tsockm-client",
@@ -155,7 +155,7 @@ fn STEP_release_server(b: *std.Build, targets: []const std.Target.Query, step: *
     }
 }
 
-fn STEP_release_client(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step, raylib: MAD) !void {
+fn STEP_release_client(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step, raylib: MADL) !void {
     // Client release platform option
     //     * what display manager to use
     const client_program = Program(b, .{

@@ -31,7 +31,6 @@ fn broadcastMessage(sd: *SharedData, peer: core.Peer, sender_id: []const u8, mes
 
 // NOTE: peer does not get bound to communution in COMM server action
 fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
-    _ = in_conn;
     const opt_peer = sd.peer_pool.get(protocol.sender_id);
     if (opt_peer) |peer| {
         broadcastMessage(sd, peer, protocol.sender_id, protocol.body);
@@ -48,9 +47,8 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
             .body = "OK",
         };
         resp.dump(sd.server.log_level);
-        _ = resp.transmit(peer.stream()) catch 1;
+        _ = resp.transmit(in_conn.?.stream) catch 1;
         peer.dump();
-        @panic("eze");
     }
 }
 

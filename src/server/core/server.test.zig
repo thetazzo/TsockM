@@ -1,5 +1,4 @@
 const std = @import("std");
-const print = std.debug.print;
 const aids = @import("aids");
 const sc = @import("server.zig");
 const pc = @import("peer.zig");
@@ -73,7 +72,7 @@ test "Server.Action.MSG" {
         .body = "Ojla",
     };
     _ = try reqp.transmit(stream);
-    const resp = try comm.collect(str_allocator, comm_stream);
+    const resp = try comm.collect(str_allocator, stream);
     try std.testing.expectEqual(comm.Typ.RES, resp.type);
     try std.testing.expectEqual(comm.Act.MSG, resp.action);
     try std.testing.expectEqual(comm.Status.OK, resp.status);
@@ -132,7 +131,7 @@ test "Server.Action.COMM_END" {
     };
     _ = try reqp.transmit(comm_stream_alt);
     const resp = try comm.collect(str_allocator, comm_stream_alt);
-    var splits = std.mem.splitScalar(u8, resp.body, '|');
+    var splits = std.mem.splitScalar(u8, resp.body, '#');
     const user_id_alt = splits.next().?;
 
     const stream = try testingStream();

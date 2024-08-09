@@ -120,7 +120,7 @@ pub const SharedData = struct {
         resp.dump(self.client.log_level);
 
         if (resp.status == .OK) {
-            var peer_spl = std.mem.split(u8, resp.body, "|");
+            var peer_spl = std.mem.split(u8, resp.body, "#");
             const id = peer_spl.next().?;
             const username_ = peer_spl.next().?;
             self.client.setUsername(username_);

@@ -7,7 +7,7 @@ pub fn executor(_: ?[]const u8, cd: ?core.CommandData) void {
     const username = cd.?.body;
     //const client = cd.?.sd.client;
     if (username.len > 0) {
-        std.debug.print("un: `{s}`", .{username});
+        std.debug.print("un: `{s}\n`", .{username});
         std.log.err("SERVER does not support this yet", .{});
         std.posix.exit(1);
         //const reqp = aids.Protocol.init(

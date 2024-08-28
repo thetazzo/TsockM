@@ -118,9 +118,8 @@ pub const SharedData = struct {
             std.posix.exit(1);
         };
         resp.dump(self.client.log_level);
-
         if (resp.status == .OK) {
-            var peer_spl = std.mem.split(u8, resp.body, "#");
+            var peer_spl = std.mem.split(u8, resp.body, "|");
             const id = peer_spl.next().?;
             const username_ = peer_spl.next().?;
             self.client.setUsername(username_);
@@ -130,12 +129,10 @@ pub const SharedData = struct {
             self.client.server_addr_str = dst_addr;
             self.client.client_addr_str = resp.dest_addr;
             self.connected = true;
-
             const succ_str = std.fmt.allocPrintZ(allocator, "Client connected successfully to `{s}` :)", .{self.client.server_addr_str}) catch |err| {
                 std.log.err("SharedData::establishConnection::succ_str: {any}", .{err});
                 std.posix.exit(1);
             };
-
             // TODO: does SimplePopup free allocated text ??
             var succ_conn_popup = ui.SimplePopup.init(self.client.font, .TOP_CENTER, self.client.FPS * 3);
             succ_conn_popup.text = succ_str; // TODO: SimplePopup.setText
@@ -242,7 +239,7 @@ pub const Client = struct {
         return stats;
     }
 
-    /// TODO: depricated
+    /// TODO: depricated use `asStr` or maybe refactor to print the asStr
     pub fn dump(self: @This()) void {
         std.debug.print("------------------------------------\n", .{});
         std.debug.print("Client {{\n", .{});

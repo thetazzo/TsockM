@@ -31,25 +31,27 @@ fn collectRespone(sd: *SharedData, protocol: comm.Protocol) void {
         np.dump(sd.client.log_level);
 
         var un_spl = std.mem.split(u8, np.body, "#");
-        const unn = un_spl.next().?; // user name
+        const username = un_spl.next().?; // user name
         // TODO: this is relevant for the terminal implementation
         //const unh = un_spl.next().?; // username hash
         // print recieved message
         //const msg_text = try std.fmt.allocPrint(
         //    str_allocator,
         //    "{s}" ++ tclr.paint_hex("#555555", "#{s}") ++ ": {s}\n",
-        //    .{ unn, unh, protocol.body }
+        //    .{ username, unh, protocol.body }
         //);
         const msg_text = std.fmt.allocPrint(collocator, "{s}", .{protocol.body}) catch |err| {
             std.log.err("actions::msg::collectrespose: {any}", .{err});
             std.posix.exit(1);
         };
-
-        const message = ui.Display.Message{ .author = unn, .text = msg_text };
-        sd.pushMessage(message) catch |err| {
-            std.log.err("actions::msg::collectrespose: {any}", .{err});
-            std.posix.exit(1);
-        };
+        // TODO: this disabled users from sending `OK` messages this must be handled differently
+        if (!std.mem.eql(u8, msg_text, "OK")) {
+            const message = ui.Display.Message{ .author = username, .text = msg_text };
+            sd.pushMessage(message) catch |err| {
+                std.log.err("actions::msg::collectrespose: {any}", .{err});
+                std.posix.exit(1);
+            };
+        }
     } else {
         protocol.dump(sd.client.log_level);
     }
@@ -78,10 +80,10 @@ fn transmitRequest(_: comm.TransmitionMode, sd: *SharedData, msg: []const u8) vo
         std.posix.exit(1);
     };
     var un_spl = std.mem.split(u8, sd.client.username, "#");
-    const unn = un_spl.next().?; // user name
+    const username = un_spl.next().?; // user name
     //const unh = un_spl.next().?; // username hash
     const message = ui.Display.Message{
-        .author = unn,
+        .author = username,
         .text = baked_msg,
     };
     sd.pushMessage(message) catch |err| {

@@ -16,7 +16,7 @@ pub const Peer = struct {
     signature: []const u8,
     conn: Server.Connection = undefined,
     conn_address: net.Address = undefined,
-    conn_address_str: []const u8 = "",
+    conn_address_str: []const u8 = "404",
     alive: bool = true,
     arena: std.heap.ArenaAllocator,
     pub fn init(

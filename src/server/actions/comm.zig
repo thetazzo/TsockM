@@ -9,14 +9,7 @@ const SharedData = core.SharedData;
 const Peer = core.Peer;
 
 fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
-    const addr_str = cmn.address_as_str(in_conn.?.address);
-    const stream = in_conn.?.stream;
-
-    const peer = sd.peerPoolAppend(protocol.body);
-
-    var tmp = sd.peer_pool.get(peer.id);
-    tmp.?.bindConnection(in_conn.?);
-
+    var peer = sd.peerPoolAppend(protocol.body, in_conn.?);
     const resp = comm.Protocol{
         .type = .RES, // type
         .action = .COMM, // action
@@ -24,11 +17,18 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
         .origin = .SERVER,
         .sender_id = "", // sender id
         .src_addr = sd.server.address_str, // sender address
-        .dest_addr = addr_str, // reciever address
+        .dest_addr = peer.conn_address_str, // reciever address
         .body = peer.signature, // body
     };
     resp.dump(sd.server.log_level);
-    _ = resp.transmit(stream) catch 1;
+    _ = resp.transmit(peer.stream()) catch 1;
+
+    for (0..sd.peer_pool.capacity) |i| {
+        const opt_peer = sd.peer_pool.peers[i];
+        if (opt_peer) |peerr| {
+            std.debug.print("peer conn: {s}\n", .{peerr.conn_address_str});
+        }
+    }
 }
 
 fn collectRespone(sd: *SharedData, protocol: comm.Protocol) void {

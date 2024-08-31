@@ -48,10 +48,10 @@ pub const SharedData = struct {
             self.peer_pool.peers[pid] = null;
         }
     }
-    pub fn peerPoolAppend(self: *@This(), peer_name: []const u8) Peer {
+    pub fn peerPoolAppend(self: *@This(), peer_name: []const u8, in_conn: std.net.Server.Connection) Peer {
         self.m.lock();
         defer self.m.unlock();
-        return self.peer_pool.insert(peer_name);
+        return self.peer_pool.insert(peer_name, in_conn);
     }
     pub fn markPeerForDeath(self: *@This(), peer_id: usize) void {
         self.m.lock();

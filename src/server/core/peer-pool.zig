@@ -36,7 +36,7 @@ pub const PeerPool = struct {
         self.arena.deinit();
     }
     ///Create a Peer instance and insert it into the peer pool where each Peer.id is generated such that they are unique and can be mapped to peer position in the pool
-    pub fn insert(self: *@This(), name: []const u8) Peer {
+    pub fn insert(self: *@This(), name: []const u8, conn: std.net.Server.Connection) Peer {
         if (self.capacity == 0) {
             @panic("No more space left in the pool");
         }
@@ -48,11 +48,17 @@ pub const PeerPool = struct {
             ppi = @as(usize, @intCast(@mod(hasher(pid), self.peers.len)));
         }
         self.capacity -= 1;
-        const peer = Peer.init(
+        var peer = Peer.init(
             self.arena.allocator(),
             pid,
             name,
         );
+        peer.conn = conn;
+        const addr_str = std.fmt.allocPrint(self.arena.allocator(), "{any}", .{conn.address}) catch |err| {
+            std.log.err("{any}", .{err});
+            std.posix.exit(1);
+        };
+        peer.conn_address_str = addr_str;
         self.peers[ppi] = peer;
         return peer;
     }

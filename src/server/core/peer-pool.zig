@@ -35,6 +35,8 @@ pub const PeerPool = struct {
     pub fn deinit(self: *@This()) void {
         self.arena.deinit();
     }
+    //TODO: separate Peer instance creation from pool insertion
+    //      -> peer pool should only update peer ID
     ///Create a Peer instance and insert it into the peer pool where each Peer.id is generated such that they are unique and can be mapped to peer position in the pool
     pub fn insert(self: *@This(), name: []const u8, conn: std.net.Server.Connection) Peer {
         if (self.capacity == 0) {

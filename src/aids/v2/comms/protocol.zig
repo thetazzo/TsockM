@@ -1,5 +1,5 @@
 const std = @import("std");
-const comm = @import("comm.zig");
+const comm = @import("comms.zig");
 const tc = @import("../../text_color.zig");
 const Logging = @import("../../logging.zig");
 const mem = std.mem;

@@ -109,7 +109,8 @@ pub fn protocolFromStr(str: []const u8) Protocol {
         if (std.meta.stringToEnum(Typ, typ)) |etyp| {
             prot_type = etyp;
         } else {
-            std.log.err("Something went wrong with prot_ol type: `{s}`\n", .{typ});
+            std.log.err("Something went wrong when parsing the protocol type!\n", .{});
+            std.log.err("Recieved: `{s}", .{typ});
             prot_type = .ERR;
             prot_action = .NONE;
             prot_status = .BAD_GATEWAY;
@@ -120,7 +121,8 @@ pub fn protocolFromStr(str: []const u8) Protocol {
         if (std.meta.stringToEnum(Act, act)) |eact| {
             prot_action = eact;
         } else {
-            std.log.err("Something went wrong with prot_ol action: `{s}`\n", .{act});
+            std.log.err("Something went wrong when parsing the protocol action!\n", .{});
+            std.log.err("Recieved: `{s}", .{act});
             prot_type = .ERR;
             prot_action = .NONE;
             prot_status = .BAD_GATEWAY;

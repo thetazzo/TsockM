@@ -57,8 +57,7 @@ pub fn Program(b: *std.Build, opts: std.Build.ExecutableOptions) struct { exe: *
 }
 
 fn STEP_server_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step) !void {
-    const target_triple = try target.result.linuxTriple(b.allocator);
-    std.log.info("Building SERVER-dev version `{s}` for target `{s}`", .{ server_version, target_triple });
+    //const target_triple = try target.result.linuxTriple(b.allocator);
     const server_program = Program(b, .{
         .name = "tsockm-server",
         .root_source_file = b.path("./src/server/main.zig"),
@@ -75,12 +74,10 @@ fn STEP_server_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: st
     }
     step.dependOn(&server_artifact.step);
     step.dependOn(&run_server_artifact.step);
-    std.debug.print("\u{001B}[32m" ++ "SUCCESS\n" ++ "\u{001B}[39m", .{});
 }
 
 fn STEP_testing_server(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step) !void {
-    const target_triple = try target.result.linuxTriple(b.allocator);
-    std.log.info("Building SERVER-testing version `{s}` for target `{s}`", .{ server_version, target_triple });
+    //const target_triple = try target.result.linuxTriple(b.allocator);
     const server_program = Program(b, .{
         .name = "tsockm-server",
         .root_source_file = b.path("./src/server/main.zig"),
@@ -95,12 +92,10 @@ fn STEP_testing_server(b: *std.Build, target: std.Build.ResolvedTarget, optimize
     run_server_artifact.addArgs(&.{ "start", "--tester" });
     step.dependOn(&server_artifact.step);
     step.dependOn(&run_server_artifact.step);
-    std.debug.print("\u{001B}[32m" ++ "SUCCESS\n" ++ "\u{001B}[39m", .{});
 }
 
 fn STEP_client_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step, raylib: MADL) !void {
-    const target_tripple = try target.result.linuxTriple(b.allocator);
-    std.log.info("Building CLIENT-dev version `{s}` for target `{s}`", .{ server_version, target_tripple });
+    //const target_tripple = try target.result.linuxTriple(b.allocator);
     // this target does not work with raylib
     const client_program = Program(b, .{
         .name = "tsockm-client",
@@ -121,14 +116,12 @@ fn STEP_client_dev(b: *std.Build, target: std.Build.ResolvedTarget, optimize: st
     }
     step.dependOn(&build_client_artifact.step);
     step.dependOn(&run_client_artifact.step);
-    std.debug.print("\u{001B}[32m" ++ "SUCCESS\n" ++ "\u{001B}[39m", .{});
 }
 
 fn STEP_release_server(b: *std.Build, targets: []const std.Target.Query, step: *std.Build.Step) !void {
     for (targets) |t| {
         const target = b.resolveTargetQuery(t);
         const target_tripple = try target.result.linuxTriple(b.allocator);
-        std.log.info("Building SERVER version `{s}` for target `{s}`", .{ server_version, target_tripple });
         const server = Program(b, .{
             .name = "tsockm-server",
             .root_source_file = b.path("./src/server/main.zig"),
@@ -148,13 +141,11 @@ fn STEP_release_server(b: *std.Build, targets: []const std.Target.Query, step: *
             },
         });
         step.dependOn(&server_install.step);
-        std.debug.print("\u{001B}[32m" ++ "SUCCESS\n" ++ "\u{001B}[39m", .{});
     }
 }
 
 fn STEP_release_client(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, step: *std.Build.Step, raylib: MADL) !void {
     const target_tripple = try target.result.linuxTriple(b.allocator);
-    std.log.info("Building CLIENT version `{s}` for target `{s}`", .{ client_version, target_tripple });
     // Client release platform option
     //     * what display manager to use
     const client_program = Program(b, .{
@@ -183,7 +174,6 @@ fn STEP_release_client(b: *std.Build, target: std.Build.ResolvedTarget, optimize
         cpa.step.dependOn(&client_install.step);
         step.dependOn(&cpa.step);
     }
-    std.debug.print("\u{001B}[32m" ++ "SUCCESS\n" ++ "\u{001B}[39m", .{});
 }
 
 fn addTestRunner(

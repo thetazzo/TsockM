@@ -32,9 +32,9 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
 }
 
 fn collectRespone(sd: *SharedData, protocol: comm.Protocol) void {
-    const opt_peer_ref = sd.peerPoolFindId(protocol.sender_id);
-    if (opt_peer_ref) |peer_ref| {
-        std.debug.print("peer `{s}` is alive\n", .{peer_ref.peer.username});
+    const opt_peer_ref = sd.peer_pool.get(protocol.sender_id);
+    if (opt_peer_ref) |peer| {
+        std.debug.print("peer `{s}` is alive\n", .{peer.username});
     } else {
         std.debug.print("Peer with id `{s}` does not exist!\n", .{protocol.sender_id});
     }

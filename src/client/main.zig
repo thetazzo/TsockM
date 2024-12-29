@@ -30,7 +30,7 @@ pub fn main() !void {
     var server_port: u16 = SERVER_PORT;
     var screen_scale: usize = 80;
     var font_path: []const u8 = "";
-    var log_level: Logging.Level = Logging.Level.COMPACT;
+    var log_level: Logging.Level = Logging.Level.DEV;
 
     if (subc) |subcommand| {
         if (std.mem.eql(u8, subcommand, "help")) {

@@ -8,11 +8,11 @@ const SharedData = core.SharedData;
 
 fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: comm.Protocol) void {
     _ = in_conn;
-    const opt_sender_peer_ref = sd.peerPoolFindId(protocol.sender_id);
-    const opt_search_peer_ref = sd.peerPoolFindId(protocol.body);
-    if (opt_sender_peer_ref) |server_peer_ref| {
-        const dest_addr_str = server_peer_ref.peer.conn_address_str;
-        if (opt_search_peer_ref) |peer_ref| {
+    const opt_sender_peer_ref = sd.peer_pool.get(protocol.sender_id);
+    const opt_search_peer_ref = sd.peer_pool.get(protocol.body);
+    if (opt_sender_peer_ref) |peer| {
+        const dest_addr_str = peer.conn_address_str;
+        if (opt_search_peer_ref) |sender_peer| {
             const resp = comm.Protocol{
                 .type = .RES,
                 .action = .GET_PEER,
@@ -21,10 +21,10 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
                 .sender_id = "",
                 .src_addr = sd.server.address_str,
                 .dest_addr = dest_addr_str,
-                .body = peer_ref.peer.username,
+                .body = sender_peer.username,
             };
             resp.dump(sd.server.log_level);
-            _ = resp.transmit(server_peer_ref.peer.stream()) catch 1;
+            _ = resp.transmit(peer.stream()) catch 1;
         } else {
             const resp = comm.Protocol{
                 .type = comm.Typ.ERR,
@@ -37,7 +37,7 @@ fn collectRequest(in_conn: ?net.Server.Connection, sd: *SharedData, protocol: co
                 .body = "peer not found",
             };
             resp.dump(sd.server.log_level);
-            _ = resp.transmit(server_peer_ref.peer.stream()) catch 1;
+            _ = resp.transmit(peer.stream()) catch 1;
         }
     }
 }

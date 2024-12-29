@@ -31,6 +31,7 @@ fn collectRespone(sd: *SharedData, protocol: comm.Protocol) void {
         np.dump(sd.client.log_level);
 
         var un_spl = std.mem.split(u8, np.body, "#");
+        std.debug.print("{s}", .{np.body});
         const username = un_spl.next().?; // user name
         // TODO: this is relevant for the terminal implementation
         //const unh = un_spl.next().?; // username hash
